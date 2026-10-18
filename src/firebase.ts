@@ -2,16 +2,18 @@ import { initializeApp, getApps } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
+// These are the public web-app configuration values from the separate
+// NGO Connect Firebase project. Vercel environment variables can override them.
 const config = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyBVoc8TER_owrOpLxrDvM6HZ2NW7p7vPs',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'ngo-connect-4cfc0.firebaseapp.com',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'ngo-connect-4cfc0',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'ngo-connect-4cfc0.firebasestorage.app',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '1063498140742',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:1063498140742:web:5c17585cb63f19fea18e47',
 };
 
-export const firebaseConfigured = Boolean(config.apiKey && config.projectId && config.appId && config.apiKey !== 'replace_me');
-const app = firebaseConfigured ? (getApps()[0] ?? initializeApp(config)) : null;
-export const auth = app ? getAuth(app) : null;
-export const db = app ? getFirestore(app) : null;
+export const firebaseConfigured = Boolean(config.apiKey && config.projectId && config.appId);
+const app = getApps()[0] ?? initializeApp(config);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
