@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Activity, ArrowDownLeft, ArrowUpRight, BadgeCheck, Bell, BookOpenCheck, CalendarDays, CheckCircle2, ChevronDown, CircleHelp, ClipboardList, FileBadge, FileText, Globe2, HandCoins, HeartHandshake, Image, LayoutDashboard, Leaf, LogIn, Menu, Plus, Search, Settings2, ShieldCheck, Users, Wallet, X } from 'lucide-react';
+import { useMemo, useState, type FormEvent } from 'react';
+import { Activity, ArrowDownLeft, ArrowUpRight, BadgeCheck, Bell, BookOpenCheck, CalendarDays, CheckCircle2, ChevronDown, CircleHelp, ClipboardList, FileBadge, FileText, Globe2, HandCoins, HeartHandshake, LayoutDashboard, Leaf, Menu, Plus, Search, Settings2, ShieldCheck, Users, Wallet, X } from 'lucide-react';
 import { firebaseConfigured } from './firebase';
 
 type Language = 'en' | 'hi';
@@ -32,7 +32,7 @@ export default function App() {
   const filteredNgos = useMemo(() => ngoSamples.filter(n => `${n.name} ${n.type} ${n.city}`.toLowerCase().includes(query.toLowerCase())), [query]);
   const notify = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 3800); };
   const chooseSection = (id: Section) => { setSection(id); setMobileMenu(false); };
-  const submitRegistration = (event: React.FormEvent<HTMLFormElement>) => { event.preventDefault(); notify(t.saved); setShowRegistration(false); setForm({ name: '', contact: '', email: '', phone: '', state: '', mission: '' }); };
+  const submitRegistration = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); notify(t.saved); setShowRegistration(false); setForm({ name: '', contact: '', email: '', phone: '', state: '', mission: '' }); };
   const pageTitle = nav.find(item => item.id === section)?.key ?? 'overview';
 
   return <div className="app-shell">
