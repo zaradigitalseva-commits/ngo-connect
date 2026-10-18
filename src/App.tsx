@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth';
 import { Activity, ArrowDownLeft, ArrowUpRight, BadgeCheck, Bell, BookOpenCheck, CalendarDays, CheckCircle2, ChevronDown, CircleHelp, ClipboardList, FileBadge, FileText, Globe2, HandCoins, HeartHandshake, LayoutDashboard, Leaf, LogOut, Menu, Plus, Search, Settings2, ShieldCheck, Users, Wallet, X } from 'lucide-react';
 import { auth, db, firebaseConfigured } from './firebase';
-import { addDoc, collection, getDocs, query as firestoreQuery, serverTimestamp, where } from 'firebase/firestore';
+import { addDoc, collection, doc, getDocs, query as firestoreQuery, serverTimestamp, updateDoc, where } from 'firebase/firestore';
 
 const SUPER_ADMIN_EMAILS = ['ngogrant454@gmail.com', 'zaradigitalseva@gmail.com'];
 const isSuperAdmin = (user: User | null) => Boolean(user?.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase()));
@@ -149,6 +149,46 @@ export default function App() {
   const [query, setQuery] = useState('');
   const [toast, setToast] = useState('');
   const [form, setForm] = useState({ name: '', contact: '', email: '', phone: '', state: '', mission: '' });
+  const [pendingRegistrations, setPendingRegistrations] = useState<Array<Record<string, unknown> & { id: string }>>([]);
+  const [approvalBusyId, setApprovalBusyId] = useState('');
+  const [registrationLoadError, setRegistrationLoadError] = useState('');
+  useEffect(() => {
+    if (!authUser || !isSuperAdmin(authUser) || section !== 'subscriptions') return;
+    let active = true;
+    getDocs(collection(db, 'ngoRegistrations')).then(snapshot => {
+      if (active) setPendingRegistrations(snapshot.docs.map(item => ({ id: item.id, ...item.data() })));
+    }).catch(() => { if (active) setRegistrationLoadError('रजिस्ट्रेशन लोड नहीं हुए। Firestore rules प्रकाशित हैं या नहीं, जाँचें।'); });
+    return () => { active = false; };
+  }, [authUser, section]);
+  const approveRegistration = async (registration: Record<string, unknown> & { id: string }) => {
+    if (!registration.paymentReference || String(registration.paymentReference).trim().length < 4) {
+      notify('पहले UTR/भुगतान संदर्भ लें और बैंक/UPI रिकॉर्ड से सत्यापित करें।');
+      return;
+    }
+    if (!window.confirm('क्या आपने भुगतान को बैंक/UPI रिकॉर्ड से सत्यापित कर लिया है? पुष्टि के बाद NGO LIVE होगा।')) return;
+    setApprovalBusyId(registration.id);
+    try {
+      const ngoRef = await addDoc(collection(db, 'ngos'), {
+        name: String(registration.name || ''),
+        ngoName: String(registration.name || ''),
+        type: 'Social organization',
+        description: String(registration.mission || ''),
+        city: String(registration.state || ''),
+        status: 'LIVE',
+        ownerUid: String(registration.ownerUid || ''),
+        registrationId: registration.id,
+        createdAt: serverTimestamp(),
+      });
+      await updateDoc(doc(db, 'ngoRegistrations', registration.id), {
+        status: 'ACTIVE', paymentStatus: 'VERIFIED', activatedNgoId: ngoRef.id,
+        verifiedBy: authUser?.email || '', verifiedAt: serverTimestamp(),
+      });
+      setPendingRegistrations(current => current.map(item => item.id === registration.id ? { ...item, status: 'ACTIVE', paymentStatus: 'VERIFIED', activatedNgoId: ngoRef.id } : item));
+      notify('भुगतान सत्यापित; NGO LIVE कर दिया गया।');
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Approval नहीं हो पाया। Firestore rules प्रकाशित करें।');
+    } finally { setApprovalBusyId(''); }
+  };
   const t = copy[language];
   useEffect(() => {
     if (!auth) return;
@@ -185,6 +225,7 @@ export default function App() {
         <div className="eyebrow"><span className="eyebrow-dot"/>{t.demo}<span className="eyebrow-line"/></div>
         <section className="welcome-row"><div><h1>{section === 'overview' ? t.welcome : t[pageTitle]}</h1><p>{section === 'overview' ? t.intro : t.activityText}</p></div><button className="primary-button" onClick={() => setShowRegistration(true)}><Plus size={18}/>{t.register}</button></section>
         {!firebaseConfigured && <div className="setup-banner"><div className="setup-icon"><ShieldCheck size={20}/></div><div className="setup-copy"><strong>{t.setup}</strong><p>{t.setupText}</p></div><a href="https://console.firebase.google.com/" target="_blank" rel="noreferrer">{t.seeSetup}<ArrowUpRight size={15}/></a></div>}
+        {section === 'subscriptions' && <section className="panel directory-panel"><div className="panel-heading"><div><h3>NGO रजिस्ट्रेशन और भुगतान जाँच</h3><p>UTR को बैंक/UPI रिकॉर्ड से मिलाने के बाद ही Activate करें।</p></div><span className="status-pill pill-pending">{pendingRegistrations.filter(item => item.status === 'PENDING_PAYMENT').length} Pending</span></div>{registrationLoadError && <p role="alert">{registrationLoadError}</p>}{pendingRegistrations.length === 0 ? <div className="empty-state">अभी कोई रजिस्ट्रेशन नहीं मिला। Firebase में rules प्रकाशित करें और नए रजिस्ट्रेशन आने दें।</div> : <div className="ngo-table-wrap"><table className="ngo-table"><thead><tr><th>NGO</th><th>संपर्क</th><th>प्लान</th><th>UTR / स्थिति</th><th>कार्रवाई</th></tr></thead><tbody>{pendingRegistrations.map(item => <tr key={item.id}><td><strong>{String(item.name || 'नाम नहीं')}</strong><br/><span className="table-muted">{String(item.state || '')}</span></td><td>{String(item.contactName || '')}<br/><span className="table-muted">{String(item.email || '')} · {String(item.phone || '')}</span></td><td>{String(item.subscriptionPlan || '')}</td><td>{String(item.paymentReference || 'UTR नहीं दिया')}<br/><span className="table-muted">{String(item.paymentStatus || item.status || '')}</span></td><td>{item.status === 'PENDING_PAYMENT' ? <button className="primary-button" disabled={approvalBusyId === item.id} onClick={() => void approveRegistration(item)}>{approvalBusyId === item.id ? 'जाँच…' : 'भुगतान सत्यापित कर Activate'}</button> : <span className="status-pill pill-active">LIVE / VERIFIED</span>}</td></tr>)}</tbody></table></div>}</section>}
         {section === 'overview' && <>
           <section className="hero-panel"><div className="hero-copy"><div className="hero-pill"><Activity size={14}/>{language === 'hi' ? 'सामाजिक प्रभाव, एक जगह' : 'Social impact, all in one place'}</div><h2>{t.activityTitle}</h2><p>{t.activityText}</p><button className="hero-button" onClick={() => chooseSection('ngos')}>{t.directory}<ArrowUpRight size={16}/></button><div className="hero-avatars"><div className="mini-avatar mini-one">UF</div><div className="mini-avatar mini-two">ND</div><div className="mini-avatar mini-three">GE</div><span>{language === 'hi' ? 'समुदाय से जुड़ें' : 'Growing together'}</span></div></div><div className="hero-art" aria-hidden="true"><div className="orbit orbit-one"/><div className="orbit orbit-two"/><div className="hero-circle"><HeartHandshake size={68} strokeWidth={1.35}/></div><div className="floating-chip chip-top"><span className="chip-icon green"><Users size={16}/></span><span><b>86</b><small>{t.membersCount}</small></span></div><div className="floating-chip chip-bottom"><span className="chip-icon yellow"><HandCoins size={16}/></span><span><b>₹2.4L</b><small>{t.totalDonations}</small></span></div><div className="sparkle sparkle-one">✦</div><div className="sparkle sparkle-two">✳</div></div></section>
           <section className="stats-grid"><article className="stat-card"><div className="stat-top"><span>{t.totalDonations}</span><span className="stat-icon icon-green"><HandCoins size={19}/></span></div><div className="stat-number">₹2,40,500</div><div className="stat-foot"><span className="trend positive"><ArrowUpRight size={14}/>12.8%</span><span>{t.month}</span></div><div className="stat-sparkline spark-green"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></div></article><article className="stat-card"><div className="stat-top"><span>{t.expenses}</span><span className="stat-icon icon-orange"><Wallet size={19}/></span></div><div className="stat-number">₹84,250</div><div className="stat-foot"><span className="trend positive"><ArrowDownLeft size={14}/>4.2%</span><span>{t.expenseBy}</span></div><div className="stat-sparkline spark-orange"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></div></article><article className="stat-card"><div className="stat-top"><span>{t.membersCount}</span><span className="stat-icon icon-purple"><Users size={19}/></span></div><div className="stat-number">86</div><div className="stat-foot"><span className="trend positive"><ArrowUpRight size={14}/>8 new</span><span>{t.registered}</span></div><div className="avatar-stack"><span>AM</span><span>SK</span><span>RJ</span><span>+83</span></div></article><article className="stat-card"><div className="stat-top"><span>{t.programs}</span><span className="stat-icon icon-blue"><CalendarDays size={19}/></span></div><div className="stat-number">12</div><div className="stat-foot"><span className="trend neutral">3 {t.active.toLowerCase()}</span><span>{t.month}</span></div><div className="event-progress"><span/><span/><span/><span/><span/><span/><span/><span/><span/><span/><span/><span/></div></article></section>
