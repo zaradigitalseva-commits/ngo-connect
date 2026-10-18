@@ -16,8 +16,20 @@ service cloud.firestore {
     // Public NGO profiles: only approved statuses
     match /ngos/{ngoId} {
       allow read: if isSuperAdmin()
+        || resource.data.ownerUid == request.auth.uid
         || resource.data.status in ['LIVE', 'ACTIVE', 'APPROVED'];
-      allow write: if isSuperAdmin();
+      allow create, delete: if isSuperAdmin();
+      allow update: if isSuperAdmin()
+        || (request.auth != null
+          && resource.data.ownerUid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['memberFee', 'adminWhatsApp', 'updatedAt'])
+          && request.resource.data.memberFee is number
+          && request.resource.data.memberFee >= 1
+          && request.resource.data.memberFee <= 100000
+          && request.resource.data.adminWhatsApp is string
+          && request.resource.data.adminWhatsApp.size() >= 10
+          && request.resource.data.adminWhatsApp.size() <= 20);
     }
 
     // Private NGO registration and payment review
@@ -57,6 +69,63 @@ service cloud.firestore {
     match /publicSettings/{settingId} {
       allow read: if settingId == 'payment' || isSuperAdmin();
       allow write: if isSuperAdmin();
+    }
+
+
+    // Member applications are private to the applicant, their NGO owner, and Super Admin.
+    match /memberApplications/{applicationId} {
+      allow create: if request.auth != null
+        && request.resource.data.applicantUid == request.auth.uid
+        && request.resource.data.ngoId is string
+        && get(/databases/$(database)/documents/ngos/$(request.resource.data.ngoId)).data.status in ['LIVE', 'ACTIVE', 'APPROVED']
+        && get(/databases/$(database)/documents/ngos/$(request.resource.data.ngoId)).data.memberFee == request.resource.data.feeAmount
+        && get(/databases/$(database)/documents/ngos/$(request.resource.data.ngoId)).data.adminWhatsApp is string
+        && get(/databases/$(database)/documents/ngos/$(request.resource.data.ngoId)).data.adminWhatsApp.size() >= 10
+        && request.resource.data.status == 'PENDING_PAYMENT'
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 1
+        && request.resource.data.name.size() <= 100
+        && request.resource.data.fatherName is string
+        && request.resource.data.fatherName.size() > 1
+        && request.resource.data.fatherName.size() <= 100
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() >= 7
+        && request.resource.data.phone.size() <= 20
+        && request.resource.data.address is string
+        && request.resource.data.address.size() <= 300
+        && request.resource.data.photoData is string
+        && request.resource.data.photoData.size() <= 500000
+        && request.resource.data.feeAmount is number
+        && request.resource.data.feeAmount >= 1
+        && request.resource.data.createdAt == request.time;
+      allow read: if isSuperAdmin()
+        || (request.auth != null && resource.data.applicantUid == request.auth.uid)
+        || (request.auth != null
+          && get(/databases/$(database)/documents/ngos/$(resource.data.ngoId)).data.ownerUid == request.auth.uid);
+      allow update: if isSuperAdmin()
+        || (request.auth != null
+          && get(/databases/$(database)/documents/ngos/$(resource.data.ngoId)).data.ownerUid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'memberId', 'rejectionReason', 'reviewedAt', 'reviewedBy'])
+          && request.resource.data.status in ['APPROVED', 'REJECTED']
+          && request.resource.data.reviewedBy == request.auth.uid
+          && (request.resource.data.status != 'APPROVED'
+            || (request.resource.data.memberId is string
+              && request.resource.data.memberId.size() >= 5)));
+      allow delete: if isSuperAdmin();
+    }
+
+    // Minimal public verification record: never expose phone, address, or photo here.
+    match /memberVerifications/{memberId} {
+      allow read: if true;
+      allow create, update: if isSuperAdmin()
+        || (request.auth != null
+          && request.resource.data.applicationId is string
+          && get(/databases/$(database)/documents/memberApplications/$(request.resource.data.applicationId)).data.ngoId == request.resource.data.ngoId
+          && get(/databases/$(database)/documents/ngos/$(request.resource.data.ngoId)).data.ownerUid == request.auth.uid
+          && request.resource.data.memberId == memberId
+          && request.resource.data.status == 'APPROVED');
+      allow delete: if isSuperAdmin();
     }
 
     // Protect all other collections
