@@ -15,7 +15,7 @@ const modules: { id: Kind; hi: string; en: string; collection: string }[] = [
   { id: 'events', hi: 'कार्यक्रम', en: 'Events', collection: 'ngoEvents' },
   { id: 'documents', hi: 'दस्तावेज़ / रिपोर्ट', en: 'Documents / Reports', collection: 'ngoDocuments' },
 ];
-const blank = (kind: Kind) => kind === 'members'
+const blank = (kind: Kind): Record<string, string> => kind === 'members'
   ? { name: '', phone: '', email: '', role: 'MEMBER', status: 'ACTIVE' }
   : kind === 'finance'
     ? { type: 'DONATION', amount: '', category: '', donor: '', date: new Date().toISOString().slice(0, 10), note: '' }
