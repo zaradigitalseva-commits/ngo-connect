@@ -40,7 +40,7 @@ service cloud.firestore {
       allow read, update, delete: if isSuperAdmin();
     }
 
-    // Other collections may contain private financial, member, document, or account data.
+    // Public payment QR image is visible to all visitors; only Super Admins may change it.\n    match /publicSettings/{settingId} {\n      allow read: if settingId == 'payment' || isSuperAdmin();\n      allow write: if isSuperAdmin();\n    }\n\n    // Other collections may contain private financial, member, document, or account data.
     match /{document=**} {
       allow read, write: if isSuperAdmin();
     }
