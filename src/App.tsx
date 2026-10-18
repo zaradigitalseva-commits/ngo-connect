@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut, type User } from 'firebase/auth';
+import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth';
 import { Activity, ArrowUpRight, BadgeCheck, Bell, CalendarDays, CheckCircle2, ChevronDown, CircleHelp, ClipboardList, FileBadge, FileText, Globe2, HandCoins, HeartHandshake, LayoutDashboard, Leaf, LogOut, Menu, Plus, Search, Settings2, ShieldCheck, Users, Wallet, X } from 'lucide-react';
 import { auth, db, firebaseConfigured } from './firebase';
 import { MemberIDPortal, MemberVerifyPage, NgoAdminPortal } from './MemberIDPortal';
@@ -306,24 +306,8 @@ export default function App() {
   const loginAsSuperAdmin = async () => {
     if (!auth) return;
     setAuthError('');
-    try {
-      await signInWithPopup(auth, new GoogleAuthProvider());
-    } catch (error) {
-      const code = typeof error === 'object' && error !== null && 'code' in error ? String((error as { code?: unknown }).code || '') : '';
-      // Some browsers/extensions close Firebase popups immediately. Use the full-page
-      // Google redirect flow for those cases instead of leaving the user stuck.
-      if (['auth/popup-closed-by-user', 'auth/popup-blocked', 'auth/cancelled-popup-request'].includes(code)) {
-        try {
-          await signInWithRedirect(auth, new GoogleAuthProvider());
-          return;
-        } catch (redirectError) {
-          const redirectCode = typeof redirectError === 'object' && redirectError !== null && 'code' in redirectError ? String((redirectError as { code?: unknown }).code || '') : '';
-          setAuthError('Google लॉगिन पूरा नहीं हुआ (' + (redirectCode || 'redirect-error') + ')। Firebase Authentication में इस वेबसाइट का domain Authorized domains में जोड़ें।');
-          return;
-        }
-      }
-      setAuthError('Google लॉगिन पूरा नहीं हुआ (' + (code || (error instanceof Error ? error.message : 'unknown-error')) + ')। Firebase Authentication के Authorized domains और Google provider की सेटिंग जाँचें।');
-    }
+    try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+    catch (error) { setAuthError(error instanceof Error ? error.message : 'Google sign-in failed.'); }
   };
   const filteredNgos = useMemo(() => liveNgos.filter(n => `${n.name} ${n.type} ${n.city}`.toLowerCase().includes(query.toLowerCase())), [liveNgos, query]);
   const totalDonations = liveTransactions.filter(row => String(row.type || '').toUpperCase() === 'DONATION').reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
