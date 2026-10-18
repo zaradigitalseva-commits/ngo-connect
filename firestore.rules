@@ -34,8 +34,21 @@ service cloud.firestore {
 
     // Private NGO registration and payment review
     match /ngoRegistrations/{registrationId} {
+      // Owners may read only their own registration status; only Super Admin may review or delete.
+      allow read: if isSuperAdmin()
+        || (request.auth != null && resource.data.ownerUid == request.auth.uid);
       allow create: if request.auth != null
         && request.auth.token.email_verified == true
+        && request.resource.data.keys().hasOnly([
+          'name', 'contactName', 'email', 'phone', 'state', 'mission',
+          'subscriptionPlan', 'paymentReference', 'status', 'paymentStatus',
+          'ownerUid', 'createdAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'name', 'contactName', 'email', 'phone', 'state', 'mission',
+          'subscriptionPlan', 'paymentReference', 'status', 'paymentStatus',
+          'ownerUid', 'createdAt'
+        ])
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.email == request.auth.token.email
         && request.resource.data.status == 'PENDING_PAYMENT'
@@ -62,7 +75,7 @@ service cloud.firestore {
         && request.resource.data.paymentReference.size() <= 80
         && request.resource.data.createdAt == request.time;
 
-      allow read, update, delete: if isSuperAdmin();
+      allow update, delete: if isSuperAdmin();
     }
 
     // Public payment QR: visitors can read, only admins can change it
@@ -75,6 +88,18 @@ service cloud.firestore {
     // Member applications are private to the applicant, their NGO owner, and Super Admin.
     match /memberApplications/{applicationId} {
       allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly([
+          'ngoId', 'ngoName', 'applicantUid', 'applicantEmail', 'name',
+          'fatherName', 'phone', 'address', 'photoData', 'feeAmount',
+          'status', 'createdAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'ngoId', 'ngoName', 'applicantUid', 'applicantEmail', 'name',
+          'fatherName', 'phone', 'address', 'photoData', 'feeAmount',
+          'status', 'createdAt'
+        ])
+        && request.resource.data.applicantEmail is string
+        && request.resource.data.applicantEmail.size() <= 160
         && request.resource.data.applicantUid == request.auth.uid
         && request.resource.data.ngoId is string
         && request.resource.data.ngoName == get(/databases/$(database)/documents/ngos/$(request.resource.data.ngoId)).data.name
