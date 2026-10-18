@@ -41,8 +41,8 @@ export default function App() {
     return onAuthStateChanged(auth, async user => {
       if (user && !isSuperAdmin(user)) {
         setAuthUser(null);
-        setAuthError(language === 'hi' ? 'इस ईमेल को Super Admin की अनुमति नहीं है।' : 'This email is not authorized as a Super Admin.');
         await signOut(auth);
+        setAuthError(language === 'hi' ? 'इस ईमेल को Super Admin की अनुमति नहीं है।' : 'This email is not authorized as a Super Admin.');
       } else {
         setAuthUser(user);
         setAuthError('');
