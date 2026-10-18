@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth';
+import { GoogleAuthProvider, getRedirectResult, onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut, type User } from 'firebase/auth';
 import { Activity, ArrowUpRight, BadgeCheck, Bell, CalendarDays, CheckCircle2, ChevronDown, CircleHelp, ClipboardList, FileBadge, FileText, Globe2, HandCoins, HeartHandshake, LayoutDashboard, Leaf, LogOut, Menu, Plus, Search, Settings2, ShieldCheck, Users, Wallet, X } from 'lucide-react';
 import { auth, db, firebaseConfigured } from './firebase';
 import { MemberIDPortal, MemberVerifyPage, NgoAdminPortal } from './MemberIDPortal';
@@ -297,17 +297,45 @@ export default function App() {
   const t = copy[language];
   useEffect(() => {
     if (!auth) return;
-    return onAuthStateChanged(auth, user => {
+    const unsubscribe = onAuthStateChanged(auth, user => {
       // Any Google account may sign in; admin access is decided separately by role.
       setAuthUser(user);
-      setAuthError('');
     });
+    // Surface errors from a Google redirect attempt after the browser returns to the site.
+    void getRedirectResult(auth).catch(error => {
+      const code = typeof error === 'object' && error !== null && 'code' in error
+        ? String((error as { code?: unknown }).code || '')
+        : '';
+      setAuthError('Google लॉगिन पूरा नहीं हुआ (' + (code || 'redirect-error') + ')। Firebase Authentication में Google provider और Authorized domains जाँचें।');
+    });
+    return unsubscribe;
   }, []);
   const loginAsSuperAdmin = async () => {
     if (!auth) return;
     setAuthError('');
-    try { await signInWithPopup(auth, new GoogleAuthProvider()); }
-    catch (error) { setAuthError(error instanceof Error ? error.message : 'Google sign-in failed.'); }
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      const code = typeof error === 'object' && error !== null && 'code' in error
+        ? String((error as { code?: unknown }).code || '')
+        : '';
+      // If the browser closes/blocks the popup, retry with a full-page redirect.
+      if (['auth/popup-closed-by-user', 'auth/popup-blocked', 'auth/cancelled-popup-request'].includes(code)) {
+        try {
+          await signInWithRedirect(auth, provider);
+          return;
+        } catch (redirectError) {
+          const redirectCode = typeof redirectError === 'object' && redirectError !== null && 'code' in redirectError
+            ? String((redirectError as { code?: unknown }).code || '')
+            : '';
+          setAuthError('Google लॉगिन विफल (' + (redirectCode || 'redirect-error') + ')। Firebase Authentication → Settings → Authorized domains में इस वेबसाइट का domain जोड़ें।');
+          return;
+        }
+      }
+      setAuthError('Google लॉगिन विफल (' + (code || 'unknown-error') + ')। Firebase Authentication में Google provider और Authorized domains जाँचें।');
+    }
   };
   const filteredNgos = useMemo(() => liveNgos.filter(n => `${n.name} ${n.type} ${n.city}`.toLowerCase().includes(query.toLowerCase())), [liveNgos, query]);
   const totalDonations = liveTransactions.filter(row => String(row.type || '').toUpperCase() === 'DONATION').reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
