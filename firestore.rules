@@ -16,7 +16,7 @@ service cloud.firestore {
     // Public NGO profiles: only approved statuses
     match /ngos/{ngoId} {
       allow read: if isSuperAdmin()
-        || resource.data.ownerUid == request.auth.uid
+        || (request.auth != null && resource.data.ownerUid == request.auth.uid)
         || resource.data.status in ['LIVE', 'ACTIVE', 'APPROVED'];
       allow create, delete: if isSuperAdmin();
       allow update: if isSuperAdmin()
