@@ -14,6 +14,8 @@ type Application = {
   fatherName: string; phone: string; address: string; photoData: string;
   feeAmount: number; status: string; memberId?: string; rejectionReason?: string;
 };
+const SUPER_ADMIN_EMAILS = ['ngogrant454@gmail.com', 'zaradigitalseva@gmail.com'];
+const isPlatformAdmin = (user: User) => Boolean(user.emailVerified && user.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase()));
 const hiText = (hi: boolean, hindi: string, english: string) => hi ? hindi : english;
 const cleanWhatsApp = (value: string) => value.replace(/[^0-9]/g, '');
 const makeMemberId = () => 'NGC-' + Date.now().toString(36).toUpperCase();
@@ -105,7 +107,10 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const load = async () => {
-    const ns = await getDocs(query(collection(db, 'ngos'), where('ownerUid', '==', authUser.uid)));
+    // Super Admin can review all NGOs; ordinary NGO admins only see NGOs they own.
+    const ns = isPlatformAdmin(authUser)
+      ? await getDocs(collection(db, 'ngos'))
+      : await getDocs(query(collection(db, 'ngos'), where('ownerUid', '==', authUser.uid)));
     const rows = ns.docs.map(d => { const x = d.data(); return { id: d.id, name: String(x.name || x.ngoName || 'NGO'), status: String(x.status || ''), memberFee: Number(x.memberFee || 0), adminWhatsApp: String(x.adminWhatsApp || ''), ownerUid: String(x.ownerUid || ''), logoUrl: String(x.logoUrl || '') }; });
     setNgos(rows); if (!selectedId && rows[0]) setSelectedId(rows[0].id);
     const all = await Promise.all(rows.map(n => getDocs(query(collection(db, 'memberApplications'), where('ngoId', '==', n.id)))));
@@ -149,7 +154,7 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
     finally { setBusy(false); }
   };
   return <main className="member-portal"><header className="member-portal-header"><a className="member-brand" href="/">NGO<span>Connect</span></a><div><a className="outline-button" href="/ngo-workspace">{hi ? 'NGO डैशबोर्ड' : 'NGO Workspace'}</a><a className="outline-button" href="/members">{hi ? 'सदस्य पोर्टल' : 'Member portal'}</a><button className="outline-button" onClick={() => auth && void signOut(auth)}>{hi ? 'लॉगआउट' : 'Sign out'}</button></div></header>
-    <section className="member-portal-hero"><span>{hi ? 'NGO ADMIN' : 'NGO ADMIN'}</span><h1>{hi ? 'सदस्य आवेदन और फीस' : 'Member applications & fees'}</h1><p>{hi ? 'अपने NGO की फीस और WhatsApp नंबर सेट करें। फीस और जानकारी की पुष्टि के बाद ही सदस्य ID मंज़ूर करें।' : 'Set your NGO fee and WhatsApp number. Approve an ID only after verifying the fee and member details.'}</p></section>
+    <section className="member-portal-hero"><span>{isPlatformAdmin(authUser) ? 'SUPER ADMIN · ALL NGOS' : 'NGO ADMIN'}</span><h1>{hi ? 'सदस्य आवेदन और फीस' : 'Member applications & fees'}</h1><p>{hi ? 'अपने NGO की फीस और WhatsApp नंबर सेट करें। फीस और जानकारी की पुष्टि के बाद ही सदस्य ID मंज़ूर करें।' : 'Set your NGO fee and WhatsApp number. Approve an ID only after verifying the fee and member details.'}</p></section>
     {ngos.length === 0 ? <div className="member-notice">{hi ? 'इस लॉगिन से जुड़ा NGO नहीं मिला। NGO के owner email से लॉगिन करें।' : 'No NGO is linked to this login. Sign in with the NGO owner account.'}</div> : <>
       <section className="member-form-panel member-admin-settings"><h2>{hi ? 'NGO फीस और WhatsApp सेटिंग' : 'NGO fee and WhatsApp settings'}</h2><form onSubmit={saveProfile}><label>{hi ? 'अपना NGO' : 'Your NGO'}<select value={selectedId} onChange={e => setSelectedId(e.target.value)}>{ngos.map(n => <option key={n.id} value={n.id}>{n.name}</option>)}</select></label><label>{hi ? 'Member ID फीस (₹)' : 'Member ID fee (₹)'}<input required type="number" min="1" max="100000" value={fee} onChange={e => setFee(e.target.value)}/></label><label>{hi ? 'WhatsApp नंबर देश कोड सहित' : 'WhatsApp number with country code'}<input required value={whatsapp} onChange={e => setWhatsapp(e.target.value)} placeholder="919876543210"/></label><button className="primary-button" type="submit" disabled={busy}>{hi ? 'सेटिंग सेव करें' : 'Save settings'}</button></form></section>
       <section className="member-applications-panel"><h2>{hi ? 'सदस्य आवेदन' : 'Member applications'}</h2>{applications.filter(a => a.ngoId === selectedId).length === 0 ? <p>{hi ? 'अभी आवेदन नहीं हैं।' : 'No applications yet.'}</p> : applications.filter(a => a.ngoId === selectedId).map(a => <article className="member-review-card" key={a.id}><img src={a.photoData} alt={a.name}/><div className="member-review-info"><h3>{a.name}</h3><p>{hi ? 'पिता/अभिभावक: ' : 'Father/guardian: '}{a.fatherName}</p><p>{a.phone} · {a.address}</p><p>{a.ngoName} · ₹{a.feeAmount} · <strong>{a.status}</strong></p><small>Ref: {a.id}</small>{a.status === 'PENDING_PAYMENT' && <div className="member-review-actions"><button className="primary-button" disabled={busy} onClick={() => void review(a, 'APPROVED')}>{hi ? 'फीस जाँचकर Approve' : 'Verify fee & approve'}</button><button className="outline-button" disabled={busy} onClick={() => void review(a, 'REJECTED')}>{hi ? 'Reject' : 'Reject'}</button></div>}</div></article>)}</section>

@@ -6,6 +6,8 @@ import { CalendarDays, FileText, Pencil, Plus, Trash2, Users, Wallet } from 'luc
 import { auth, db } from './firebase';
 
 type Language = 'hi' | 'en';
+const SUPER_ADMIN_EMAILS = ['ngogrant454@gmail.com', 'zaradigitalseva@gmail.com'];
+const isPlatformAdmin = (user: User) => Boolean(user.emailVerified && user.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase()));
 type Kind = 'members' | 'finance' | 'events' | 'documents';
 type Ngo = { id: string; name: string; status: string };
 type RecordRow = { id: string; [key: string]: unknown };
@@ -70,7 +72,10 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
   }, [kind, hi]);
 
   const loadNgos = async () => {
-    const snap = await getDocs(query(collection(db, 'ngos'), where('ownerUid', '==', authUser.uid)));
+    // Super Admin can switch between all NGOs; owners are restricted to their own NGO records.
+    const snap = isPlatformAdmin(authUser)
+      ? await getDocs(collection(db, 'ngos'))
+      : await getDocs(query(collection(db, 'ngos'), where('ownerUid', '==', authUser.uid)));
     const list = snap.docs.map(d => ({ id: d.id, name: String(d.data().name || d.data().ngoName || 'NGO'), status: String(d.data().status || '') }));
     setNgos(list);
     setNgoId(current => list.some(n => n.id === current) ? current : list[0]?.id || '');
@@ -115,7 +120,7 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
   const money = (value: unknown) => Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
   return <main className="member-portal ngo-workspace">
     <header className="member-portal-header"><a className="member-brand" href="/">NGO<span>Connect</span></a><div><a className="outline-button" href="/ngo-admin">{hi ? 'Member ID / Admin' : 'Member ID / Admin'}</a><button className="outline-button" onClick={() => auth && void signOut(auth)}>{hi ? 'लॉगआउट' : 'Sign out'}</button></div></header>
-    <section className="member-portal-hero"><span>NGO CONNECT · WORKSPACE</span><h1>{hi ? 'आपका NGO प्रबंधन डैशबोर्ड' : 'Your NGO management workspace'}</h1><p>{hi ? 'सदस्य, दान/खर्च, कार्यक्रम और दस्तावेज़ अपने NGO के भीतर प्रबंधित करें। रिकॉर्ड केवल आपके NGO ID से जुड़े हैं।' : 'Manage members, donations/expenses, events and documents within your NGO. Records are scoped to your NGO.'}</p></section>
+    <section className="member-portal-hero"><span>{isPlatformAdmin(authUser) ? 'SUPER ADMIN · ALL NGO WORKSPACES' : 'NGO CONNECT · WORKSPACE'}</span><h1>{hi ? 'आपका NGO प्रबंधन डैशबोर्ड' : 'Your NGO management workspace'}</h1><p>{hi ? 'सदस्य, दान/खर्च, कार्यक्रम और दस्तावेज़ अपने NGO के भीतर प्रबंधित करें। रिकॉर्ड केवल आपके NGO ID से जुड़े हैं।' : 'Manage members, donations/expenses, events and documents within your NGO. Records are scoped to your NGO.'}</p></section>
     {loading ? <div className="member-notice">{hi ? 'NGO लोड हो रहा है…' : 'Loading NGOs…'}</div> : ngos.length === 0 ? <div className="member-notice">{hi ? 'इस Google खाते से जुड़ा NGO नहीं मिला। पहले Super Admin से NGO सक्रिय करवाएँ।' : 'No NGO is linked to this Google account. Ask the Super Admin to activate your NGO first.'}</div> : <>
       <section className="ngo-workspace-toolbar"><label>{hi ? 'NGO चुनें' : 'Select NGO'}<select value={ngoId} onChange={e => setNgoId(e.target.value)}>{ngos.map(n => <option key={n.id} value={n.id}>{n.name} · {n.status}</option>)}</select></label><div className="ngo-workspace-tabs">{modules.map(m => { const Icon = icons[m.id]; return <button key={m.id} className={kind === m.id ? 'active' : ''} onClick={() => setKind(m.id)}><Icon size={17}/>{hi ? m.hi : m.en}</button>; })}</div></section>
       <section className="ngo-workspace-summary"><article><span>{hi ? 'कुल रिकॉर्ड' : 'Total records'}</span><strong>{rows.length}</strong></article>{kind === 'finance' && <><article><span>{hi ? 'कुल दान' : 'Total donations'}</span><strong>₹{money(rows.filter(r => r.type === 'DONATION').reduce((s,r) => s + Number(r.amount || 0),0))}</strong></article><article><span>{hi ? 'कुल खर्च' : 'Total expenses'}</span><strong>₹{money(rows.filter(r => r.type === 'EXPENSE').reduce((s,r) => s + Number(r.amount || 0),0))}</strong></article></>}</section>
