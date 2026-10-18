@@ -99,3 +99,24 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
 .member-review-card{display:flex;gap:16px;padding:16px 0;border-bottom:1px solid #e5ebf1;align-items:flex-start}.member-review-card>img{width:86px;height:108px;object-fit:cover;border-radius:10px;border:1px solid #d7e0e9}.member-review-info{min-width:0;flex:1}.member-review-info h3{margin:0 0 8px}.member-review-info p{font-size:13px;margin:5px 0;overflow-wrap:anywhere}.member-review-info small{color:#718092;overflow-wrap:anywhere}.member-review-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 @media(max-width:800px){.member-portal{padding:0 12px 30px}.member-portal-header{align-items:flex-start;padding:15px 0;flex-direction:column}.member-portal-header>div{width:100%}.member-portal-grid{grid-template-columns:1fr}.member-portal-hero{margin:22px auto 16px;padding:24px 15px}.member-form-panel,.member-applications-panel{padding:16px}.member-admin-settings form{grid-template-columns:1fr}.member-admin-settings label:first-child{grid-column:auto}.member-review-card{gap:10px}.member-review-card>img{width:70px;height:88px}}
 @media print{body *{visibility:hidden!important}.member-id-card,.member-id-card *{visibility:visible!important}.member-id-card{position:absolute;left:0;top:0;width:90mm;max-width:90mm;box-shadow:none;margin:0;border:1px solid #888;-webkit-print-color-adjust:exact;print-color-adjust:exact}.no-print{display:none!important}@page{size:A4;margin:12mm}}
+
+
+/* Firebase-backed NGO management workspace */
+.ngo-workspace{max-width:1240px;margin:0 auto;padding-bottom:40px}
+.ngo-workspace-toolbar{display:grid;gap:16px;margin:22px 0}
+.ngo-workspace-toolbar>label{display:grid;gap:7px;font-size:13px;font-weight:700;color:#3e5750;max-width:440px}
+.ngo-workspace-toolbar select,.ngo-workspace-form input,.ngo-workspace-form select,.ngo-workspace-form textarea{width:100%;border:1px solid #dfe9e3;border-radius:10px;background:#fff;padding:11px 12px;color:#263e36;min-height:42px}
+.ngo-workspace-tabs{display:flex;gap:8px;flex-wrap:wrap}
+.ngo-workspace-tabs button{display:flex;align-items:center;gap:8px;padding:11px 14px;border:1px solid #e0eae4;background:#fff;border-radius:10px;color:#52655e;font-weight:700;font-size:12px}
+.ngo-workspace-tabs button.active{background:#e4f6ee;border-color:#9ed8c2;color:#08776c}
+.ngo-workspace-summary{display:flex;gap:12px;flex-wrap:wrap;margin:18px 0}
+.ngo-workspace-summary article{background:#fff;border:1px solid #e5eee8;border-radius:13px;padding:16px 20px;min-width:150px;display:grid;gap:8px;box-shadow:0 6px 22px rgba(23,54,45,.035)}
+.ngo-workspace-summary span{font-size:12px;color:#71847b}.ngo-workspace-summary strong{font-size:23px;color:#0d766b}
+.ngo-workspace-grid{display:grid;grid-template-columns:minmax(270px,.85fr) minmax(0,1.15fr);gap:18px;align-items:start}
+.ngo-workspace-form{display:grid;gap:13px}.ngo-workspace-form label{display:grid;gap:6px;font-size:12px;font-weight:700;color:#40584f}.ngo-workspace-form textarea{min-height:86px;resize:vertical}
+.ngo-workspace-form-actions{display:flex;gap:8px;flex-wrap:wrap}.ngo-workspace-form-actions .primary-button{display:flex;align-items:center;gap:7px}
+.ngo-workspace-records{min-width:0}.ngo-workspace-record{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:14px 0;border-bottom:1px solid #eaf0ec}.ngo-workspace-record:last-child{border-bottom:0}
+.ngo-workspace-record-main{display:grid;gap:5px;min-width:0}.ngo-workspace-record-main strong{font-size:14px;color:#2b443a;overflow-wrap:anywhere}.ngo-workspace-record-main span,.ngo-workspace-record-main small{font-size:12px;color:#718078;overflow-wrap:anywhere;line-height:1.5}.ngo-workspace-record-main a{font-size:12px;color:#08776c;text-decoration:underline}
+.ngo-workspace-record-actions{display:flex;gap:4px;flex-shrink:0}.ngo-workspace-record-actions button{display:grid;place-items:center}
+@media(max-width:900px){.ngo-workspace-grid{grid-template-columns:1fr}.ngo-workspace{padding:0 12px 30px}.ngo-workspace-tabs button{flex:1 1 160px;justify-content:center}}
+@media(max-width:520px){.ngo-workspace-summary article{flex:1;min-width:125px;padding:13px}.ngo-workspace-tabs button{flex-basis:100%;justify-content:flex-start}.ngo-workspace-record{gap:8px}.ngo-workspace-record-actions{flex-direction:column}}
