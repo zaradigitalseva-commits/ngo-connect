@@ -24,6 +24,32 @@ const ngoSamples = [
   { name: 'Green Earth Collective', type: 'Environment & sustainability', initials: 'GE', color: 'lilac', city: 'Sangli, Maharashtra', people: 16, state: 'Active' }
 ];
 
+
+type PublicHomeProps = {
+  language: Language;
+  setLanguage: (language: Language) => void;
+  authUser: User | null;
+  onLogin: () => void;
+  onLogout: () => void;
+  authError: string;
+};
+function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authError }: PublicHomeProps) {
+  const hi = language === 'hi';
+  return <div className="public-site">
+    <header className="public-header">
+      <a className="public-brand" href="/" aria-label="NGO Connect home"><span className="brand-mark"><Leaf size={23}/></span><span>NGO<span>Connect</span><small>{hi ? 'मजबूत समुदाय। बेहतर बदलाव।' : 'Stronger communities. Better impact.'}</small></span></a>
+      <nav className="public-nav"><a href="#about">{hi ? 'हमारे बारे में' : 'About'}</a><a href="#features">{hi ? 'सुविधाएँ' : 'Features'}</a><a href="#contact">{hi ? 'संपर्क' : 'Contact'}</a></nav>
+      <div className="public-actions"><button className="language-button" onClick={() => setLanguage(hi ? 'en' : 'hi')}>{hi ? 'English' : 'हिन्दी'}</button>{authUser ? <div className="public-user"><span>{authUser.email}</span><button className="outline-button" onClick={onLogout}>{hi ? 'लॉगआउट' : 'Sign out'}</button></div> : <button className="primary-button" onClick={onLogin}><Globe2 size={17}/>{hi ? 'Google से लॉगिन' : 'Sign in with Google'}</button>}</div>
+    </header>
+    <main>
+      <section className="public-hero" id="about"><div className="public-hero-copy"><span className="public-kicker"><HeartHandshake size={15}/>{hi ? 'सामाजिक बदलाव के लिए एक मंच' : 'A platform for social impact'}</span><h1>{hi ? <>सेवा का हर कदम,<br/><em>बदलाव की नई उम्मीद।</em></> : <>Every act of service,<br/><em>a new hope for change.</em></>}</h1><p>{hi ? 'NGO Connect संस्थाओं को अपने सदस्यों, स्वयंसेवकों, कार्यक्रमों, दान और रिपोर्ट को व्यवस्थित करने में मदद करने के लिए बनाया जा रहा है।' : 'NGO Connect is being built to help organizations manage members, volunteers, events, donations and reports in one place.'}</p><div className="public-hero-actions"><a className="primary-button" href="#features">{hi ? 'वेबसाइट देखें' : 'Explore the website'} <ArrowUpRight size={17}/></a>{!authUser && <button className="outline-button" onClick={onLogin}><Globe2 size={17}/>{hi ? 'यूज़र लॉगिन' : 'User sign in'}</button>}</div>{authUser && <p className="public-signed-in">{hi ? 'लॉगिन ईमेल:' : 'Signed in as:'} <strong>{authUser.email}</strong>{!isSuperAdmin(authUser) && <span> · {hi ? 'सामान्य यूज़र' : 'Regular user'}</span>}</p>}</div><div className="public-hero-art" aria-hidden="true"><div className="public-art-ring ring-a"/><div className="public-art-ring ring-b"/><div className="public-art-main"><HeartHandshake size={78} strokeWidth={1.4}/></div><div className="public-art-chip chip-a"><Users size={18}/><span>{hi ? 'समुदाय' : 'Community'}</span></div><div className="public-art-chip chip-b"><HandCoins size={18}/><span>{hi ? 'पारदर्शिता' : 'Transparency'}</span></div><span className="public-art-spark spark-a">✦</span><span className="public-art-spark spark-b">✳</span></div></section>
+      <section className="public-features" id="features"><div className="public-section-heading"><span>{hi ? 'एक ही जगह सब कुछ' : 'EVERYTHING IN ONE PLACE'}</span><h2>{hi ? 'समाज सेवा को आसान और व्यवस्थित बनाएँ' : 'Make community work simpler and organized'}</h2><p>{hi ? 'सार्वजनिक वेबसाइट सभी के लिए खुली है। निजी प्रबंधन सुविधाएँ केवल अनुमति प्राप्त खातों के लिए होंगी।' : 'The public website is open to everyone. Private management tools will only be available to authorized accounts.'}</p></div><div className="public-feature-grid"><article><div className="public-feature-icon"><HeartHandshake size={24}/></div><h3>{hi ? 'NGO प्रोफ़ाइल' : 'NGO profiles'}</h3><p>{hi ? 'संस्था की पहचान, उद्देश्य और सार्वजनिक जानकारी दिखाने के लिए।' : 'Share an organization’s mission and public information.'}</p></article><article><div className="public-feature-icon"><Users size={24}/></div><h3>{hi ? 'सदस्य और स्वयंसेवक' : 'Members & volunteers'}</h3><p>{hi ? 'टीम और स्वयंसेवकों के काम को व्यवस्थित करने की सुविधा।' : 'Organize teams and volunteer activity.'}</p></article><article><div className="public-feature-icon"><HandCoins size={24}/></div><h3>{hi ? 'दान और खर्च' : 'Donations & expenses'}</h3><p>{hi ? 'दान और खर्च का रिकॉर्ड रखने के लिए नियोजित सुविधा।' : 'Planned tools to keep donation and expense records.'}</p></article><article><div className="public-feature-icon"><CalendarDays size={24}/></div><h3>{hi ? 'कार्यक्रम और रिपोर्ट' : 'Events & reports'}</h3><p>{hi ? 'कार्यक्रम, दस्तावेज़, प्रमाणपत्र और रिपोर्ट के लिए।' : 'Tools for events, documents, certificates and reports.'}</p></article></div></section>
+      <section className="public-cta" id="contact"><div><span>{hi ? 'NGO CONNECT' : 'NGO CONNECT'}</span><h2>{hi ? 'बेहतर बदलाव के लिए साथ आएँ।' : 'Come together for a better impact.'}</h2><p>{hi ? 'वेबसाइट देखने के लिए लॉगिन आवश्यक नहीं है।' : 'You do not need to sign in to browse the website.'}</p></div>{authUser ? <button className="outline-button" onClick={onLogout}>{hi ? 'लॉगआउट करें' : 'Sign out'}</button> : <button className="primary-button" onClick={onLogin}><Globe2 size={17}/>{hi ? 'Google से लॉगिन' : 'Sign in with Google'}</button>}</section>
+      {authError && <p className="public-auth-error">{authError}</p>}
+    </main><footer className="public-footer"><span>© 2026 NGO Connect</span><span>{hi ? 'सार्वजनिक वेबसाइट · सभी के लिए खुली' : 'Public website · Open to everyone'}</span></footer>
+  </div>;
+}
+
 export default function App() {
   const [language, setLanguage] = useState<Language>('hi');
   const [authUser, setAuthUser] = useState<User | null>(null);
@@ -44,7 +70,7 @@ export default function App() {
       setAuthError('');
       setAuthLoading(false);
     });
-  }, [language]);
+  }, []);
   const loginAsSuperAdmin = async () => {
     if (!auth) return;
     setAuthError('');
@@ -57,10 +83,7 @@ export default function App() {
   const submitRegistration = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); notify(t.saved); setShowRegistration(false); setForm({ name: '', contact: '', email: '', phone: '', state: '', mission: '' }); };
   const pageTitle = nav.find(item => item.id === section)?.key ?? 'overview';
 
-  if (firebaseConfigured && authLoading) return <div className="auth-gate"><div className="auth-card"><div className="brand-mark"><Leaf size={24}/></div><h1>NGO Connect</h1><p>{language === 'hi' ? 'सुरक्षित एडमिन लॉगिन जाँचा जा रहा है…' : 'Checking secure admin login…'}</p></div></div>;
-  if (!firebaseConfigured) return <div className="auth-gate"><div className="auth-card"><div className="brand-mark"><ShieldCheck size={25}/></div><p className="eyebrow">NGO CONNECT</p><h1>{language === 'hi' ? 'लॉगिन उपलब्ध नहीं है' : 'Sign-in unavailable'}</h1><p>{language === 'hi' ? 'Firebase सेटअप पूरा होने तक डैशबोर्ड बंद रखा गया है।' : 'The dashboard is locked until Firebase is configured.'}</p></div></div>;
-  if (!authUser) return <div className="auth-gate"><div className="auth-card"><div className="brand-mark"><ShieldCheck size={25}/></div><p className="eyebrow">NGO CONNECT</p><h1>{language === 'hi' ? 'Google से लॉगिन करें' : 'Sign in with Google'}</h1><p>{language === 'hi' ? 'अपने Google ईमेल से सुरक्षित लॉगिन करें।' : 'Sign in securely with your Google account.'}</p><button className="primary-button" onClick={loginAsSuperAdmin}><Globe2 size={18}/>{language === 'hi' ? 'Google से लॉगिन करें' : 'Continue with Google'}</button><button className="language-button auth-language" onClick={() => setLanguage(language === 'hi' ? 'en' : 'hi')}>{language === 'hi' ? 'English' : 'हिन्दी'}</button>{authError && <p className="auth-error">{authError}</p>}</div></div>;
-  if (!isSuperAdmin(authUser)) return <div className="auth-gate"><div className="auth-card"><div className="brand-mark"><Leaf size={25}/></div><p className="eyebrow">NGO CONNECT</p><h1>{language === 'hi' ? 'लॉगिन सफल है' : 'You are signed in'}</h1><p>{language === 'hi' ? 'आपका Google ईमेल:' : 'Your Google email:'}</p><p className="user-email-display">{authUser.email}</p><p>{language === 'hi' ? 'यह सामान्य यूज़र खाता है। Super Admin डैशबोर्ड आपके लिए उपलब्ध नहीं है।' : 'This is a regular user account. The Super Admin dashboard is not available to you.'}</p><button className="primary-button" onClick={() => auth && signOut(auth)}><X size={18}/>{language === 'hi' ? 'लॉगआउट करें' : 'Sign out'}</button><button className="language-button auth-language" onClick={() => setLanguage(language === 'hi' ? 'en' : 'hi')}>{language === 'hi' ? 'English' : 'हिन्दी'}</button></div></div>;
+  if (!authUser || !isSuperAdmin(authUser)) return <PublicHome language={language} setLanguage={setLanguage} authUser={authUser} onLogin={loginAsSuperAdmin} onLogout={() => { if (auth) void signOut(auth); }} authError={authError} />;
   return <div className="app-shell">
     <aside className={`sidebar ${mobileMenu ? 'sidebar-open' : ''}`}>
       <div className="brand"><div className="brand-mark"><Leaf size={22} strokeWidth={2.4} /></div><div><div className="brand-name">NGO<span>Connect</span></div><div className="brand-caption">{t.tagline}</div></div><button className="icon-button close-menu" onClick={() => setMobileMenu(false)} aria-label="Close menu"><X size={19}/></button></div>
