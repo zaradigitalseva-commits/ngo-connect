@@ -7,16 +7,40 @@ service cloud.firestore {
         && request.auth.token.email in ['ngogrant454@gmail.com', 'zaradigitalseva@gmail.com'];
     }
 
-    // Public users can read only approved/live NGO profile documents.
-    // All writes remain restricted to the Super Admin until NGO role rules are implemented.
+    // Only approved public NGO profile records are readable without admin access.
     match /ngos/{ngoId} {
       allow read: if isSuperAdmin()
         || resource.data.status in ['LIVE', 'ACTIVE', 'APPROVED'];
       allow write: if isSuperAdmin();
     }
 
+    // A signed-in user may submit their own registration for manual payment review.
+    // Registrations remain private: only Super Admins can read, update or delete them.
+    match /ngoRegistrations/{registrationId} {
+      allow create: if request.auth != null
+        && request.auth.token.email_verified == true
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.status == 'PENDING_PAYMENT'
+        && request.resource.data.paymentStatus in ['NOT_SUBMITTED', 'SUBMITTED_FOR_REVIEW']
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 1
+        && request.resource.data.name.size() <= 120
+        && request.resource.data.contactName is string
+        && request.resource.data.contactName.size() > 1
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() >= 7
+        && request.resource.data.phone.size() <= 25
+        && request.resource.data.mission is string
+        && request.resource.data.mission.size() <= 1000
+        && request.resource.data.subscriptionPlan in ['₹300 / 28 days', '₹600 / 56 days', '₹900 / 84 days', '₹1200 / 112 days', '₹3000 / 280 days']
+        && request.resource.data.paymentReference is string
+        && request.resource.data.paymentReference.size() <= 80
+        && request.resource.data.createdAt == request.time;
+      allow read, update, delete: if isSuperAdmin();
+    }
+
     // Other collections may contain private financial, member, document, or account data.
-    // Keep them restricted to the explicitly authorized Super Admin accounts.
     match /{document=**} {
       allow read, write: if isSuperAdmin();
     }
