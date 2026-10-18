@@ -38,7 +38,7 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
   const [message, setMessage] = useState('');
   const activeModule = modules.find(m => m.id === kind)!;
   const currentNgo = ngos.find(n => n.id === ngoId);
-  const fields = useMemo(() => {
+  const fields = useMemo<Array<{ key: string; label: string; required: boolean; type?: string; options?: Array<{ value: string; label: string }> }>>(() => {
     if (kind === 'members') return [
       { key: 'name', label: hi ? 'पूरा नाम' : 'Full name', required: true },
       { key: 'phone', label: hi ? 'मोबाइल नंबर' : 'Phone number', required: true },
@@ -84,7 +84,7 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
   useEffect(() => { void loadNgos().catch(e => { setMessage(e instanceof Error ? e.message : 'NGO load failed'); setLoading(false); }); }, [authUser.uid]);
   useEffect(() => { setForm(blank(kind)); setEditingId(''); if (ngoId) void loadRows(ngoId, kind).catch(e => setMessage(e instanceof Error ? e.message : 'Records could not be loaded.')); else setRows([]); }, [ngoId, kind]);
   const startEdit = (row: RecordRow) => {
-    const next = blank(kind);
+    const next: Record<string, string> = blank(kind);
     Object.keys(next).forEach(key => { next[key] = safe(row[key]); });
     setForm(next); setEditingId(row.id); setMessage('');
     document.getElementById('ngo-workspace-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
