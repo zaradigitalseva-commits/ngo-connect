@@ -6,8 +6,17 @@ service cloud.firestore {
         && request.auth.token.email_verified == true
         && request.auth.token.email in ['ngogrant454@gmail.com', 'zaradigitalseva@gmail.com'];
     }
-    // Only the two explicitly approved Super Admin Google accounts may access
-    // platform data. NGO-member permissions must be added before NGO Admin launch.
+
+    // Public users can read only approved/live NGO profile documents.
+    // All writes remain restricted to the Super Admin until NGO role rules are implemented.
+    match /ngos/{ngoId} {
+      allow read: if isSuperAdmin()
+        || resource.data.status in ['LIVE', 'ACTIVE', 'APPROVED'];
+      allow write: if isSuperAdmin();
+    }
+
+    // Other collections may contain private financial, member, document, or account data.
+    // Keep them restricted to the explicitly authorized Super Admin accounts.
     match /{document=**} {
       allow read, write: if isSuperAdmin();
     }
