@@ -39,7 +39,7 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
     <header className="public-header">
       <a className="public-brand" href="/" aria-label="NGO Connect home"><span className="brand-mark"><Leaf size={23}/></span><span>NGO<span>Connect</span><small>{hi ? 'मजबूत समुदाय। बेहतर बदलाव।' : 'Stronger communities. Better impact.'}</small></span></a>
       <nav className="public-nav"><a href="#about">{hi ? 'हमारे बारे में' : 'About'}</a><a href="#features">{hi ? 'सुविधाएँ' : 'Features'}</a><a href="#contact">{hi ? 'संपर्क' : 'Contact'}</a></nav>
-      <div className="public-actions"><button className="language-button" onClick={() => setLanguage(hi ? 'en' : 'hi')}>{hi ? 'English' : 'हिन्दी'}</button>{authUser ? <div className="public-user"><span>{authUser.email}</span><button className="outline-button" onClick={onLogout}>{hi ? 'लॉगआउट' : 'Sign out'}</button></div> : <button className="primary-button" onClick={onLogin}><Globe2 size={17}/>{hi ? 'Google से लॉगिन' : 'Sign in with Google'}</button>}</div>
+      <div className="public-actions"><button className="language-button" onClick={() => setLanguage(hi ? 'en' : 'hi')}>{hi ? 'English' : 'हिन्दी'}</button>{authUser ? <div className="public-user"><span>{authUser.email}</span><button className="outline-button" onClick={onLogout}>{hi ? 'लॉगआउट' : 'Sign out'}</button></div> : <button className="primary-button" onClick={onLogin} disabled={!firebaseConfigured}><Globe2 size={17}/>{hi ? 'Google से लॉगिन' : 'Sign in with Google'}</button>}</div>
     </header>
     <main>
       <section className="public-hero" id="about"><div className="public-hero-copy"><span className="public-kicker"><HeartHandshake size={15}/>{hi ? 'सामाजिक बदलाव के लिए एक मंच' : 'A platform for social impact'}</span><h1>{hi ? <>सेवा का हर कदम,<br/><em>बदलाव की नई उम्मीद।</em></> : <>Every act of service,<br/><em>a new hope for change.</em></>}</h1><p>{hi ? 'NGO Connect संस्थाओं को अपने सदस्यों, स्वयंसेवकों, कार्यक्रमों, दान और रिपोर्ट को व्यवस्थित करने में मदद करने के लिए बनाया जा रहा है।' : 'NGO Connect is being built to help organizations manage members, volunteers, events, donations and reports in one place.'}</p><div className="public-hero-actions"><a className="primary-button" href="#features">{hi ? 'वेबसाइट देखें' : 'Explore the website'} <ArrowUpRight size={17}/></a>{!authUser && <button className="outline-button" onClick={onLogin}><Globe2 size={17}/>{hi ? 'यूज़र लॉगिन' : 'User sign in'}</button>}</div>{authUser && <p className="public-signed-in">{hi ? 'लॉगिन ईमेल:' : 'Signed in as:'} <strong>{authUser.email}</strong>{!isSuperAdmin(authUser) && <span> · {hi ? 'सामान्य यूज़र' : 'Regular user'}</span>}</p>}</div><div className="public-hero-art" aria-hidden="true"><div className="public-art-ring ring-a"/><div className="public-art-ring ring-b"/><div className="public-art-main"><HeartHandshake size={78} strokeWidth={1.4}/></div><div className="public-art-chip chip-a"><Users size={18}/><span>{hi ? 'समुदाय' : 'Community'}</span></div><div className="public-art-chip chip-b"><HandCoins size={18}/><span>{hi ? 'पारदर्शिता' : 'Transparency'}</span></div><span className="public-art-spark spark-a">✦</span><span className="public-art-spark spark-b">✳</span></div></section>
@@ -53,7 +53,6 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
 export default function App() {
   const [language, setLanguage] = useState<Language>('hi');
   const [authUser, setAuthUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(firebaseConfigured);
   const [authError, setAuthError] = useState('');
   const [section, setSection] = useState<Section>('overview');
   const [showRegistration, setShowRegistration] = useState(false);
@@ -63,12 +62,11 @@ export default function App() {
   const [form, setForm] = useState({ name: '', contact: '', email: '', phone: '', state: '', mission: '' });
   const t = copy[language];
   useEffect(() => {
-    if (!auth) { setAuthLoading(false); return; }
+    if (!auth) return;
     return onAuthStateChanged(auth, user => {
       // Any Google account may sign in; admin access is decided separately by role.
       setAuthUser(user);
       setAuthError('');
-      setAuthLoading(false);
     });
   }, []);
   const loginAsSuperAdmin = async () => {
