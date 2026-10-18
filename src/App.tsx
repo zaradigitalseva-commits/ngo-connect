@@ -38,15 +38,10 @@ export default function App() {
   const t = copy[language];
   useEffect(() => {
     if (!auth) { setAuthLoading(false); return; }
-    return onAuthStateChanged(auth, async user => {
-      if (user && !isSuperAdmin(user)) {
-        setAuthUser(null);
-        await signOut(auth);
-        setAuthError(language === 'hi' ? 'इस ईमेल को Super Admin की अनुमति नहीं है।' : 'This email is not authorized as a Super Admin.');
-      } else {
-        setAuthUser(user);
-        setAuthError('');
-      }
+    return onAuthStateChanged(auth, user => {
+      // Any Google account may sign in; admin access is decided separately by role.
+      setAuthUser(user);
+      setAuthError('');
       setAuthLoading(false);
     });
   }, [language]);
@@ -63,7 +58,9 @@ export default function App() {
   const pageTitle = nav.find(item => item.id === section)?.key ?? 'overview';
 
   if (firebaseConfigured && authLoading) return <div className="auth-gate"><div className="auth-card"><div className="brand-mark"><Leaf size={24}/></div><h1>NGO Connect</h1><p>{language === 'hi' ? 'सुरक्षित एडमिन लॉगिन जाँचा जा रहा है…' : 'Checking secure admin login…'}</p></div></div>;
-  if (firebaseConfigured && !authUser) return <div className="auth-gate"><div className="auth-card"><div className="brand-mark"><ShieldCheck size={25}/></div><p className="eyebrow">NGO CONNECT</p><h1>{language === 'hi' ? 'Super Admin लॉगिन' : 'Super Admin sign in'}</h1><p>{language === 'hi' ? 'केवल अधिकृत प्लेटफ़ॉर्म एडमिन ही आगे जा सकते हैं।' : 'Only authorized platform administrators can continue.'}</p><button className="primary-button" onClick={loginAsSuperAdmin}><Globe2 size={18}/>{language === 'hi' ? 'Google से लॉगिन करें' : 'Continue with Google'}</button><button className="language-button auth-language" onClick={() => setLanguage(language === 'hi' ? 'en' : 'hi')}>{language === 'hi' ? 'English' : 'हिन्दी'}</button>{authError && <p className="auth-error">{authError}</p>}<div className="auth-allowlist"><strong>{language === 'hi' ? 'अनुमत एडमिन ईमेल' : 'Authorized admin emails'}</strong><span>ngogrant454@gmail.com</span><span>zaradigitalseva@gmail.com</span></div></div></div>;
+  if (!firebaseConfigured) return <div className="auth-gate"><div className="auth-card"><div className="brand-mark"><ShieldCheck size={25}/></div><p className="eyebrow">NGO CONNECT</p><h1>{language === 'hi' ? 'लॉगिन उपलब्ध नहीं है' : 'Sign-in unavailable'}</h1><p>{language === 'hi' ? 'Firebase सेटअप पूरा होने तक डैशबोर्ड बंद रखा गया है।' : 'The dashboard is locked until Firebase is configured.'}</p></div></div>;
+  if (!authUser) return <div className="auth-gate"><div className="auth-card"><div className="brand-mark"><ShieldCheck size={25}/></div><p className="eyebrow">NGO CONNECT</p><h1>{language === 'hi' ? 'Google से लॉगिन करें' : 'Sign in with Google'}</h1><p>{language === 'hi' ? 'अपने Google ईमेल से सुरक्षित लॉगिन करें।' : 'Sign in securely with your Google account.'}</p><button className="primary-button" onClick={loginAsSuperAdmin}><Globe2 size={18}/>{language === 'hi' ? 'Google से लॉगिन करें' : 'Continue with Google'}</button><button className="language-button auth-language" onClick={() => setLanguage(language === 'hi' ? 'en' : 'hi')}>{language === 'hi' ? 'English' : 'हिन्दी'}</button>{authError && <p className="auth-error">{authError}</p>}</div></div>;
+  if (!isSuperAdmin(authUser)) return <div className="auth-gate"><div className="auth-card"><div className="brand-mark"><Leaf size={25}/></div><p className="eyebrow">NGO CONNECT</p><h1>{language === 'hi' ? 'लॉगिन सफल है' : 'You are signed in'}</h1><p>{language === 'hi' ? 'आपका Google ईमेल:' : 'Your Google email:'}</p><p className="user-email-display">{authUser.email}</p><p>{language === 'hi' ? 'यह सामान्य यूज़र खाता है। Super Admin डैशबोर्ड आपके लिए उपलब्ध नहीं है।' : 'This is a regular user account. The Super Admin dashboard is not available to you.'}</p><button className="primary-button" onClick={() => auth && signOut(auth)}><X size={18}/>{language === 'hi' ? 'लॉगआउट करें' : 'Sign out'}</button><button className="language-button auth-language" onClick={() => setLanguage(language === 'hi' ? 'en' : 'hi')}>{language === 'hi' ? 'English' : 'हिन्दी'}</button></div></div>;
   return <div className="app-shell">
     <aside className={`sidebar ${mobileMenu ? 'sidebar-open' : ''}`}>
       <div className="brand"><div className="brand-mark"><Leaf size={22} strokeWidth={2.4} /></div><div><div className="brand-name">NGO<span>Connect</span></div><div className="brand-caption">{t.tagline}</div></div><button className="icon-button close-menu" onClick={() => setMobileMenu(false)} aria-label="Close menu"><X size={19}/></button></div>
