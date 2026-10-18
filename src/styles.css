@@ -68,3 +68,7 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
   .public-ngo-grid { grid-template-columns: 1fr; gap: 14px; }
   .public-ngo-card { min-height: 0; padding: 20px; }
 }
+
+
+/* Super Admin UPI QR upload and public payment preview */
+.payment-qr-admin{margin-bottom:22px}.qr-admin-form{display:grid;gap:15px;max-width:520px}.qr-admin-form label{display:grid;gap:8px;font-size:13px;font-weight:700;color:#344054}.qr-admin-form input[type=file]{width:100%;padding:12px;border:1px dashed #c9c5f5;border-radius:12px;background:#faf9ff;font:inherit}.admin-qr-preview{width:210px;max-width:100%;aspect-ratio:1;object-fit:contain;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:8px}.qr-save-message{margin:0;color:#087f68;font-size:13px;overflow-wrap:anywhere}.payment-qr-preview{margin:8px 0 18px;padding:18px;border:1px solid #d9eee5;border-radius:15px;background:linear-gradient(145deg,#f3fff8,#f7f5ff);text-align:center}.payment-qr-preview h3{margin:0 0 12px;color:#1b5547;font-size:17px}.payment-qr-preview img{width:220px;max-width:100%;aspect-ratio:1;object-fit:contain;background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:8px}.payment-qr-preview p{margin:10px 0 0;color:#60746c;font-size:12px}
