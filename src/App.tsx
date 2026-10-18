@@ -1,6 +1,10 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth';
 import { Activity, ArrowDownLeft, ArrowUpRight, BadgeCheck, Bell, BookOpenCheck, CalendarDays, CheckCircle2, ChevronDown, CircleHelp, ClipboardList, FileBadge, FileText, Globe2, HandCoins, HeartHandshake, LayoutDashboard, Leaf, Menu, Plus, Search, Settings2, ShieldCheck, Users, Wallet, X } from 'lucide-react';
-import { firebaseConfigured } from './firebase';
+import { auth, firebaseConfigured } from './firebase';
+
+const SUPER_ADMIN_EMAILS = ['ngogrant454@gmail.com', 'zaradigitalseva@gmail.com'];
+const isSuperAdmin = (user: User | null) => Boolean(user?.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase()));
 
 type Language = 'en' | 'hi';
 type Section = 'overview' | 'ngos' | 'members' | 'finance' | 'events' | 'documents' | 'subscriptions';
@@ -22,6 +26,9 @@ const ngoSamples = [
 
 export default function App() {
   const [language, setLanguage] = useState<Language>('hi');
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(firebaseConfigured);
+  const [authError, setAuthError] = useState('');
   const [section, setSection] = useState<Section>('overview');
   const [showRegistration, setShowRegistration] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
@@ -29,18 +36,40 @@ export default function App() {
   const [toast, setToast] = useState('');
   const [form, setForm] = useState({ name: '', contact: '', email: '', phone: '', state: '', mission: '' });
   const t = copy[language];
+  useEffect(() => {
+    if (!auth) { setAuthLoading(false); return; }
+    return onAuthStateChanged(auth, async user => {
+      if (user && !isSuperAdmin(user)) {
+        setAuthUser(null);
+        setAuthError(language === 'hi' ? 'इस ईमेल को Super Admin की अनुमति नहीं है।' : 'This email is not authorized as a Super Admin.');
+        await signOut(auth);
+      } else {
+        setAuthUser(user);
+        setAuthError('');
+      }
+      setAuthLoading(false);
+    });
+  }, [language]);
+  const loginAsSuperAdmin = async () => {
+    if (!auth) return;
+    setAuthError('');
+    try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+    catch (error) { setAuthError(error instanceof Error ? error.message : 'Google sign-in failed.'); }
+  };
   const filteredNgos = useMemo(() => ngoSamples.filter(n => `${n.name} ${n.type} ${n.city}`.toLowerCase().includes(query.toLowerCase())), [query]);
   const notify = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 3800); };
   const chooseSection = (id: Section) => { setSection(id); setMobileMenu(false); };
   const submitRegistration = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); notify(t.saved); setShowRegistration(false); setForm({ name: '', contact: '', email: '', phone: '', state: '', mission: '' }); };
   const pageTitle = nav.find(item => item.id === section)?.key ?? 'overview';
 
+  if (firebaseConfigured && authLoading) return <div className="auth-gate"><div className="auth-card"><div className="brand-mark"><Leaf size={24}/></div><h1>NGO Connect</h1><p>{language === 'hi' ? 'सुरक्षित एडमिन लॉगिन जाँचा जा रहा है…' : 'Checking secure admin login…'}</p></div></div>;
+  if (firebaseConfigured && !authUser) return <div className="auth-gate"><div className="auth-card"><div className="brand-mark"><ShieldCheck size={25}/></div><p className="eyebrow">NGO CONNECT</p><h1>{language === 'hi' ? 'Super Admin लॉगिन' : 'Super Admin sign in'}</h1><p>{language === 'hi' ? 'केवल अधिकृत प्लेटफ़ॉर्म एडमिन ही आगे जा सकते हैं।' : 'Only authorized platform administrators can continue.'}</p><button className="primary-button" onClick={loginAsSuperAdmin}><Globe2 size={18}/>{language === 'hi' ? 'Google से लॉगिन करें' : 'Continue with Google'}</button><button className="language-button auth-language" onClick={() => setLanguage(language === 'hi' ? 'en' : 'hi')}>{language === 'hi' ? 'English' : 'हिन्दी'}</button>{authError && <p className="auth-error">{authError}</p>}<div className="auth-allowlist"><strong>{language === 'hi' ? 'अनुमत एडमिन ईमेल' : 'Authorized admin emails'}</strong><span>ngogrant454@gmail.com</span><span>zaradigitalseva@gmail.com</span></div></div></div>;
   return <div className="app-shell">
     <aside className={`sidebar ${mobileMenu ? 'sidebar-open' : ''}`}>
       <div className="brand"><div className="brand-mark"><Leaf size={22} strokeWidth={2.4} /></div><div><div className="brand-name">NGO<span>Connect</span></div><div className="brand-caption">{t.tagline}</div></div><button className="icon-button close-menu" onClick={() => setMobileMenu(false)} aria-label="Close menu"><X size={19}/></button></div>
       <div className="workspace-label">{t.platform}</div>
       <nav className="side-nav">{nav.map(item => <button key={item.id} className={`nav-item ${section === item.id ? 'nav-active' : ''}`} onClick={() => chooseSection(item.id)}><item.icon size={19}/><span>{t[item.key]}</span>{item.id === 'subscriptions' && <span className="nav-dot"/>}</button>)}</nav>
-      <div className="sidebar-bottom"><div className="help-card"><div className="help-icon"><CircleHelp size={19}/></div><div><strong>{language === 'hi' ? 'मदद चाहिए?' : 'Need a hand?'}</strong><p>{language === 'hi' ? 'सेटअप गाइड देखें' : 'Explore the setup guide'}</p></div><ChevronDown size={15}/></div><div className="profile-row"><div className="avatar avatar-admin">NC</div><div className="profile-info"><strong>{language === 'hi' ? 'प्लेटफ़ॉर्म एडमिन' : 'Platform Admin'}</strong><span>NGO Connect</span></div><Settings2 size={18} className="muted-icon"/></div></div>
+      <div className="sidebar-bottom"><div className="help-card"><div className="help-icon"><CircleHelp size={19}/></div><div><strong>{language === 'hi' ? 'मदद चाहिए?' : 'Need a hand?'}</strong><p>{language === 'hi' ? 'सेटअप गाइड देखें' : 'Explore the setup guide'}</p></div><ChevronDown size={15}/></div><div className="profile-row"><div className="avatar avatar-admin">NC</div><div className="profile-info"><strong>{language === 'hi' ? 'प्लेटफ़ॉर्म एडमिन' : 'Platform Admin'}</strong><span>{authUser?.email ?? 'Demo preview'}</span></div>{authUser && <button className="small-icon-button" aria-label="Sign out" onClick={() => auth && signOut(auth)}><X size={16}/></button>}<Settings2 size={18} className="muted-icon"/></div></div>
     </aside>
     {mobileMenu && <button className="mobile-scrim" onClick={() => setMobileMenu(false)} aria-label="Close navigation"/>}
     <main className="main-area">
