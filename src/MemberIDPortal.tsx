@@ -4,7 +4,7 @@ import { signOut } from 'firebase/auth';
 import { auth, db } from './firebase';
 import {
   addDoc, collection, doc, getDoc, getDocs, query, serverTimestamp,
-  setDoc, updateDoc, where
+  updateDoc, where, writeBatch
 } from 'firebase/firestore';
 
 type Language = 'hi' | 'en';
@@ -130,10 +130,19 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
     setBusy(true); setMessage('');
     try {
       const memberId = status === 'APPROVED' ? (a.memberId || makeMemberId()) : (a.memberId || '');
+      const batch = writeBatch(db);
       if (status === 'APPROVED') {
-        await setDoc(doc(db, 'memberVerifications', memberId), { memberId, name: a.name, ngoId: a.ngoId, ngoName: a.ngoName, applicationId: a.id, status: 'APPROVED', approvedAt: serverTimestamp() });
+        batch.set(doc(db, 'memberVerifications', memberId), {
+          memberId, name: a.name, ngoId: a.ngoId, ngoName: a.ngoName,
+          applicationId: a.id, status: 'APPROVED', approvedAt: serverTimestamp()
+        });
       }
-      await updateDoc(doc(db, 'memberApplications', a.id), { status, ...(status === 'APPROVED' ? { memberId } : { rejectionReason: hi ? 'NGO Admin ने आवेदन स्वीकार नहीं किया।' : 'The NGO admin did not approve this application.' }), reviewedAt: serverTimestamp(), reviewedBy: authUser.uid });
+      batch.update(doc(db, 'memberApplications', a.id), {
+        status,
+        ...(status === 'APPROVED' ? { memberId } : { rejectionReason: hi ? 'NGO Admin ने आवेदन स्वीकार नहीं किया।' : 'The NGO admin did not approve this application.' }),
+        reviewedAt: serverTimestamp(), reviewedBy: authUser.uid
+      });
+      await batch.commit();
       setApplications(current => current.map(x => x.id === a.id ? { ...x, status, memberId: status === 'APPROVED' ? memberId : x.memberId } : x));
       setMessage(status === 'APPROVED' ? (hi ? 'Member ID मंज़ूर हो गई।' : 'Member ID approved.') : (hi ? 'आवेदन अस्वीकार किया गया।' : 'Application rejected.'));
     } catch (e) { setMessage(e instanceof Error ? e.message : 'Review failed. Check Firestore rules.'); }
