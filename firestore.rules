@@ -1,10 +1,15 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Secure default: no client access until NGO membership and platform-admin
-    // authorization checks are implemented and reviewed. Do not replace with allow read, write: if true.
+    function isSuperAdmin() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in ['ngogrant454@gmail.com', 'zaradigitalseva@gmail.com'];
+    }
+    // Only the two explicitly approved Super Admin Google accounts may access
+    // platform data. NGO-member permissions must be added before NGO Admin launch.
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if isSuperAdmin();
     }
   }
 }
