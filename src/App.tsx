@@ -3,6 +3,7 @@ import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type 
 import { Activity, ArrowDownLeft, ArrowUpRight, BadgeCheck, Bell, BookOpenCheck, CalendarDays, CheckCircle2, ChevronDown, CircleHelp, ClipboardList, FileBadge, FileText, Globe2, HandCoins, HeartHandshake, LayoutDashboard, Leaf, LogOut, Menu, Plus, Search, Settings2, ShieldCheck, Users, Wallet, X } from 'lucide-react';
 import { auth, db, firebaseConfigured } from './firebase';
 import { MemberIDPortal, MemberVerifyPage, NgoAdminPortal } from './MemberIDPortal';
+import { NgoWorkspacePortal } from './NgoWorkspace';
 import { addDoc, collection, doc, getDoc, getDocs, query as firestoreQuery, serverTimestamp, setDoc, where, runTransaction } from 'firebase/firestore';
 
 const SUPER_ADMIN_EMAILS = ['ngogrant454@gmail.com', 'zaradigitalseva@gmail.com'];
@@ -263,6 +264,10 @@ export default function App() {
   const pageTitle = nav.find(item => item.id === section)?.key ?? 'overview';
 
   if (window.location.pathname.startsWith('/member-verify')) return <MemberVerifyPage />;
+  if (window.location.pathname.startsWith('/ngo-workspace')) {
+    if (authUser) return <NgoWorkspacePortal authUser={authUser} language={language} />;
+    return <main className="member-portal"><section className="member-portal-hero"><span>NGO CONNECT</span><h1>{language === 'hi' ? 'NGO Admin लॉगिन' : 'NGO Admin sign in'}</h1><p>{language === 'hi' ? 'अपने NGO के owner Google खाते से लॉगिन करें।' : 'Sign in with the Google account that owns your NGO.'}</p><button className="primary-button" onClick={() => void loginAsSuperAdmin()} disabled={!firebaseConfigured}><Globe2 size={17}/> {language === 'hi' ? 'Google से लॉगिन करें' : 'Continue with Google'}</button>{authError && <p className="member-notice" role="alert">{authError}</p>}</section></main>;
+  }
   if (window.location.pathname.startsWith('/members')) return <MemberIDPortal authUser={authUser} onLogin={loginAsSuperAdmin} language={language} />;
   if (window.location.pathname.startsWith('/ngo-admin')) {
     if (authUser) return <NgoAdminPortal authUser={authUser} language={language} />;
