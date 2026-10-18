@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import type { User } from 'firebase/auth';
 import { signOut } from 'firebase/auth';
-import { auth, db, firebaseConfigured } from './firebase';
+import { auth, db } from './firebase';
 import {
   addDoc, collection, doc, getDoc, getDocs, query, serverTimestamp,
   setDoc, updateDoc, where
