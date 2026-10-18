@@ -105,6 +105,7 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/ngos/$(resource.data.ngoId)).data.ownerUid == request.auth.uid);
       allow update: if isSuperAdmin()
         || (request.auth != null
+          && resource.data.status == 'PENDING_PAYMENT'
           && get(/databases/$(database)/documents/ngos/$(resource.data.ngoId)).data.ownerUid == request.auth.uid
           && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['status', 'memberId', 'rejectionReason', 'reviewedAt', 'reviewedBy'])
@@ -118,12 +119,16 @@ service cloud.firestore {
 
     // Minimal public verification record: never expose phone, address, or photo here.
     match /memberVerifications/{memberId} {
-      allow read: if true;
+      // QR verification uses a direct document lookup; public collection listing is blocked.
+      allow get: if true;
+      allow list: if false;
       allow create, update: if isSuperAdmin()
         || (request.auth != null
           && request.resource.data.applicationId is string
-          && get(/databases/$(database)/documents/memberApplications/$(request.resource.data.applicationId)).data.ngoId == request.resource.data.ngoId
           && get(/databases/$(database)/documents/ngos/$(request.resource.data.ngoId)).data.ownerUid == request.auth.uid
+          && getAfter(/databases/$(database)/documents/memberApplications/$(request.resource.data.applicationId)).data.ngoId == request.resource.data.ngoId
+          && getAfter(/databases/$(database)/documents/memberApplications/$(request.resource.data.applicationId)).data.status == 'APPROVED'
+          && getAfter(/databases/$(database)/documents/memberApplications/$(request.resource.data.applicationId)).data.memberId == memberId
           && request.resource.data.memberId == memberId
           && request.resource.data.status == 'APPROVED');
       allow delete: if isSuperAdmin();
