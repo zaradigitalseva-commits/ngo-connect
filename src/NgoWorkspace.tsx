@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import type { User } from 'firebase/auth';
 import { signOut } from 'firebase/auth';
 import { addDoc, collection, deleteDoc, doc, getDocs, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
-import { CalendarDays, FileText, HandCoins, Pencil, Plus, Trash2, Users, Wallet } from 'lucide-react';
+import { CalendarDays, FileText, Pencil, Plus, Trash2, Users, Wallet } from 'lucide-react';
 import { auth, db } from './firebase';
 
 type Language = 'hi' | 'en';
