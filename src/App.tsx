@@ -3,7 +3,7 @@ import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type 
 import { Activity, ArrowDownLeft, ArrowUpRight, BadgeCheck, Bell, BookOpenCheck, CalendarDays, CheckCircle2, ChevronDown, CircleHelp, ClipboardList, FileBadge, FileText, Globe2, HandCoins, HeartHandshake, LayoutDashboard, Leaf, LogOut, Menu, Plus, Search, Settings2, ShieldCheck, Users, Wallet, X } from 'lucide-react';
 import { auth, db, firebaseConfigured } from './firebase';
 import { MemberIDPortal, MemberVerifyPage, NgoAdminPortal } from './MemberIDPortal';
-import { addDoc, collection, doc, getDoc, getDocs, query as firestoreQuery, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, getDocs, query as firestoreQuery, serverTimestamp, setDoc, where, runTransaction } from 'firebase/firestore';
 
 const SUPER_ADMIN_EMAILS = ['ngogrant454@gmail.com', 'zaradigitalseva@gmail.com'];
 const isSuperAdmin = (user: User | null) => Boolean(user?.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase()));
@@ -202,22 +202,40 @@ export default function App() {
     if (!window.confirm('क्या आपने भुगतान को बैंक/UPI रिकॉर्ड से सत्यापित कर लिया है? पुष्टि के बाद NGO LIVE होगा।')) return;
     setApprovalBusyId(registration.id);
     try {
-      const ngoRef = await addDoc(collection(db, 'ngos'), {
-        name: String(registration.name || ''),
-        ngoName: String(registration.name || ''),
-        type: 'Social organization',
-        description: String(registration.mission || ''),
-        city: String(registration.state || ''),
-        status: 'LIVE',
-        ownerUid: String(registration.ownerUid || ''),
-        registrationId: registration.id,
-        createdAt: serverTimestamp(),
+      const registrationRef = doc(db, 'ngoRegistrations', registration.id);
+      // A transaction re-checks status on the server, preventing duplicate LIVE NGOs
+      // if two admins click Activate at nearly the same time.
+      const activatedNgoId = await runTransaction(db, async transaction => {
+        const current = await transaction.get(registrationRef);
+        if (!current.exists()) throw new Error('रजिस्ट्रेशन नहीं मिला।');
+        const data = current.data();
+        if (data.status !== 'PENDING_PAYMENT') {
+          throw new Error('यह रजिस्ट्रेशन पहले ही प्रोसेस हो चुका है। सूची रीफ़्रेश करें।');
+        }
+        if (!String(data.paymentReference || '').trim() || String(data.paymentReference).trim().length < 4) {
+          throw new Error('भुगतान UTR उपलब्ध नहीं है।');
+        }
+        const ngoRef = doc(collection(db, 'ngos'));
+        transaction.set(ngoRef, {
+          name: String(data.name || ''),
+          ngoName: String(data.name || ''),
+          type: 'Social organization',
+          description: String(data.mission || ''),
+          city: String(data.state || ''),
+          status: 'LIVE',
+          ownerUid: String(data.ownerUid || ''),
+          registrationId: registration.id,
+          memberFee: 0,
+          adminWhatsApp: '',
+          createdAt: serverTimestamp(),
+        });
+        transaction.update(registrationRef, {
+          status: 'ACTIVE', paymentStatus: 'VERIFIED', activatedNgoId: ngoRef.id,
+          verifiedBy: authUser?.email || '', verifiedAt: serverTimestamp(),
+        });
+        return ngoRef.id;
       });
-      await updateDoc(doc(db, 'ngoRegistrations', registration.id), {
-        status: 'ACTIVE', paymentStatus: 'VERIFIED', activatedNgoId: ngoRef.id,
-        verifiedBy: authUser?.email || '', verifiedAt: serverTimestamp(),
-      });
-      setPendingRegistrations(current => current.map(item => item.id === registration.id ? { ...item, status: 'ACTIVE', paymentStatus: 'VERIFIED', activatedNgoId: ngoRef.id } : item));
+      setPendingRegistrations(current => current.map(item => item.id === registration.id ? { ...item, status: 'ACTIVE', paymentStatus: 'VERIFIED', activatedNgoId } : item));
       notify('भुगतान सत्यापित; NGO LIVE कर दिया गया।');
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Approval नहीं हो पाया। Firestore rules प्रकाशित करें।');
@@ -246,7 +264,16 @@ export default function App() {
 
   if (window.location.pathname.startsWith('/member-verify')) return <MemberVerifyPage />;
   if (window.location.pathname.startsWith('/members')) return <MemberIDPortal authUser={authUser} onLogin={loginAsSuperAdmin} language={language} />;
-  if (window.location.pathname.startsWith('/ngo-admin') && authUser) return <NgoAdminPortal authUser={authUser} language={language} />;
+  if (window.location.pathname.startsWith('/ngo-admin')) {
+    if (authUser) return <NgoAdminPortal authUser={authUser} language={language} />;
+    return <main className="member-portal">
+      <header className="member-portal-header"><a className="member-brand" href="/">NGO<span>Connect</span></a><a className="outline-button" href="/">होम</a></header>
+      <section className="member-portal-hero"><span>NGO ADMIN</span><h1>{language === 'hi' ? 'NGO Admin लॉगिन' : 'NGO Admin sign in'}</h1><p>{language === 'hi' ? 'अपने NGO के मालिक वाले Google खाते से लॉगिन करें।' : 'Sign in with the Google account that owns your NGO.'}</p>
+        <button className="primary-button" onClick={() => void loginAsSuperAdmin()} disabled={!firebaseConfigured}><Globe2 size={17}/> {language === 'hi' ? 'Google से लॉगिन करें' : 'Continue with Google'}</button>
+        {authError && <p className="member-notice" role="alert">{authError}</p>}
+      </section>
+    </main>;
+  }
   if (!authUser || !isSuperAdmin(authUser)) return <PublicHome language={language} setLanguage={setLanguage} authUser={authUser} onLogin={loginAsSuperAdmin} onLogout={() => { if (auth) void signOut(auth); }} authError={authError} />;
   return <div className="app-shell">
     <aside className={`sidebar ${mobileMenu ? 'sidebar-open' : ''}`}>
