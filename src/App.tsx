@@ -313,7 +313,7 @@ export default function App() {
   const totalDonations = liveTransactions.filter(row => String(row.type || '').toUpperCase() === 'DONATION').reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
   const totalExpenses = liveTransactions.filter(row => String(row.type || '').toUpperCase() === 'EXPENSE').reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
   const activeEvents = liveEvents.filter(row => !['CANCELLED', 'COMPLETED'].includes(String(row.status || '').toUpperCase())).length;
-  const recentItems = [
+  const recentItems: Array<DashboardRecord & { kind: string; when: Date | null }> = [
     ...liveTransactions.map(row => ({ ...row, kind: 'transaction', when: row.createdAt?.toDate?.() || (row.date ? new Date(String(row.date)) : null) })),
     ...liveMembers.map(row => ({ ...row, kind: 'member', when: row.createdAt?.toDate?.() || null })),
     ...liveEvents.map(row => ({ ...row, kind: 'event', when: row.createdAt?.toDate?.() || (row.date ? new Date(String(row.date)) : null) })),
