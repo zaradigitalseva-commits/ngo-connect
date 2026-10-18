@@ -246,7 +246,7 @@ export default function App() {
 
   if (window.location.pathname.startsWith('/member-verify')) return <MemberVerifyPage />;
   if (window.location.pathname.startsWith('/members')) return <MemberIDPortal authUser={authUser} onLogin={loginAsSuperAdmin} language={language} />;
-  if (window.location.pathname.startsWith('/ngo-admin') && authUser && !isSuperAdmin(authUser)) return <NgoAdminPortal authUser={authUser} language={language} />;
+  if (window.location.pathname.startsWith('/ngo-admin') && authUser) return <NgoAdminPortal authUser={authUser} language={language} />;
   if (!authUser || !isSuperAdmin(authUser)) return <PublicHome language={language} setLanguage={setLanguage} authUser={authUser} onLogin={loginAsSuperAdmin} onLogout={() => { if (auth) void signOut(auth); }} authError={authError} />;
   return <div className="app-shell">
     <aside className={`sidebar ${mobileMenu ? 'sidebar-open' : ''}`}>
