@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth';
 import { Activity, ArrowDownLeft, ArrowUpRight, BadgeCheck, Bell, BookOpenCheck, CalendarDays, CheckCircle2, ChevronDown, CircleHelp, ClipboardList, FileBadge, FileText, Globe2, HandCoins, HeartHandshake, LayoutDashboard, Leaf, LogOut, Menu, Plus, Search, Settings2, ShieldCheck, Users, Wallet, X } from 'lucide-react';
-import { auth, firebaseConfigured } from './firebase';
+import { auth, db, firebaseConfigured } from './firebase';
+import { collection, getDocs, query as firestoreQuery, where } from 'firebase/firestore';
 
 const SUPER_ADMIN_EMAILS = ['ngogrant454@gmail.com', 'zaradigitalseva@gmail.com'];
 const isSuperAdmin = (user: User | null) => Boolean(user?.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase()));
@@ -33,8 +34,64 @@ type PublicHomeProps = {
   onLogout: () => void;
   authError: string;
 };
+type PublicNgo = {
+  id: string;
+  name: string;
+  type: string;
+  city: string;
+  logo: string;
+  mission: string;
+  status: string;
+  phone: string;
+  email: string;
+  website: string;
+  address: string;
+};
 function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authError }: PublicHomeProps) {
   const hi = language === 'hi';
+  const [publicNgos, setPublicNgos] = useState<PublicNgo[]>([]);
+  const [selectedNgo, setSelectedNgo] = useState<PublicNgo | null>(null);
+  const [profileLoginRequired, setProfileLoginRequired] = useState(false);
+  const [directoryLoading, setDirectoryLoading] = useState(true);
+  useEffect(() => {
+    let active = true;
+    const loadPublicNgos = async () => {
+      try {
+        const snapshot = await getDocs(firestoreQuery(
+          collection(db, 'ngos'),
+          where('status', 'in', ['LIVE', 'ACTIVE', 'APPROVED'])
+        ));
+        if (!active) return;
+        const records = snapshot.docs.map((doc) => {
+          const d = doc.data() as Record<string, unknown>;
+          const str = (...keys: string[]) => {
+            for (const key of keys) if (typeof d[key] === 'string' && d[key]) return d[key] as string;
+            return '';
+          };
+          return {
+            id: doc.id,
+            name: str('name', 'ngoName', 'organizationName', 'orgName') || (hi ? 'NGO का नाम उपलब्ध नहीं' : 'NGO name unavailable'),
+            type: str('type', 'category', 'focusArea', 'mission') || (hi ? 'सामाजिक संस्था' : 'Social organization'),
+            city: str('city', 'district', 'location', 'state'),
+            logo: str('logoUrl', 'logo', 'imageUrl', 'photoURL', 'photoUrl'),
+            mission: str('description', 'mission', 'about', 'purpose'),
+            status: str('status'),
+            phone: str('publicPhone', 'phone', 'contactPhone'),
+            email: str('publicEmail', 'email', 'contactEmail'),
+            website: str('website', 'websiteUrl'),
+            address: str('publicAddress', 'address', 'city', 'state'),
+          } satisfies PublicNgo;
+        });
+        setPublicNgos(records);
+      } catch {
+        if (active) setPublicNgos([]);
+      } finally {
+        if (active) setDirectoryLoading(false);
+      }
+    };
+    void loadPublicNgos();
+    return () => { active = false; };
+  }, [hi]);
   return <div className="public-site">
     <header className="public-header">
       <a className="public-brand" href="/" aria-label="NGO Connect home"><span className="brand-mark"><Leaf size={23}/></span><span>NGO<span>Connect</span><small>{hi ? 'मजबूत समुदाय। बेहतर बदलाव।' : 'Stronger communities. Better impact.'}</small></span></a>
@@ -43,8 +100,13 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
     </header>
     <main>
       <section className="public-hero" id="about"><div className="public-hero-copy"><span className="public-kicker"><HeartHandshake size={15}/>{hi ? 'सामाजिक बदलाव के लिए एक मंच' : 'A platform for social impact'}</span><h1>{hi ? <>सेवा का हर कदम,<br/><em>बदलाव की नई उम्मीद।</em></> : <>Every act of service,<br/><em>a new hope for change.</em></>}</h1><p>{hi ? 'NGO Connect संस्थाओं को अपने सदस्यों, स्वयंसेवकों, कार्यक्रमों, दान और रिपोर्ट को व्यवस्थित करने में मदद करने के लिए बनाया जा रहा है।' : 'NGO Connect is being built to help organizations manage members, volunteers, events, donations and reports in one place.'}</p><div className="public-hero-actions"><a className="primary-button" href="#features">{hi ? 'वेबसाइट देखें' : 'Explore the website'} <ArrowUpRight size={17}/></a></div>{authUser && <p className="public-signed-in">{hi ? 'लॉगिन ईमेल:' : 'Signed in as:'} <strong>{authUser.email}</strong>{!isSuperAdmin(authUser) && <span> · {hi ? 'सामान्य यूज़र' : 'Regular user'}</span>}</p>}</div><div className="public-hero-art" aria-hidden="true"><div className="public-art-ring ring-a"/><div className="public-art-ring ring-b"/><div className="public-art-main"><HeartHandshake size={78} strokeWidth={1.4}/></div><div className="public-art-chip chip-a"><Users size={18}/><span>{hi ? 'समुदाय' : 'Community'}</span></div><div className="public-art-chip chip-b"><HandCoins size={18}/><span>{hi ? 'पारदर्शिता' : 'Transparency'}</span></div><span className="public-art-spark spark-a">✦</span><span className="public-art-spark spark-b">✳</span></div></section>
+      <section className="public-directory" id="ngos">
+        <div className="public-section-heading"><span>{hi ? 'हमारे साथ जुड़ी संस्थाएँ' : 'ORGANIZATIONS ON NGO CONNECT'}</span><h2>{hi ? 'सभी सक्रिय NGOs' : 'Explore active NGOs'}</h2><p>{hi ? 'हर संस्था का कार्ड देखें। पूरा सार्वजनिक प्रोफ़ाइल देखने के लिए Google लॉगिन ज़रूरी है।' : 'Browse NGO cards. Sign in with Google to view a complete public profile.'}</p></div>
+        {directoryLoading ? <p className="public-directory-empty">{hi ? 'NGO सूची लोड हो रही है…' : 'Loading NGO directory…'}</p> : publicNgos.length === 0 ? <p className="public-directory-empty">{hi ? 'अभी कोई स्वीकृत NGO सूची में नहीं है।' : 'No approved NGOs are listed yet.'}</p> : <div className="public-ngo-grid">{publicNgos.map(ngo => <button type="button" className="public-ngo-card" key={ngo.id} onClick={() => { setSelectedNgo(ngo); setProfileLoginRequired(!authUser); }}><div className="public-ngo-logo">{ngo.logo ? <img src={ngo.logo} alt="" /> : <HeartHandshake size={28}/>}</div><h3>{ngo.name}</h3><p>{ngo.type}</p><span>{ngo.city || (hi ? 'स्थान उपलब्ध नहीं' : 'Location not listed')}</span><strong>{hi ? 'प्रोफ़ाइल देखें' : 'View profile'} <ArrowUpRight size={15}/></strong></button>)}</div>}
+      </section>
       <section className="public-features" id="features"><div className="public-section-heading"><span>{hi ? 'एक ही जगह सब कुछ' : 'EVERYTHING IN ONE PLACE'}</span><h2>{hi ? 'समाज सेवा को आसान और व्यवस्थित बनाएँ' : 'Make community work simpler and organized'}</h2><p>{hi ? 'सार्वजनिक वेबसाइट सभी के लिए खुली है। निजी प्रबंधन सुविधाएँ केवल अनुमति प्राप्त खातों के लिए होंगी।' : 'The public website is open to everyone. Private management tools will only be available to authorized accounts.'}</p></div><div className="public-feature-grid"><article><div className="public-feature-icon"><HeartHandshake size={24}/></div><h3>{hi ? 'NGO प्रोफ़ाइल' : 'NGO profiles'}</h3><p>{hi ? 'संस्था की पहचान, उद्देश्य और सार्वजनिक जानकारी दिखाने के लिए।' : 'Share an organization’s mission and public information.'}</p></article><article><div className="public-feature-icon"><Users size={24}/></div><h3>{hi ? 'सदस्य और स्वयंसेवक' : 'Members & volunteers'}</h3><p>{hi ? 'टीम और स्वयंसेवकों के काम को व्यवस्थित करने की सुविधा।' : 'Organize teams and volunteer activity.'}</p></article><article><div className="public-feature-icon"><HandCoins size={24}/></div><h3>{hi ? 'दान और खर्च' : 'Donations & expenses'}</h3><p>{hi ? 'दान और खर्च का रिकॉर्ड रखने के लिए नियोजित सुविधा।' : 'Planned tools to keep donation and expense records.'}</p></article><article><div className="public-feature-icon"><CalendarDays size={24}/></div><h3>{hi ? 'कार्यक्रम और रिपोर्ट' : 'Events & reports'}</h3><p>{hi ? 'कार्यक्रम, दस्तावेज़, प्रमाणपत्र और रिपोर्ट के लिए।' : 'Tools for events, documents, certificates and reports.'}</p></article></div></section>
       <section className="public-cta" id="contact"><div><span>NGO CONNECT</span><h2>{hi ? 'बेहतर बदलाव के लिए साथ आएँ।' : 'Come together for a better impact.'}</h2><p>{hi ? 'वेबसाइट देखने के लिए लॉगिन आवश्यक नहीं है।' : 'You do not need to sign in to browse the website.'}</p></div></section>
+      {selectedNgo && <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget) { setSelectedNgo(null); setProfileLoginRequired(false); } }}><section className="registration-modal public-profile-modal" role="dialog" aria-modal="true" aria-labelledby="public-profile-title"><div className="modal-heading"><div><span className="modal-eyebrow">NGO CONNECT</span><h2 id="public-profile-title">{profileLoginRequired || !authUser ? (hi ? 'पूरा प्रोफ़ाइल देखने के लिए लॉगिन करें' : 'Sign in to view the full profile') : selectedNgo.name}</h2><p>{profileLoginRequired || !authUser ? (hi ? 'NGO की पूरी सार्वजनिक जानकारी देखने के लिए Google से लॉगिन करें।' : 'Sign in with Google to view the full public NGO profile.') : selectedNgo.type}</p></div><button className="icon-button" onClick={() => { setSelectedNgo(null); setProfileLoginRequired(false); }} aria-label={hi ? 'बंद करें' : 'Close'}><X size={20}/></button></div>{profileLoginRequired || !authUser ? <div className="public-profile-gate"><button className="primary-button" onClick={() => { setProfileLoginRequired(false); onLogin(); }} disabled={!firebaseConfigured}><Globe2 size={17}/>{hi ? 'Google से लॉगिन करें' : 'Sign in with Google'}</button></div> : <div className="public-profile-details"><h3>{selectedNgo.name}</h3><p>{selectedNgo.mission || (hi ? 'इस NGO ने अभी अपना परिचय नहीं जोड़ा है।' : 'This NGO has not added a description yet.')}</p>{selectedNgo.address && <p><strong>{hi ? 'पता:' : 'Address:'}</strong> {selectedNgo.address}</p>}{selectedNgo.phone && <p><strong>{hi ? 'संपर्क नंबर:' : 'Contact phone:'}</strong> {selectedNgo.phone}</p>}{selectedNgo.email && <p><strong>{hi ? 'संपर्क ईमेल:' : 'Contact email:'}</strong> {selectedNgo.email}</p>}{selectedNgo.website && <p><strong>{hi ? 'वेबसाइट:' : 'Website:'}</strong> <a href={selectedNgo.website.startsWith('http') ? selectedNgo.website : 'https://' + selectedNgo.website} target="_blank" rel="noreferrer">{selectedNgo.website}</a></p>}</div>}</section></div>}
       {authError && <p className="public-auth-error">{authError}</p>}
     </main><footer className="public-footer"><span>© 2026 NGO Connect</span><span>{hi ? 'सार्वजनिक वेबसाइट · सभी के लिए खुली' : 'Public website · Open to everyone'}</span></footer>
   </div>;
