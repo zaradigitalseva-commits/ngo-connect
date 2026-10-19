@@ -4,7 +4,7 @@ import { Activity, ArrowUpRight, BadgeCheck, Bell, CalendarDays, CheckCircle2, C
 import { auth, db, firebaseConfigured } from './firebase';
 import { MemberIDPortal, MemberVerifyPage, NgoAdminPortal } from './MemberIDPortal';
 import { NgoWorkspacePortal } from './NgoWorkspace';
-import { addDoc, collection, doc, getDoc, getDocs, query as firestoreQuery, serverTimestamp, setDoc, where, runTransaction } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, getDocs, query as firestoreQuery, serverTimestamp, setDoc, where, runTransaction, Timestamp, updateDoc } from 'firebase/firestore';
 
 const SUPER_ADMIN_EMAILS = ['ngogrant454@gmail.com', 'zaradigitalseva@gmail.com'];
 const isSuperAdmin = (user: User | null) => Boolean(user?.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase()));
@@ -23,6 +23,7 @@ const nav = [
 ];
 type DashboardNgo = { id: string; name: string; type: string; city: string; status: string; ownerUid: string; people: number };
 type DashboardRecord = Record<string, any> & { id: string };
+type SubscriptionPlan = { id: string; name: string; price: number; durationDays: number; description: string; active: boolean };
 
 
 type PublicHomeProps = {
@@ -56,7 +57,8 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
   const [registrationBusy, setRegistrationBusy] = useState(false);
   const [registrationMessage, setRegistrationMessage] = useState('');
   const [paymentQrImage, setPaymentQrImage] = useState('');
-  const [publicForm, setPublicForm] = useState({ name: '', contact: '', phone: '', state: '', mission: '', plan: '₹300 / 28 days', paymentReference: '' });
+  const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
+  const [publicForm, setPublicForm] = useState({ name: '', contact: '', phone: '', state: '', mission: '', planId: '', paymentReference: '' });
   const submitPublicRegistration = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!authUser || !authUser.email) { onLogin(); return; }
@@ -67,20 +69,26 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
       await addDoc(collection(db, 'ngoRegistrations'), {
         name: publicForm.name.trim(), contactName: publicForm.contact.trim(),
         email: authUser.email, phone: publicForm.phone.trim(), state: publicForm.state,
-        mission: publicForm.mission.trim(), subscriptionPlan: publicForm.plan,
+        mission: publicForm.mission.trim(), planId: publicForm.planId,
+        subscriptionPlan: subscriptionPlans.find(p => p.id === publicForm.planId)?.name || '',
+        planPrice: subscriptionPlans.find(p => p.id === publicForm.planId)?.price || 0,
+        planDurationDays: subscriptionPlans.find(p => p.id === publicForm.planId)?.durationDays || 0,
         paymentReference: publicForm.paymentReference.trim(),
         status: 'PENDING_PAYMENT',
         paymentStatus: publicForm.paymentReference.trim() ? 'SUBMITTED_FOR_REVIEW' : 'NOT_SUBMITTED',
         ownerUid: authUser.uid, createdAt: serverTimestamp(),
       });
       setRegistrationMessage(hi ? 'रजिस्ट्रेशन जमा हो गया। भुगतान/UTR की जाँच और एडमिन की मंज़ूरी के बाद ही NGO सक्रिय होगा।' : 'Registration submitted. The NGO will activate only after payment verification and admin approval.');
-      setPublicForm({ name: '', contact: '', phone: '', state: '', mission: '', plan: '₹300 / 28 days', paymentReference: '' });
+      setPublicForm({ name: '', contact: '', phone: '', state: '', mission: '', planId: subscriptionPlans.find(p => p.active)?.id || '', paymentReference: '' });
     } catch (error) {
       setRegistrationMessage(error instanceof Error ? error.message : (hi ? 'रजिस्ट्रेशन सेव नहीं हुआ। Firebase नियम जाँचें।' : 'Could not save registration. Check Firebase rules.'));
     } finally { setRegistrationBusy(false); }
   };
   useEffect(() => {
     let active = true;
+    getDocs(firestoreQuery(collection(db, 'subscriptionPlans'), where('active', '==', true))).then(snapshot => {
+      if (active) setSubscriptionPlans(snapshot.docs.map(item => ({ id: item.id, name: String(item.data().name || ''), price: Number(item.data().price) || 0, durationDays: Number(item.data().durationDays) || 0, description: String(item.data().description || ''), active: item.data().active === true })).filter(p => p.name && p.price > 0 && p.durationDays > 0));
+    }).catch(() => { if (active) setSubscriptionPlans([]); });
     getDoc(doc(db, 'publicSettings', 'payment')).then(snapshot => {
       if (active && snapshot.exists() && typeof snapshot.data().qrImage === 'string') setPaymentQrImage(snapshot.data().qrImage as string);
     }).catch(() => { if (active) setPaymentQrImage(''); });
@@ -135,7 +143,7 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
       </section>
       <section className="public-features" id="features"><div className="public-section-heading"><span>{hi ? 'एक ही जगह सब कुछ' : 'EVERYTHING IN ONE PLACE'}</span><h2>{hi ? 'समाज सेवा को आसान और व्यवस्थित बनाएँ' : 'Make community work simpler and organized'}</h2></div><div className="public-feature-grid"><article><div className="public-feature-icon"><HeartHandshake size={24}/></div><h3>{hi ? 'NGO प्रोफ़ाइल' : 'NGO profiles'}</h3><p>{hi ? 'संस्था की पहचान, उद्देश्य और सार्वजनिक जानकारी दिखाने के लिए।' : 'Share an organization’s mission and public information.'}</p></article><article><div className="public-feature-icon"><Users size={24}/></div><h3>{hi ? 'सदस्य और स्वयंसेवक' : 'Members & volunteers'}</h3><p>{hi ? 'टीम और स्वयंसेवकों के काम को व्यवस्थित करने की सुविधा।' : 'Organize teams and volunteer activity.'}</p></article><article><div className="public-feature-icon"><HandCoins size={24}/></div><h3>{hi ? 'दान और खर्च' : 'Donations & expenses'}</h3><p>{hi ? 'दान और खर्च का रिकॉर्ड रखने के लिए नियोजित सुविधा।' : 'Planned tools to keep donation and expense records.'}</p></article><article><div className="public-feature-icon"><CalendarDays size={24}/></div><h3>{hi ? 'कार्यक्रम और रिपोर्ट' : 'Events & reports'}</h3><p>{hi ? 'कार्यक्रम, दस्तावेज़, प्रमाणपत्र और रिपोर्ट के लिए।' : 'Tools for events, documents, certificates and reports.'}</p></article></div></section>
       <section className="public-cta" id="contact"><div><span>NGO CONNECT</span><h2>{hi ? 'बेहतर बदलाव के लिए साथ आएँ।' : 'Come together for a better impact.'}</h2><button className="primary-button" onClick={() => { setRegistrationMessage(''); setShowPublicRegistration(true); }}>{hi ? 'अपना NGO रजिस्टर करें' : 'Register your NGO'} <ArrowUpRight size={17}/></button></div></section>
-      {showPublicRegistration && <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget && !registrationBusy) setShowPublicRegistration(false); }}><section className="registration-modal" role="dialog" aria-modal="true" aria-labelledby="public-registration-title"><div className="modal-heading"><div><span className="modal-eyebrow">NGO CONNECT</span><h2 id="public-registration-title">{hi ? 'NGO रजिस्ट्रेशन' : 'NGO registration'}</h2><p>{hi ? 'Google लॉगिन के बाद जानकारी भेजें। भुगतान सत्यापन और एडमिन मंज़ूरी तक NGO सक्रिय नहीं होगा।' : 'Sign in with Google and submit your details. Activation happens only after payment verification and admin approval.'}</p></div><button className="icon-button" onClick={() => setShowPublicRegistration(false)} aria-label={hi ? 'बंद करें' : 'Close'}><X size={20}/></button></div>{!authUser ? <div className="public-profile-gate"><p>{hi ? 'रजिस्ट्रेशन के लिए पहले Google से लॉगिन करें।' : 'Sign in with Google before registering.'}</p><button className="primary-button" onClick={onLogin} disabled={!firebaseConfigured}><Globe2 size={17}/>{hi ? 'Google से लॉगिन' : 'Sign in with Google'}</button></div> : <form onSubmit={submitPublicRegistration}><label>{hi ? 'NGO / संस्था का नाम' : 'NGO / organization name'} *<input required maxLength={120} value={publicForm.name} onChange={e => setPublicForm({...publicForm, name:e.target.value})}/></label><label>{hi ? 'संपर्क व्यक्ति' : 'Contact person'} *<input required maxLength={100} value={publicForm.contact} onChange={e => setPublicForm({...publicForm, contact:e.target.value})}/></label><label>{hi ? 'मोबाइल नंबर' : 'Phone number'} *<input required type="tel" maxLength={25} value={publicForm.phone} onChange={e => setPublicForm({...publicForm, phone:e.target.value})}/></label><label>{hi ? 'राज्य' : 'State'}<select value={publicForm.state} onChange={e => setPublicForm({...publicForm, state:e.target.value})}><option value="">{hi ? 'राज्य चुनें' : 'Select state'}</option>{['Maharashtra','Uttar Pradesh','Madhya Pradesh','Gujarat','Karnataka','Rajasthan','Delhi','Other'].map(s => <option key={s}>{s}</option>)}</select></label><label>{hi ? 'संस्था का उद्देश्य' : 'Mission / purpose'}<textarea rows={3} maxLength={1000} value={publicForm.mission} onChange={e => setPublicForm({...publicForm, mission:e.target.value})}/></label><label>{hi ? 'सब्सक्रिप्शन प्लान' : 'Subscription plan'}<select value={publicForm.plan} onChange={e => setPublicForm({...publicForm, plan:e.target.value})}><option>₹300 / 28 days</option><option>₹600 / 56 days</option><option>₹900 / 84 days</option><option>₹1200 / 112 days</option><option>₹3000 / 280 days</option></select></label>{paymentQrImage && <div className="payment-qr-preview"><h3>{hi ? 'UPI से भुगतान करें' : 'Pay by UPI'}</h3><img src={paymentQrImage} alt={hi ? 'NGO Connect UPI QR कोड' : 'NGO Connect UPI QR code'} /><p>{hi ? 'QR स्कैन करके भुगतान करें, फिर नीचे UTR नंबर भरें।' : 'Scan this QR to pay, then enter the UTR below.'}</p></div>}<label>{hi ? 'भुगतान UTR / संदर्भ नंबर (यदि भुगतान कर दिया है)' : 'Payment UTR / reference (if already paid)'}<input maxLength={80} value={publicForm.paymentReference} onChange={e => setPublicForm({...publicForm, paymentReference:e.target.value})} placeholder="UTR / transaction reference"/></label><div className="form-note"><ShieldCheck size={17}/><span>{hi ? 'UTR भेजना भुगतान का प्रमाण नहीं है। एडमिन बैंक/UPI रिकॉर्ड से सत्यापन करेगा। भुगतान निर्देश एडमिन से प्राप्त करें।' : 'A UTR is not proof by itself. Admin will verify against UPI/bank records. Obtain payment instructions from the administrator.'}</span></div>{registrationMessage && <p role="status" className="public-auth-error">{registrationMessage}</p>}<div className="modal-actions"><button type="button" className="outline-button" disabled={registrationBusy} onClick={() => setShowPublicRegistration(false)}>{hi ? 'बंद करें' : 'Close'}</button><button type="submit" className="primary-button" disabled={registrationBusy}>{registrationBusy ? (hi ? 'सेव हो रहा है…' : 'Saving…') : (hi ? 'रजिस्ट्रेशन जमा करें' : 'Submit registration')}</button></div></form>}</section></div>}
+      {showPublicRegistration && <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget && !registrationBusy) setShowPublicRegistration(false); }}><section className="registration-modal" role="dialog" aria-modal="true" aria-labelledby="public-registration-title"><div className="modal-heading"><div><span className="modal-eyebrow">NGO CONNECT</span><h2 id="public-registration-title">{hi ? 'NGO रजिस्ट्रेशन' : 'NGO registration'}</h2><p>{hi ? 'Google लॉगिन के बाद जानकारी भेजें। भुगतान सत्यापन और एडमिन मंज़ूरी तक NGO सक्रिय नहीं होगा।' : 'Sign in with Google and submit your details. Activation happens only after payment verification and admin approval.'}</p></div><button className="icon-button" onClick={() => setShowPublicRegistration(false)} aria-label={hi ? 'बंद करें' : 'Close'}><X size={20}/></button></div>{!authUser ? <div className="public-profile-gate"><p>{hi ? 'रजिस्ट्रेशन के लिए पहले Google से लॉगिन करें।' : 'Sign in with Google before registering.'}</p><button className="primary-button" onClick={onLogin} disabled={!firebaseConfigured}><Globe2 size={17}/>{hi ? 'Google से लॉगिन' : 'Sign in with Google'}</button></div> : <form onSubmit={submitPublicRegistration}><label>{hi ? 'NGO / संस्था का नाम' : 'NGO / organization name'} *<input required maxLength={120} value={publicForm.name} onChange={e => setPublicForm({...publicForm, name:e.target.value})}/></label><label>{hi ? 'संपर्क व्यक्ति' : 'Contact person'} *<input required maxLength={100} value={publicForm.contact} onChange={e => setPublicForm({...publicForm, contact:e.target.value})}/></label><label>{hi ? 'मोबाइल नंबर' : 'Phone number'} *<input required type="tel" maxLength={25} value={publicForm.phone} onChange={e => setPublicForm({...publicForm, phone:e.target.value})}/></label><label>{hi ? 'राज्य' : 'State'}<select value={publicForm.state} onChange={e => setPublicForm({...publicForm, state:e.target.value})}><option value="">{hi ? 'राज्य चुनें' : 'Select state'}</option>{['Maharashtra','Uttar Pradesh','Madhya Pradesh','Gujarat','Karnataka','Rajasthan','Delhi','Other'].map(s => <option key={s}>{s}</option>)}</select></label><label>{hi ? 'संस्था का उद्देश्य' : 'Mission / purpose'}<textarea rows={3} maxLength={1000} value={publicForm.mission} onChange={e => setPublicForm({...publicForm, mission:e.target.value})}/></label><label>{hi ? 'सब्सक्रिप्शन प्लान' : 'Subscription plan'}<select required value={publicForm.planId} onChange={e => setPublicForm({...publicForm, planId:e.target.value})}><option value="">{hi ? 'प्लान चुनें' : 'Choose a plan'}</option>{subscriptionPlans.map(plan => <option key={plan.id} value={plan.id}>{plan.name} — ₹{plan.price} / {plan.durationDays} {hi ? 'दिन' : 'days'}</option>)}</select>{subscriptionPlans.length === 0 && <small>{hi ? 'अभी कोई सक्रिय प्लान उपलब्ध नहीं है। एडमिन से संपर्क करें।' : 'No active plans are available. Contact the administrator.'}</small>}</label>{paymentQrImage && <div className="payment-qr-preview"><h3>{hi ? 'UPI से भुगतान करें' : 'Pay by UPI'}</h3><img src={paymentQrImage} alt={hi ? 'NGO Connect UPI QR कोड' : 'NGO Connect UPI QR code'} /><p>{hi ? 'QR स्कैन करके भुगतान करें, फिर नीचे UTR नंबर भरें।' : 'Scan this QR to pay, then enter the UTR below.'}</p></div>}<label>{hi ? 'भुगतान UTR / संदर्भ नंबर (यदि भुगतान कर दिया है)' : 'Payment UTR / reference (if already paid)'}<input maxLength={80} value={publicForm.paymentReference} onChange={e => setPublicForm({...publicForm, paymentReference:e.target.value})} placeholder="UTR / transaction reference"/></label><div className="form-note"><ShieldCheck size={17}/><span>{hi ? 'UTR भेजना भुगतान का प्रमाण नहीं है। एडमिन बैंक/UPI रिकॉर्ड से सत्यापन करेगा। भुगतान निर्देश एडमिन से प्राप्त करें।' : 'A UTR is not proof by itself. Admin will verify against UPI/bank records. Obtain payment instructions from the administrator.'}</span></div>{registrationMessage && <p role="status" className="public-auth-error">{registrationMessage}</p>}<div className="modal-actions"><button type="button" className="outline-button" disabled={registrationBusy} onClick={() => setShowPublicRegistration(false)}>{hi ? 'बंद करें' : 'Close'}</button><button type="submit" className="primary-button" disabled={registrationBusy || subscriptionPlans.length === 0 || !publicForm.planId}>{registrationBusy ? (hi ? 'सेव हो रहा है…' : 'Saving…') : (hi ? 'रजिस्ट्रेशन जमा करें' : 'Submit registration')}</button></div></form>}</section></div>}
       {selectedNgo && <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget) { setSelectedNgo(null); setProfileLoginRequired(false); } }}><section className="registration-modal public-profile-modal" role="dialog" aria-modal="true" aria-labelledby="public-profile-title"><div className="modal-heading"><div><span className="modal-eyebrow">NGO CONNECT</span><h2 id="public-profile-title">{profileLoginRequired || !authUser ? (hi ? 'पूरा प्रोफ़ाइल देखने के लिए लॉगिन करें' : 'Sign in to view the full profile') : selectedNgo.name}</h2><p>{profileLoginRequired || !authUser ? (hi ? 'NGO की पूरी सार्वजनिक जानकारी देखने के लिए Google से लॉगिन करें।' : 'Sign in with Google to view the full public NGO profile.') : selectedNgo.type}</p></div><button className="icon-button" onClick={() => { setSelectedNgo(null); setProfileLoginRequired(false); }} aria-label={hi ? 'बंद करें' : 'Close'}><X size={20}/></button></div>{profileLoginRequired || !authUser ? <div className="public-profile-gate"><button className="primary-button" onClick={() => { setProfileLoginRequired(false); onLogin(); }} disabled={!firebaseConfigured}><Globe2 size={17}/>{hi ? 'Google से लॉगिन करें' : 'Sign in with Google'}</button></div> : <div className="public-profile-details"><h3>{selectedNgo.name}</h3><p>{selectedNgo.mission || (hi ? 'इस NGO ने अभी अपना परिचय नहीं जोड़ा है।' : 'This NGO has not added a description yet.')}</p>{selectedNgo.address && <p><strong>{hi ? 'पता:' : 'Address:'}</strong> {selectedNgo.address}</p>}{selectedNgo.phone && <p><strong>{hi ? 'संपर्क नंबर:' : 'Contact phone:'}</strong> {selectedNgo.phone}</p>}{selectedNgo.email && <p><strong>{hi ? 'संपर्क ईमेल:' : 'Contact email:'}</strong> {selectedNgo.email}</p>}{selectedNgo.website && <p><strong>{hi ? 'वेबसाइट:' : 'Website:'}</strong> <a href={selectedNgo.website.startsWith('http') ? selectedNgo.website : 'https://' + selectedNgo.website} target="_blank" rel="noreferrer">{selectedNgo.website}</a></p>}</div>}</section></div>}
       {authError && <p className="public-auth-error">{authError}</p>}
     </main><footer className="public-footer"><span>© 2026 NGO Connect</span></footer>
@@ -151,8 +159,12 @@ export default function App() {
   const [mobileMenu, setMobileMenu] = useState(false);
   const [query, setQuery] = useState('');
   const [toast, setToast] = useState('');
-  const [form, setForm] = useState({ name: '', contact: '', email: '', phone: '', state: '', mission: '' });
+  const [form, setForm] = useState({ name: '', contact: '', email: '', phone: '', state: '', mission: '', planId: '' });
   const [pendingRegistrations, setPendingRegistrations] = useState<Array<Record<string, unknown> & { id: string }>>([]);
+  const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
+  const [planForm, setPlanForm] = useState({ id: '', name: '', price: '300', durationDays: '30', description: '', active: true });
+  const [planSaveBusy, setPlanSaveBusy] = useState(false);
+  const [planMessage, setPlanMessage] = useState('');
   const [approvalBusyId, setApprovalBusyId] = useState('');
   const [registrationLoadError, setRegistrationLoadError] = useState('');
   const [liveNgos, setLiveNgos] = useState<DashboardNgo[]>([]);
@@ -171,6 +183,9 @@ export default function App() {
     getDoc(doc(db, 'publicSettings', 'payment')).then(snapshot => {
       if (active && snapshot.exists() && typeof snapshot.data().qrImage === 'string') setAdminQrImage(snapshot.data().qrImage as string);
     }).catch(() => { if (active) setQrSaveMessage('QR सेटिंग लोड नहीं हुई। Firestore Rules प्रकाशित हैं या नहीं जाँचें।'); });
+    getDocs(collection(db, 'subscriptionPlans')).then(snapshot => {
+      if (active) setSubscriptionPlans(snapshot.docs.map(item => ({ id: item.id, name: String(item.data().name || ''), price: Number(item.data().price) || 0, durationDays: Number(item.data().durationDays) || 0, description: String(item.data().description || ''), active: item.data().active === true })));
+    }).catch(() => { if (active) setPlanMessage('सब्सक्रिप्शन प्लान लोड नहीं हुए। Firestore Rules जाँचें।'); });
     getDocs(collection(db, 'ngoRegistrations')).then(snapshot => {
       if (active) setPendingRegistrations(snapshot.docs.map(item => ({ id: item.id, ...item.data() })));
     }).catch(() => { if (active) setRegistrationLoadError('रजिस्ट्रेशन लोड नहीं हुए। Firestore rules प्रकाशित हैं या नहीं, जाँचें।'); });
@@ -236,6 +251,36 @@ export default function App() {
       setQrSaveMessage(error instanceof Error ? error.message : 'QR सेव नहीं हुआ। Firestore Rules जाँचें।');
     } finally { setQrSaveBusy(false); }
   };
+  const saveSubscriptionPlan = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!authUser || !isSuperAdmin(authUser)) return;
+    const price = Number(planForm.price);
+    const durationDays = Number(planForm.durationDays);
+    if (!planForm.name.trim() || !Number.isFinite(price) || price <= 0 || !Number.isInteger(durationDays) || durationDays < 1 || durationDays > 3650) {
+      setPlanMessage('प्लान का नाम, ₹1 या अधिक फीस और 1–3650 दिनों की वैधता भरें।');
+      return;
+    }
+    setPlanSaveBusy(true);
+    setPlanMessage('');
+    try {
+      const payload = { name: planForm.name.trim(), price, durationDays, description: planForm.description.trim(), active: planForm.active, updatedAt: serverTimestamp(), updatedBy: authUser.email || '' };
+      if (planForm.id) await updateDoc(doc(db, 'subscriptionPlans', planForm.id), payload);
+      else await addDoc(collection(db, 'subscriptionPlans'), { ...payload, createdAt: serverTimestamp(), createdBy: authUser.email || '' });
+      const refreshed = await getDocs(collection(db, 'subscriptionPlans'));
+      setSubscriptionPlans(refreshed.docs.map(item => ({ id: item.id, name: String(item.data().name || ''), price: Number(item.data().price) || 0, durationDays: Number(item.data().durationDays) || 0, description: String(item.data().description || ''), active: item.data().active === true })));
+      setPlanForm({ id: '', name: '', price: '300', durationDays: '30', description: '', active: true });
+      setPlanMessage('सब्सक्रिप्शन प्लान सेव हो गया।');
+    } catch (error) {
+      setPlanMessage(error instanceof Error ? error.message : 'प्लान सेव नहीं हुआ। Firestore Rules जाँचें।');
+    } finally { setPlanSaveBusy(false); }
+  };
+  const toggleSubscriptionPlan = async (plan: SubscriptionPlan) => {
+    try {
+      await updateDoc(doc(db, 'subscriptionPlans', plan.id), { active: !plan.active, updatedAt: serverTimestamp(), updatedBy: authUser?.email || '' });
+      setSubscriptionPlans(current => current.map(item => item.id === plan.id ? { ...item, active: !item.active } : item));
+      setPlanMessage(plan.active ? 'प्लान बंद कर दिया गया।' : 'प्लान फिर से सक्रिय है।');
+    } catch (error) { setPlanMessage(error instanceof Error ? error.message : 'प्लान की स्थिति बदली नहीं जा सकी।'); }
+  };
   const handleQrFile = (file?: File) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) { setQrSaveMessage('कृपया JPG, PNG या WebP इमेज चुनें।'); return; }
@@ -268,6 +313,17 @@ export default function App() {
         if (!String(data.paymentReference || '').trim() || String(data.paymentReference).trim().length < 4) {
           throw new Error('भुगतान UTR उपलब्ध नहीं है।');
         }
+        const planId = String(data.planId || '');
+        if (!planId) throw new Error('इस रजिस्ट्रेशन में प्लान ID नहीं है। इस पुराने रिकॉर्ड को मैन्युअली जाँचें।');
+        const planRef = doc(db, 'subscriptionPlans', planId);
+        const planSnap = await transaction.get(planRef);
+        if (!planSnap.exists()) throw new Error('चुना गया सब्सक्रिप्शन प्लान मौजूद नहीं है।');
+        const plan = planSnap.data();
+        const price = Number(data.planPrice);
+        const durationDays = Number(data.planDurationDays);
+        if (!Number.isFinite(price) || price < 0 || !Number.isInteger(durationDays) || durationDays < 1) throw new Error('प्लान की फीस या अवधि सही नहीं है।');
+        const startedAt = Timestamp.now();
+        const expiresAt = Timestamp.fromMillis(startedAt.toMillis() + durationDays * 24 * 60 * 60 * 1000);
         const ngoRef = doc(collection(db, 'ngos'));
         transaction.set(ngoRef, {
           name: String(data.name || ''),
@@ -278,6 +334,13 @@ export default function App() {
           status: 'LIVE',
           ownerUid: String(data.ownerUid || ''),
           registrationId: registration.id,
+          subscriptionPlanId: planId,
+          subscriptionPlanName: String(plan.name || data.subscriptionPlan || ''),
+          subscriptionPrice: price,
+          subscriptionDurationDays: durationDays,
+          subscriptionStartedAt: startedAt,
+          subscriptionEndsAt: expiresAt,
+          subscriptionStatus: 'ACTIVE',
           memberFee: 0,
           adminWhatsApp: '',
           createdAt: serverTimestamp(),
@@ -285,6 +348,8 @@ export default function App() {
         transaction.update(registrationRef, {
           status: 'ACTIVE', paymentStatus: 'VERIFIED', activatedNgoId: ngoRef.id,
           verifiedBy: authUser?.email || '', verifiedAt: serverTimestamp(),
+          verifiedPlanPrice: price, verifiedPlanDurationDays: durationDays,
+          subscriptionStartedAt: startedAt, subscriptionEndsAt: expiresAt,
         });
         return ngoRef.id;
       });
@@ -356,13 +421,16 @@ export default function App() {
       const ref = await addDoc(collection(db, 'ngoRegistrations'), {
         name: form.name.trim(), contactName: form.contact.trim(), email: authUser.email,
         phone: form.phone.trim(), state: form.state, mission: form.mission.trim(),
-        subscriptionPlan: '₹300 / 28 days', paymentReference: '', status: 'PENDING_PAYMENT',
-        paymentStatus: 'NOT_SUBMITTED', ownerUid: authUser.uid, createdAt: serverTimestamp(),
+        planId: form.planId || subscriptionPlans.find(p => p.active)?.id || '',
+        subscriptionPlan: subscriptionPlans.find(p => p.id === (form.planId || subscriptionPlans.find(p => p.active)?.id))?.name || '',
+        planPrice: subscriptionPlans.find(p => p.id === (form.planId || subscriptionPlans.find(p => p.active)?.id))?.price || 0,
+        planDurationDays: subscriptionPlans.find(p => p.id === (form.planId || subscriptionPlans.find(p => p.active)?.id))?.durationDays || 0,
+        paymentReference: '', status: 'PENDING_PAYMENT', paymentStatus: 'NOT_SUBMITTED', ownerUid: authUser.uid, createdAt: serverTimestamp(),
       });
-      setPendingRegistrations(current => [{ id: ref.id, name: form.name.trim(), contactName: form.contact.trim(), email: authUser.email, phone: form.phone.trim(), state: form.state, mission: form.mission.trim(), subscriptionPlan: '₹300 / 28 days', paymentReference: '', status: 'PENDING_PAYMENT', paymentStatus: 'NOT_SUBMITTED', ownerUid: authUser.uid }, ...current]);
+      setPendingRegistrations(current => [{ id: ref.id, name: form.name.trim(), contactName: form.contact.trim(), email: authUser.email, phone: form.phone.trim(), state: form.state, mission: form.mission.trim(), planId: form.planId || subscriptionPlans.find(p => p.active)?.id || '', subscriptionPlan: subscriptionPlans.find(p => p.id === (form.planId || subscriptionPlans.find(p => p.active)?.id))?.name || '', planPrice: subscriptionPlans.find(p => p.id === (form.planId || subscriptionPlans.find(p => p.active)?.id))?.price || 0, planDurationDays: subscriptionPlans.find(p => p.id === (form.planId || subscriptionPlans.find(p => p.active)?.id))?.durationDays || 0, paymentReference: '', status: 'PENDING_PAYMENT', paymentStatus: 'NOT_SUBMITTED', ownerUid: authUser.uid }, ...current]);
       notify(language === 'hi' ? 'NGO रजिस्ट्रेशन Firebase में सेव हुआ। UPI भुगतान और सत्यापन के बाद ही सक्रिय होगा।' : 'NGO registration saved to Firebase. It activates only after payment and verification.');
       setShowRegistration(false);
-      setForm({ name: '', contact: '', email: authUser.email, phone: '', state: '', mission: '' });
+      setForm({ name: '', contact: '', email: authUser.email, phone: '', state: '', mission: '', planId: '' });
     } catch (error) {
       notify(error instanceof Error ? error.message : (language === 'hi' ? 'रजिस्ट्रेशन सेव नहीं हुआ। Firestore Rules जाँचें।' : 'Registration failed. Check Firestore rules.'));
     }
@@ -400,7 +468,18 @@ export default function App() {
         <div className="eyebrow"><span className="eyebrow-dot"/>{language === 'hi' ? 'लाइव Firebase डेटा' : 'Live Firebase data'}<span className="eyebrow-line"/></div>
         <section className="welcome-row"><div><h1>{section === 'overview' ? t.welcome : t[pageTitle]}</h1><p>{section === 'overview' ? t.intro : t.activityText}</p></div><button className="primary-button" onClick={() => setShowRegistration(true)}><Plus size={18}/>{t.register}</button></section>
         {!firebaseConfigured && <div className="setup-banner"><div className="setup-icon"><ShieldCheck size={20}/></div><div className="setup-copy"><strong>{t.setup}</strong><p>{t.setupText}</p></div><a href="https://console.firebase.google.com/" target="_blank" rel="noreferrer">{t.seeSetup}<ArrowUpRight size={15}/></a></div>}
-        {section === 'subscriptions' && <><section className="panel directory-panel payment-qr-admin"><div className="panel-heading"><div><h3>UPI QR इमेज सेटिंग</h3><p>यह QR NGO रजिस्ट्रेशन फ़ॉर्म में सभी यूज़र को दिखेगा।</p></div></div><form onSubmit={savePaymentQr} className="qr-admin-form"><label>QR कोड इमेज अपलोड करें (JPG / PNG / WebP, अधिकतम 500 KB)<input type="file" accept="image/png,image/jpeg,image/webp" onChange={e => handleQrFile(e.target.files?.[0])}/></label>{adminQrImage && <img className="admin-qr-preview" src={adminQrImage} alt="UPI QR preview"/>}{qrSaveMessage && <p role="status" className="qr-save-message">{qrSaveMessage}</p>}<button className="primary-button" type="submit" disabled={qrSaveBusy || !adminQrImage}>{qrSaveBusy ? 'सेव हो रहा है…' : 'QR इमेज सेव करें'}</button></form></section><section className="panel directory-panel"><div className="panel-heading"><div><h3>NGO रजिस्ट्रेशन और भुगतान जाँच</h3><p>UTR को बैंक/UPI रिकॉर्ड से मिलाने के बाद ही Activate करें।</p></div><span className="status-pill pill-pending">{pendingRegistrations.filter(item => item.status === 'PENDING_PAYMENT').length} Pending</span></div>{registrationLoadError && <p role="alert">{registrationLoadError}</p>}{pendingRegistrations.length === 0 ? <div className="empty-state">अभी कोई रजिस्ट्रेशन नहीं मिला। Firebase में rules प्रकाशित करें और नए रजिस्ट्रेशन आने दें।</div> : <div className="ngo-table-wrap"><table className="ngo-table"><thead><tr><th>NGO</th><th>संपर्क</th><th>प्लान</th><th>UTR / स्थिति</th><th>कार्रवाई</th></tr></thead><tbody>{pendingRegistrations.map(item => <tr key={item.id}><td><strong>{String(item.name || 'नाम नहीं')}</strong><br/><span className="table-muted">{String(item.state || '')}</span></td><td>{String(item.contactName || '')}<br/><span className="table-muted">{String(item.email || '')} · {String(item.phone || '')}</span></td><td>{String(item.subscriptionPlan || '')}</td><td>{String(item.paymentReference || 'UTR नहीं दिया')}<br/><span className="table-muted">{String(item.paymentStatus || item.status || '')}</span></td><td>{item.status === 'PENDING_PAYMENT' ? <button className="primary-button" disabled={approvalBusyId === item.id} onClick={() => void approveRegistration(item)}>{approvalBusyId === item.id ? 'जाँच…' : 'भुगतान सत्यापित कर Activate'}</button> : <span className="status-pill pill-active">LIVE / VERIFIED</span>}</td></tr>)}</tbody></table></div>}</section></>}
+        {section === 'subscriptions' && <><section className="panel directory-panel">
+          <div className="panel-heading"><div><h3>सब्सक्रिप्शन प्लान सेटिंग</h3><p>फीस और वैधता आप तय करें। केवल सक्रिय प्लान नए रजिस्ट्रेशन में दिखेंगे।</p></div><button type="button" className="outline-button" onClick={() => setPlanForm({ id: '', name: '', price: '300', durationDays: '30', description: '', active: true })}>नया प्लान</button></div>
+          <form className="qr-admin-form" onSubmit={saveSubscriptionPlan}>
+            <label>प्लान का नाम *<input required maxLength={80} value={planForm.name} onChange={e => setPlanForm({...planForm, name:e.target.value})} placeholder="जैसे Basic, Standard, Premium"/></label>
+            <div className="form-two-col"><label>फीस (₹) *<input required type="number" min="1" step="1" value={planForm.price} onChange={e => setPlanForm({...planForm, price:e.target.value})}/></label><label>वैधता (दिन) *<input required type="number" min="1" max="3650" step="1" value={planForm.durationDays} onChange={e => setPlanForm({...planForm, durationDays:e.target.value})}/></label></div>
+            <label>प्लान की जानकारी<textarea rows={2} maxLength={500} value={planForm.description} onChange={e => setPlanForm({...planForm, description:e.target.value})} placeholder="इस प्लान में क्या सुविधाएँ मिलेंगी?"/></label>
+            <label><input type="checkbox" checked={planForm.active} onChange={e => setPlanForm({...planForm, active:e.target.checked})}/> नए NGO रजिस्ट्रेशन के लिए सक्रिय</label>
+            {planMessage && <p role="status" className="qr-save-message">{planMessage}</p>}
+            <div className="modal-actions"><button className="primary-button" type="submit" disabled={planSaveBusy}>{planSaveBusy ? 'सेव हो रहा है…' : planForm.id ? 'प्लान अपडेट करें' : 'प्लान बनाएँ'}</button>{planForm.id && <button type="button" className="outline-button" onClick={() => setPlanForm({ id: '', name: '', price: '300', durationDays: '30', description: '', active: true })}>रद्द करें</button>}</div>
+          </form>
+          {subscriptionPlans.length === 0 ? <div className="empty-state">अभी कोई प्लान नहीं है। पहला प्लान बनाएँ।</div> : <div className="ngo-table-wrap"><table className="ngo-table"><thead><tr><th>प्लान</th><th>फीस</th><th>वैधता</th><th>स्थिति</th><th>कार्रवाई</th></tr></thead><tbody>{subscriptionPlans.map(plan => <tr key={plan.id}><td><strong>{plan.name}</strong><br/><span className="table-muted">{plan.description}</span></td><td>₹{plan.price.toLocaleString('en-IN')}</td><td>{plan.durationDays} दिन</td><td><span className={`status-pill ${plan.active ? 'pill-active' : 'pill-pending'}`}>{plan.active ? 'ACTIVE' : 'INACTIVE'}</span></td><td><button type="button" className="outline-button" onClick={() => setPlanForm({ id: plan.id, name: plan.name, price: String(plan.price), durationDays: String(plan.durationDays), description: plan.description, active: plan.active })}>बदलें</button> <button type="button" className="outline-button" onClick={() => void toggleSubscriptionPlan(plan)}>{plan.active ? 'बंद करें' : 'सक्रिय करें'}</button></td></tr>)}</tbody></table></div>}
+        </section><section className="panel directory-panel payment-qr-admin"><div className="panel-heading"><div><h3>UPI QR इमेज सेटिंग</h3><p>यह QR NGO रजिस्ट्रेशन फ़ॉर्म में सभी यूज़र को दिखेगा।</p></div></div><form onSubmit={savePaymentQr} className="qr-admin-form"><label>QR कोड इमेज अपलोड करें (JPG / PNG / WebP, अधिकतम 500 KB)<input type="file" accept="image/png,image/jpeg,image/webp" onChange={e => handleQrFile(e.target.files?.[0])}/></label>{adminQrImage && <img className="admin-qr-preview" src={adminQrImage} alt="UPI QR preview"/>}{qrSaveMessage && <p role="status" className="qr-save-message">{qrSaveMessage}</p>}<button className="primary-button" type="submit" disabled={qrSaveBusy || !adminQrImage}>{qrSaveBusy ? 'सेव हो रहा है…' : 'QR इमेज सेव करें'}</button></form></section><section className="panel directory-panel"><div className="panel-heading"><div><h3>NGO रजिस्ट्रेशन और भुगतान जाँच</h3><p>UTR को बैंक/UPI रिकॉर्ड से मिलाने के बाद ही Activate करें।</p></div><span className="status-pill pill-pending">{pendingRegistrations.filter(item => item.status === 'PENDING_PAYMENT').length} Pending</span></div>{registrationLoadError && <p role="alert">{registrationLoadError}</p>}{pendingRegistrations.length === 0 ? <div className="empty-state">अभी कोई रजिस्ट्रेशन नहीं मिला। Firebase में rules प्रकाशित करें और नए रजिस्ट्रेशन आने दें।</div> : <div className="ngo-table-wrap"><table className="ngo-table"><thead><tr><th>NGO</th><th>संपर्क</th><th>प्लान</th><th>UTR / स्थिति</th><th>कार्रवाई</th></tr></thead><tbody>{pendingRegistrations.map(item => <tr key={item.id}><td><strong>{String(item.name || 'नाम नहीं')}</strong><br/><span className="table-muted">{String(item.state || '')}</span></td><td>{String(item.contactName || '')}<br/><span className="table-muted">{String(item.email || '')} · {String(item.phone || '')}</span></td><td>{String(item.subscriptionPlan || '')}<br/><span className="table-muted">₹{Number(item.planPrice || 0).toLocaleString('en-IN')} / {Number(item.planDurationDays || 0)} दिन</span></td><td>{String(item.paymentReference || 'UTR नहीं दिया')}<br/><span className="table-muted">{String(item.paymentStatus || item.status || '')}</span></td><td>{item.status === 'PENDING_PAYMENT' ? <button className="primary-button" disabled={approvalBusyId === item.id} onClick={() => void approveRegistration(item)}>{approvalBusyId === item.id ? 'जाँच…' : 'भुगतान सत्यापित कर Activate'}</button> : <span className="status-pill pill-active">LIVE / VERIFIED</span>}</td></tr>)}</tbody></table></div>}</section></>}
         {section === 'overview' && <>
           {dashboardError && <div className="setup-banner" role="alert"><div className="setup-icon"><ShieldCheck size={20}/></div><div className="setup-copy"><strong>Firebase डेटा लोड नहीं हुआ</strong><p>{dashboardError}</p></div></div>}
           {dashboardLoading && <div className="empty-state">Firebase से असली डेटा लोड हो रहा है…</div>}
@@ -435,7 +514,7 @@ export default function App() {
         <footer className="page-footer"><span>© 2026 NGO Connect · {t.footer}</span><span><span className="footer-status"/> {dashboardLoading ? (language === 'hi' ? 'डेटा लोड हो रहा है' : 'Loading data') : dashboardError ? (language === 'hi' ? 'डेटा त्रुटि' : 'Data error') : (language === 'hi' ? 'Firebase से जुड़ा' : 'Connected to Firebase')}</span></footer>
       </div>
     </main>
-    {showRegistration && <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget) setShowRegistration(false); }}><section className="registration-modal" role="dialog" aria-modal="true" aria-labelledby="registration-title"><div className="modal-heading"><div><span className="modal-eyebrow">NGO CONNECT</span><h2 id="registration-title">{t.registerTitle}</h2><p>{t.registrationNote}</p></div><button className="icon-button" onClick={() => setShowRegistration(false)} aria-label={t.cancel}><X size={20}/></button></div><form onSubmit={submitRegistration}><label>{t.orgName} *<input required value={form.name} onChange={e => setForm({...form, name:e.target.value})} placeholder={language === 'hi' ? 'जैसे: उम्मीद फाउंडेशन' : 'e.g. Umeed Foundation'}/></label><div className="form-two-col"><label>{t.contactName} *<input required value={form.contact} onChange={e => setForm({...form, contact:e.target.value})} placeholder={language === 'hi' ? 'पूरा नाम' : 'Full name'}/></label><label>{t.phone} *<input required type="tel" value={form.phone} onChange={e => setForm({...form, phone:e.target.value})} placeholder="+91"/></label></div><label>{t.email}<input type="email" value={authUser?.email || form.email} readOnly /></label><label>{t.state}<select value={form.state} onChange={e => setForm({...form, state:e.target.value})}><option value="">{language === 'hi' ? 'राज्य चुनें' : 'Select state'}</option>{['Maharashtra','Uttar Pradesh','Madhya Pradesh','Gujarat','Karnataka','Rajasthan','Delhi','Other'].map(s => <option key={s}>{s}</option>)}</select></label><label>{t.mission}<textarea rows={3} value={form.mission} onChange={e => setForm({...form, mission:e.target.value})} placeholder={language === 'hi' ? 'आपकी संस्था किस क्षेत्र में काम करती है?' : 'What does your organization work on?'}/></label><div className="form-note"><ShieldCheck size={17}/><span>{t.registrationNote}</span></div><div className="modal-actions"><button type="button" className="outline-button" onClick={() => setShowRegistration(false)}>{t.cancel}</button><button type="submit" className="primary-button"><CheckCircle2 size={17}/>{t.submit}</button></div></form></section></div>}
+    {showRegistration && <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget) setShowRegistration(false); }}><section className="registration-modal" role="dialog" aria-modal="true" aria-labelledby="registration-title"><div className="modal-heading"><div><span className="modal-eyebrow">NGO CONNECT</span><h2 id="registration-title">{t.registerTitle}</h2><p>{t.registrationNote}</p></div><button className="icon-button" onClick={() => setShowRegistration(false)} aria-label={t.cancel}><X size={20}/></button></div><form onSubmit={submitRegistration}><label>{language === 'hi' ? 'सब्सक्रिप्शन प्लान' : 'Subscription plan'}<select required value={form.planId || subscriptionPlans.find(p => p.active)?.id || ''} onChange={e => setForm({...form, planId:e.target.value})}><option value="">{language === 'hi' ? 'प्लान चुनें' : 'Choose a plan'}</option>{subscriptionPlans.filter(p => p.active).map(plan => <option key={plan.id} value={plan.id}>{plan.name} — ₹{plan.price} / {plan.durationDays} दिन</option>)}</select></label><label>{t.orgName} *<input required value={form.name} onChange={e => setForm({...form, name:e.target.value})} placeholder={language === 'hi' ? 'जैसे: उम्मीद फाउंडेशन' : 'e.g. Umeed Foundation'}/></label><div className="form-two-col"><label>{t.contactName} *<input required value={form.contact} onChange={e => setForm({...form, contact:e.target.value})} placeholder={language === 'hi' ? 'पूरा नाम' : 'Full name'}/></label><label>{t.phone} *<input required type="tel" value={form.phone} onChange={e => setForm({...form, phone:e.target.value})} placeholder="+91"/></label></div><label>{t.email}<input type="email" value={authUser?.email || form.email} readOnly /></label><label>{t.state}<select value={form.state} onChange={e => setForm({...form, state:e.target.value})}><option value="">{language === 'hi' ? 'राज्य चुनें' : 'Select state'}</option>{['Maharashtra','Uttar Pradesh','Madhya Pradesh','Gujarat','Karnataka','Rajasthan','Delhi','Other'].map(s => <option key={s}>{s}</option>)}</select></label><label>{t.mission}<textarea rows={3} value={form.mission} onChange={e => setForm({...form, mission:e.target.value})} placeholder={language === 'hi' ? 'आपकी संस्था किस क्षेत्र में काम करती है?' : 'What does your organization work on?'}/></label><div className="form-note"><ShieldCheck size={17}/><span>{t.registrationNote}</span></div><div className="modal-actions"><button type="button" className="outline-button" onClick={() => setShowRegistration(false)}>{t.cancel}</button><button type="submit" className="primary-button" disabled={!subscriptionPlans.some(p => p.active)}><CheckCircle2 size={17}/>{t.submit}</button></div></form></section></div>}
     {toast && <div className="toast"><CheckCircle2 size={18}/>{toast}<button onClick={() => setToast('')} aria-label="Dismiss"><X size={16}/></button></div>}
   </div>;
 }
