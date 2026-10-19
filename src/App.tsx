@@ -159,6 +159,16 @@ function getYouTubeVideoId(raw: string): string | null {
 
 type HomepageVideoLink = { id: string; title: string; url: string; videoId: string };
 
+function isHomepageVideoLink(value: unknown): value is HomepageVideoLink {
+  if (!value || typeof value !== 'object') return false;
+  const row = value as Record<string, unknown>;
+  return typeof row.id === 'string'
+    && typeof row.title === 'string'
+    && typeof row.url === 'string'
+    && typeof row.videoId === 'string'
+    && /^[A-Za-z0-9_-]{11}$/.test(row.videoId);
+}
+
 function DynamicHomepageVideo({ language }: { language: Language }) {
   const [videos, setVideos] = useState<HomepageVideoLink[]>([]);
   useEffect(() => {
@@ -166,7 +176,7 @@ function DynamicHomepageVideo({ language }: { language: Language }) {
     getDocs(collection(db, 'homepageVideos')).then(snapshot => {
       if (!active) return;
       const rows = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
-      setVideos(rows.filter((row): row is HomepageVideoLink => Boolean(row && typeof row.id === 'string' && typeof row.title === 'string' && typeof row.url === 'string' && typeof row.videoId === 'string' && /^[A-Za-z0-9_-]{11}$/.test(row.videoId))).sort((a, b) => a.title.localeCompare(b.title)));
+      setVideos(rows.filter(isHomepageVideoLink).sort((a, b) => a.title.localeCompare(b.title)));
     }).catch(() => { if (active) setVideos([]); });
     return () => { active = false; };
   }, []);
@@ -267,7 +277,7 @@ export default function App() {
     getDocs(collection(db, 'homepageVideos')).then(snapshot => {
       if (!active) return;
       const rows = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
-      setHomepageVideoLinks(rows.filter((row): row is HomepageVideoLink => Boolean(row && typeof row.id === 'string' && typeof row.title === 'string' && typeof row.url === 'string' && typeof row.videoId === 'string' && /^[A-Za-z0-9_-]{11}$/.test(row.videoId))).sort((a, b) => a.title.localeCompare(b.title)));
+      setHomepageVideoLinks(rows.filter(isHomepageVideoLink).sort((a, b) => a.title.localeCompare(b.title)));
     }).catch(() => {
       if (active) setHomepageVideoMessage('वीडियो लिंक लोड नहीं हुए। Firestore Rules जाँचें।');
     });
