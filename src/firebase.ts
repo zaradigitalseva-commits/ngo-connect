@@ -1,7 +1,6 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
 
 // Public web-app configuration for the separate NGO Connect Firebase project.
 // Vercel environment variables may override these defaults.
@@ -19,4 +18,3 @@ export const firebaseConfigured = Boolean(config.apiKey && config.projectId && c
 const app = getApps().length ? getApps()[0] : initializeApp(config);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const storage = getStorage(app);
