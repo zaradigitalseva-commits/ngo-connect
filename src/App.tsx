@@ -107,6 +107,7 @@ function PublicNgoList({ language, setLanguage }: { language: Language; setLangu
 function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authError }: PublicHomeProps) {
   const hi = language === 'hi';
   const [showPublicRegistration, setShowPublicRegistration] = useState(false);
+  useEffect(() => { if (new URLSearchParams(window.location.search).get('register') === '1') setShowPublicRegistration(true); }, []);
   const [registrationBusy, setRegistrationBusy] = useState(false);
   const [registrationMessage, setRegistrationMessage] = useState('');
   const [paymentQrImage, setPaymentQrImage] = useState('');
