@@ -313,6 +313,17 @@ export default function App() {
         if (!String(data.paymentReference || '').trim() || String(data.paymentReference).trim().length < 4) {
           throw new Error('भुगतान UTR उपलब्ध नहीं है।');
         }
+        const planId = String(data.planId || '');
+        if (!planId) throw new Error('इस रजिस्ट्रेशन में प्लान ID नहीं है। इस पुराने रिकॉर्ड को मैन्युअली जाँचें।');
+        const planRef = doc(db, 'subscriptionPlans', planId);
+        const planSnap = await transaction.get(planRef);
+        if (!planSnap.exists()) throw new Error('चुना गया सब्सक्रिप्शन प्लान मौजूद नहीं है।');
+        const plan = planSnap.data();
+        const price = Number(plan.price);
+        const durationDays = Number(plan.durationDays);
+        if (!Number.isFinite(price) || price < 0 || !Number.isInteger(durationDays) || durationDays < 1) throw new Error('प्लान की फीस या अवधि सही नहीं है।');
+        const startedAt = Timestamp.now();
+        const expiresAt = Timestamp.fromMillis(startedAt.toMillis() + durationDays * 24 * 60 * 60 * 1000);
         const ngoRef = doc(collection(db, 'ngos'));
         transaction.set(ngoRef, {
           name: String(data.name || ''),
@@ -323,6 +334,13 @@ export default function App() {
           status: 'LIVE',
           ownerUid: String(data.ownerUid || ''),
           registrationId: registration.id,
+          subscriptionPlanId: planId,
+          subscriptionPlanName: String(plan.name || data.subscriptionPlan || ''),
+          subscriptionPrice: price,
+          subscriptionDurationDays: durationDays,
+          subscriptionStartedAt: startedAt,
+          subscriptionEndsAt: expiresAt,
+          subscriptionStatus: 'ACTIVE',
           memberFee: 0,
           adminWhatsApp: '',
           createdAt: serverTimestamp(),
@@ -330,6 +348,8 @@ export default function App() {
         transaction.update(registrationRef, {
           status: 'ACTIVE', paymentStatus: 'VERIFIED', activatedNgoId: ngoRef.id,
           verifiedBy: authUser?.email || '', verifiedAt: serverTimestamp(),
+          verifiedPlanPrice: price, verifiedPlanDurationDays: durationDays,
+          subscriptionStartedAt: startedAt, subscriptionEndsAt: expiresAt,
         });
         return ngoRef.id;
       });
