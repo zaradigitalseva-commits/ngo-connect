@@ -243,6 +243,18 @@ export default function App() {
     void loadDashboard();
     return () => { active = false; };
   }, [authUser]);
+  useEffect(() => {
+    if (!authUser || !isSuperAdmin(authUser)) return;
+    let active = true;
+    getDoc(doc(db, 'publicSettings', 'homepageVideo')).then(snapshot => {
+      if (!active || !snapshot.exists()) return;
+      setHomepageVideoUrl(String(snapshot.data().videoUrl || ''));
+      setHomepageVideoPath(String(snapshot.data().storagePath || ''));
+    }).catch(() => {
+      if (active) setHomepageVideoMessage('मौजूदा वीडियो लोड नहीं हुआ। Firestore Rules जाँचें।');
+    });
+    return () => { active = false; };
+  }, [authUser]);
   const savePaymentQr = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!authUser || !isSuperAdmin(authUser)) return;
