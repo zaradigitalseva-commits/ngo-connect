@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { GoogleAuthProvider, getRedirectResult, onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut, type User } from 'firebase/auth';
 import { Activity, ArrowUpRight, BadgeCheck, Bell, CalendarDays, CheckCircle2, ChevronDown, CircleHelp, ClipboardList, FileBadge, FileText, Globe2, HandCoins, HeartHandshake, LayoutDashboard, Leaf, LogOut, Menu, Plus, Search, ShieldCheck, Users, Wallet, X } from 'lucide-react';
-import { auth, db, firebaseConfigured, storage } from './firebase';
-import { deleteObject, getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage';
+import { auth, db, firebaseConfigured } from './firebase';
 import { MemberIDPortal, MemberVerifyPage, NgoAdminPortal } from './MemberIDPortal';
 import { NgoWorkspacePortal } from './NgoWorkspace';
 import { addDoc, collection, doc, getDoc, getDocs, query as firestoreQuery, serverTimestamp, setDoc, where, runTransaction } from 'firebase/firestore';
@@ -144,17 +143,35 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
   </div>;
 }
 
+function getYouTubeVideoId(raw: string): string | null {
+  try {
+    const url = new URL(raw.trim());
+    const host = url.hostname.toLowerCase().replace(/^www\./, '').replace(/^m\./, '');
+    let id = '';
+    if (host === 'youtu.be') id = url.pathname.split('/').filter(Boolean)[0] || '';
+    else if (host === 'youtube.com' || host === 'youtube-nocookie.com') {
+      if (url.pathname === '/watch') id = url.searchParams.get('v') || '';
+      else if (/^\/(shorts|embed|live)\//.test(url.pathname)) id = url.pathname.split('/')[2] || '';
+    }
+    return /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null;
+  } catch { return null; }
+}
+
+type HomepageVideoLink = { id: string; title: string; url: string; videoId: string };
+
 function DynamicHomepageVideo({ language }: { language: Language }) {
-  const [videoUrl, setVideoUrl] = useState('');
+  const [videos, setVideos] = useState<HomepageVideoLink[]>([]);
   useEffect(() => {
     let active = true;
     getDoc(doc(db, 'publicSettings', 'homepageVideo')).then(snapshot => {
-      if (active && snapshot.exists()) setVideoUrl(String(snapshot.data().videoUrl || ''));
-    }).catch(() => { if (active) setVideoUrl(''); });
+      if (!active || !snapshot.exists()) return;
+      const rows = snapshot.data().videos;
+      if (Array.isArray(rows)) setVideos(rows.filter((row): row is HomepageVideoLink => Boolean(row && typeof row.id === 'string' && typeof row.title === 'string' && typeof row.url === 'string' && typeof row.videoId === 'string' && /^[A-Za-z0-9_-]{11}$/.test(row.videoId))));
+    }).catch(() => { if (active) setVideos([]); });
     return () => { active = false; };
   }, []);
-  if (!videoUrl) return <div style={{width:'100%',maxWidth:'1200px',margin:'0 auto',aspectRatio:'16 / 9',display:'grid',placeItems:'center',borderRadius:'24px',background:'linear-gradient(135deg,#0f766e,#1e293b)',color:'#fff',padding:'24px',textAlign:'center'}}><div><HeartHandshake size={52}/><h2>{language === 'hi' ? 'NGO Connect — समाज सेवा का डिजिटल मंच' : 'NGO Connect — A digital platform for community service'}</h2><p>{language === 'hi' ? 'वीडियो जल्द उपलब्ध होगा।' : 'Video coming soon.'}</p></div></div>;
-  return <div style={{width:'100%',maxWidth:'1200px',margin:'0 auto',overflow:'hidden',borderRadius:'24px',background:'#101827',boxShadow:'0 18px 48px rgba(15, 23, 42, 0.2)'}}><video key={videoUrl} autoPlay muted loop playsInline preload="metadata" controls aria-label={language === 'hi' ? 'NGO Connect समाज सेवा वीडियो' : 'NGO Connect community service video'} style={{display:'block',width:'100%',aspectRatio:'16 / 9',objectFit:'cover'}}><source src={videoUrl} type="video/mp4"/>{language === 'hi' ? 'आपका ब्राउज़र वीडियो नहीं चला सकता।' : 'Your browser does not support video playback.'}</video></div>;
+  if (!videos.length) return <div style={{width:'100%',maxWidth:'1200px',margin:'0 auto',aspectRatio:'16 / 9',display:'grid',placeItems:'center',borderRadius:'24px',background:'linear-gradient(135deg,#0f766e,#1e293b)',color:'#fff',padding:'24px',textAlign:'center'}}><div><HeartHandshake size={52}/><h2>{language === 'hi' ? 'NGO Connect — समाज सेवा का डिजिटल मंच' : 'NGO Connect — A digital platform for community service'}</h2><p>{language === 'hi' ? 'वीडियो जल्द उपलब्ध होगा।' : 'Video coming soon.'}</p></div></div>;
+  return <div style={{width:'100%',maxWidth:'1200px',margin:'0 auto',display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,340px),1fr))',gap:'18px'}}>{videos.map(video => <article key={video.id} style={{overflow:'hidden',borderRadius:'18px',background:'#101827',boxShadow:'0 18px 48px rgba(15, 23, 42, 0.16)'}}><div style={{position:'relative',width:'100%',aspectRatio:'16 / 9'}}><iframe src={`https://www.youtube-nocookie.com/embed/${video.videoId}?autoplay=0&mute=1&playsinline=1&rel=0`} title={video.title} loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen style={{position:'absolute',inset:0,width:'100%',height:'100%',border:0}}/></div><h3 style={{margin:0,padding:'14px 16px',color:'#fff',fontSize:'1rem'}}>{video.title}</h3></article>)}</div>;
 }
 
 export default function App() {
@@ -180,8 +197,9 @@ export default function App() {
   const [adminQrImage, setAdminQrImage] = useState('');
   const [qrSaveBusy, setQrSaveBusy] = useState(false);
   const [qrSaveMessage, setQrSaveMessage] = useState('');
-  const [homepageVideoUrl, setHomepageVideoUrl] = useState('');
-  const [homepageVideoPath, setHomepageVideoPath] = useState('');
+  const [homepageVideoLinks, setHomepageVideoLinks] = useState<HomepageVideoLink[]>([]);
+  const [homepageVideoInput, setHomepageVideoInput] = useState('');
+  const [homepageVideoTitle, setHomepageVideoTitle] = useState('');
   const [homepageVideoBusy, setHomepageVideoBusy] = useState(false);
   const [homepageVideoMessage, setHomepageVideoMessage] = useState('');
   useEffect(() => {
@@ -248,10 +266,10 @@ export default function App() {
     let active = true;
     getDoc(doc(db, 'publicSettings', 'homepageVideo')).then(snapshot => {
       if (!active || !snapshot.exists()) return;
-      setHomepageVideoUrl(String(snapshot.data().videoUrl || ''));
-      setHomepageVideoPath(String(snapshot.data().storagePath || ''));
+      const rows = snapshot.data().videos;
+      if (Array.isArray(rows)) setHomepageVideoLinks(rows.filter((row): row is HomepageVideoLink => Boolean(row && typeof row.id === 'string' && typeof row.title === 'string' && typeof row.url === 'string' && typeof row.videoId === 'string' && /^[A-Za-z0-9_-]{11}$/.test(row.videoId))));
     }).catch(() => {
-      if (active) setHomepageVideoMessage('मौजूदा वीडियो लोड नहीं हुआ। Firestore Rules जाँचें।');
+      if (active) setHomepageVideoMessage('वीडियो लिंक लोड नहीं हुए। Firestore Rules जाँचें।');
     });
     return () => { active = false; };
   }, [authUser]);
@@ -278,42 +296,36 @@ export default function App() {
     reader.onerror = () => setQrSaveMessage('इमेज पढ़ी नहीं जा सकी। दूसरी इमेज चुनें।');
     reader.readAsDataURL(file);
   };
-  const saveHomepageVideo = async (file?: File) => {
-    if (!file) return;
-    if (!authUser || !isSuperAdmin(authUser)) { setHomepageVideoMessage('केवल Super Admin वीडियो अपलोड कर सकता है।'); return; }
-    if (file.type !== 'video/mp4') { setHomepageVideoMessage('कृपया MP4 वीडियो फ़ाइल चुनें।'); return; }
-    if (file.size > 100 * 1024 * 1024) { setHomepageVideoMessage('वीडियो 100 MB से छोटी रखें।'); return; }
-    setHomepageVideoBusy(true); setHomepageVideoMessage('वीडियो अपलोड हो रहा है…');
-    const objectPath = 'homepage-video/ngo-connect-home-' + Date.now() + '.mp4';
-    try {
-      const objectRef = storageRef(storage, objectPath);
-      await uploadBytes(objectRef, file, { contentType: 'video/mp4' });
-      const downloadUrl = await getDownloadURL(objectRef);
-      await setDoc(doc(db, 'publicSettings', 'homepageVideo'), {
-        videoUrl: downloadUrl, storagePath: objectPath, updatedAt: serverTimestamp(),
-        updatedBy: authUser.email || ''
-      });
-      setHomepageVideoUrl(downloadUrl);
-      setHomepageVideoPath(objectPath);
-      setHomepageVideoMessage('वीडियो सेव हो गया। Home Page पर नया वीडियो दिखेगा।');
-    } catch (error) {
-      setHomepageVideoMessage(error instanceof Error ? error.message : 'वीडियो अपलोड नहीं हुआ। Firebase Storage और Rules जाँचें।');
-    } finally { setHomepageVideoBusy(false); }
-  };
-  const removeHomepageVideo = async () => {
-    if (!authUser || !isSuperAdmin(authUser)) return;
-    if (!window.confirm('क्या Home Page से मौजूदा वीडियो हटाना चाहते हैं?')) return;
+  const saveHomepageVideoLinks = async (nextLinks: HomepageVideoLink[]) => {
+    if (!authUser || !isSuperAdmin(authUser)) { setHomepageVideoMessage('केवल Super Admin वीडियो लिंक बदल सकता है।'); return false; }
     setHomepageVideoBusy(true); setHomepageVideoMessage('');
     try {
-      if (homepageVideoPath) await deleteObject(storageRef(storage, homepageVideoPath)).catch(() => undefined);
       await setDoc(doc(db, 'publicSettings', 'homepageVideo'), {
-        videoUrl: '', storagePath: '', updatedAt: serverTimestamp(), updatedBy: authUser.email || ''
+        videos: nextLinks, updatedAt: serverTimestamp(), updatedBy: authUser.email || ''
       });
-      setHomepageVideoUrl(''); setHomepageVideoPath('');
-      setHomepageVideoMessage('Home Page वीडियो हटा दिया गया।');
+      setHomepageVideoLinks(nextLinks);
+      setHomepageVideoMessage('YouTube वीडियो लिंक सेव हो गए। Home Page अपडेट हो गया।');
+      return true;
     } catch (error) {
-      setHomepageVideoMessage(error instanceof Error ? error.message : 'वीडियो हटाया नहीं जा सका।');
+      setHomepageVideoMessage(error instanceof Error ? error.message : 'लिंक सेव नहीं हुए। Firestore Rules जाँचें।');
+      return false;
     } finally { setHomepageVideoBusy(false); }
+  };
+  const addHomepageVideoLink = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!authUser || !isSuperAdmin(authUser)) { setHomepageVideoMessage('केवल Super Admin वीडियो लिंक जोड़ सकता है।'); return; }
+    const url = homepageVideoInput.trim();
+    const videoId = getYouTubeVideoId(url);
+    if (!videoId) { setHomepageVideoMessage('सही YouTube वीडियो लिंक डालें (youtube.com/watch, youtu.be, Shorts या live)।'); return; }
+    if (homepageVideoLinks.some(video => video.videoId === videoId)) { setHomepageVideoMessage('यह वीडियो पहले से सूची में है।'); return; }
+    const title = homepageVideoTitle.trim() || 'NGO Connect वीडियो ' + (homepageVideoLinks.length + 1);
+    const next = [...homepageVideoLinks, { id: videoId, title: title.slice(0, 120), url, videoId }];
+    if (await saveHomepageVideoLinks(next)) { setHomepageVideoInput(''); setHomepageVideoTitle(''); }
+  };
+  const removeHomepageVideoLink = async (videoId: string) => {
+    if (!authUser || !isSuperAdmin(authUser)) return;
+    if (!window.confirm('क्या इस YouTube वीडियो को Home Page से हटाना चाहते हैं?')) return;
+    await saveHomepageVideoLinks(homepageVideoLinks.filter(video => video.videoId !== videoId));
   };
   const approveRegistration = async (registration: Record<string, unknown> & { id: string }) => {
     if (!registration.paymentReference || String(registration.paymentReference).trim().length < 4) {
@@ -468,7 +480,7 @@ export default function App() {
         <div className="eyebrow"><span className="eyebrow-dot"/>{language === 'hi' ? 'लाइव Firebase डेटा' : 'Live Firebase data'}<span className="eyebrow-line"/></div>
         <section className="welcome-row"><div><h1>{section === 'overview' ? t.welcome : t[pageTitle]}</h1><p>{section === 'overview' ? t.intro : t.activityText}</p></div><button className="primary-button" onClick={() => setShowRegistration(true)}><Plus size={18}/>{t.register}</button></section>
         {!firebaseConfigured && <div className="setup-banner"><div className="setup-icon"><ShieldCheck size={20}/></div><div className="setup-copy"><strong>{t.setup}</strong><p>{t.setupText}</p></div><a href="https://console.firebase.google.com/" target="_blank" rel="noreferrer">{t.seeSetup}<ArrowUpRight size={15}/></a></div>}
-        {section === 'homepageVideo' && <section className="panel directory-panel payment-qr-admin"><div className="panel-heading"><div><h3>Home Page वीडियो</h3><p>केवल Super Admin MP4 वीडियो अपलोड या बदल सकता है। अधिकतम 100 MB।</p></div></div><form className="qr-admin-form" onSubmit={e => e.preventDefault()}><label>नई वीडियो फ़ाइल चुनें (MP4)<input type="file" accept="video/mp4,.mp4" disabled={homepageVideoBusy} onChange={e => { void saveHomepageVideo(e.target.files?.[0]); e.currentTarget.value = ''; }}/></label>{homepageVideoUrl && <video src={homepageVideoUrl} controls muted playsInline style={{display:'block',width:'100%',maxWidth:'720px',aspectRatio:'16 / 9',objectFit:'contain',borderRadius:'16px',background:'#101827'}}/>}{homepageVideoMessage && <p role="status" className="qr-save-message">{homepageVideoMessage}</p>}<div style={{display:'flex',gap:'12px',flexWrap:'wrap'}}><button className="outline-button" type="button" onClick={() => window.open('/', '_blank', 'noopener,noreferrer')}>Home Page देखें</button><button className="outline-button" type="button" onClick={() => void removeHomepageVideo()} disabled={homepageVideoBusy || !homepageVideoUrl}>मौजूदा वीडियो हटाएँ</button></div></form></section>}
+        {section === 'homepageVideo' && <section className="panel directory-panel payment-qr-admin"><div className="panel-heading"><div><h3>Home Page YouTube वीडियो</h3><p>किसी भी संख्या में YouTube लिंक जोड़ें। वीडियो Firebase Storage पर अपलोड नहीं होंगे, इसलिए Storage billing की जरूरत नहीं है।</p></div></div><form className="qr-admin-form" onSubmit={addHomepageVideoLink}><label>YouTube वीडियो लिंक *<input type="url" required value={homepageVideoInput} onChange={e => setHomepageVideoInput(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." disabled={homepageVideoBusy}/></label><label>वीडियो का नाम (वैकल्पिक)<input type="text" maxLength={120} value={homepageVideoTitle} onChange={e => setHomepageVideoTitle(e.target.value)} placeholder="जैसे: NGO Connect परिचय" disabled={homepageVideoBusy}/></label><button className="primary-button" type="submit" disabled={homepageVideoBusy || !homepageVideoInput.trim()}>{homepageVideoBusy ? 'सेव हो रहा है…' : 'YouTube लिंक जोड़ें'}</button>{homepageVideoMessage && <p role="status" className="qr-save-message">{homepageVideoMessage}</p>}</form><div style={{display:'grid',gap:'14px',marginTop:'20px'}}><h4>होमपेज पर दिखने वाले वीडियो ({homepageVideoLinks.length})</h4>{homepageVideoLinks.length === 0 ? <div className="empty-state">अभी कोई YouTube वीडियो लिंक नहीं जोड़ा गया है।</div> : homepageVideoLinks.map((video,index) => <article key={video.id} style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:'12px',alignItems:'center',padding:'14px',border:'1px solid #e5e7eb',borderRadius:'14px'}}><div style={{minWidth:0}}><strong>{index+1}. {video.title}</strong><p style={{overflowWrap:'anywhere',margin:'6px 0'}}><a href={video.url} target="_blank" rel="noreferrer">{video.url}</a></p><div style={{position:'relative',width:'100%',maxWidth:'420px',aspectRatio:'16 / 9',marginTop:'10px'}}><iframe src={`https://www.youtube-nocookie.com/embed/${video.videoId}?mute=1&playsinline=1&rel=0`} title={video.title} loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen style={{position:'absolute',inset:0,width:'100%',height:'100%',border:0,borderRadius:'10px'}}/></div></div><button className="outline-button" type="button" onClick={() => void removeHomepageVideoLink(video.videoId)} disabled={homepageVideoBusy}>हटाएँ</button></article>)}</div><div style={{display:'flex',gap:'12px',flexWrap:'wrap',marginTop:'16px'}}><button className="outline-button" type="button" onClick={() => window.open('/', '_blank', 'noopener,noreferrer')}>Home Page देखें</button></div></section>}
         {section === 'subscriptions' && <><section className="panel directory-panel payment-qr-admin"><div className="panel-heading"><div><h3>UPI QR इमेज सेटिंग</h3><p>यह QR NGO रजिस्ट्रेशन फ़ॉर्म में सभी यूज़र को दिखेगा।</p></div></div><form onSubmit={savePaymentQr} className="qr-admin-form"><label>QR कोड इमेज अपलोड करें (JPG / PNG / WebP, अधिकतम 500 KB)<input type="file" accept="image/png,image/jpeg,image/webp" onChange={e => handleQrFile(e.target.files?.[0])}/></label>{adminQrImage && <img className="admin-qr-preview" src={adminQrImage} alt="UPI QR preview"/>}{qrSaveMessage && <p role="status" className="qr-save-message">{qrSaveMessage}</p>}<button className="primary-button" type="submit" disabled={qrSaveBusy || !adminQrImage}>{qrSaveBusy ? 'सेव हो रहा है…' : 'QR इमेज सेव करें'}</button></form></section><section className="panel directory-panel"><div className="panel-heading"><div><h3>NGO रजिस्ट्रेशन और भुगतान जाँच</h3><p>UTR को बैंक/UPI रिकॉर्ड से मिलाने के बाद ही Activate करें।</p></div><span className="status-pill pill-pending">{pendingRegistrations.filter(item => item.status === 'PENDING_PAYMENT').length} Pending</span></div>{registrationLoadError && <p role="alert">{registrationLoadError}</p>}{pendingRegistrations.length === 0 ? <div className="empty-state">अभी कोई रजिस्ट्रेशन नहीं मिला। Firebase में rules प्रकाशित करें और नए रजिस्ट्रेशन आने दें।</div> : <div className="ngo-table-wrap"><table className="ngo-table"><thead><tr><th>NGO</th><th>संपर्क</th><th>प्लान</th><th>UTR / स्थिति</th><th>कार्रवाई</th></tr></thead><tbody>{pendingRegistrations.map(item => <tr key={item.id}><td><strong>{String(item.name || 'नाम नहीं')}</strong><br/><span className="table-muted">{String(item.state || '')}</span></td><td>{String(item.contactName || '')}<br/><span className="table-muted">{String(item.email || '')} · {String(item.phone || '')}</span></td><td>{String(item.subscriptionPlan || '')}</td><td>{String(item.paymentReference || 'UTR नहीं दिया')}<br/><span className="table-muted">{String(item.paymentStatus || item.status || '')}</span></td><td>{item.status === 'PENDING_PAYMENT' ? <button className="primary-button" disabled={approvalBusyId === item.id} onClick={() => void approveRegistration(item)}>{approvalBusyId === item.id ? 'जाँच…' : 'भुगतान सत्यापित कर Activate'}</button> : <span className="status-pill pill-active">LIVE / VERIFIED</span>}</td></tr>)}</tbody></table></div>}</section></>}
         {section === 'overview' && <>
           {dashboardError && <div className="setup-banner" role="alert"><div className="setup-icon"><ShieldCheck size={20}/></div><div className="setup-copy"><strong>Firebase डेटा लोड नहीं हुआ</strong><p>{dashboardError}</p></div></div>}
