@@ -39,6 +39,7 @@ type PublicNgo = {
   name: string;
   type: string;
   city: string;
+  district: string;
   state: string;
   logo: string;
   mission: string;
@@ -54,8 +55,13 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
   const hi = language === 'hi';
   const [publicNgos, setPublicNgos] = useState<PublicNgo[]>([]);
   const [selectedDirectoryState, setSelectedDirectoryState] = useState('');
+  const [selectedDirectoryDistrict, setSelectedDirectoryDistrict] = useState('');
+  const [selectedDirectoryCategory, setSelectedDirectoryCategory] = useState('');
+  const [directorySearch, setDirectorySearch] = useState('');
   const [stateDropdownOpen, setStateDropdownOpen] = useState(false);
-  const filteredDirectoryNgos = selectedDirectoryState === '__ALL__' ? publicNgos : publicNgos.filter(ngo => selectedDirectoryState && normalizeState(ngo.state) === normalizeState(selectedDirectoryState));
+  const availableDistricts = [...new Set(publicNgos.filter(ngo => !selectedDirectoryState || selectedDirectoryState === '__ALL__' || normalizeState(ngo.state) === normalizeState(selectedDirectoryState)).map(ngo => ngo.district).filter(Boolean))].sort((a,b) => a.localeCompare(b));
+  const availableCategories = [...new Set(publicNgos.map(ngo => ngo.type).filter(Boolean))].sort((a,b) => a.localeCompare(b));
+  const filteredDirectoryNgos = publicNgos.filter(ngo => (!selectedDirectoryState || selectedDirectoryState === '__ALL__' || normalizeState(ngo.state) === normalizeState(selectedDirectoryState)) && (!selectedDirectoryDistrict || normalizeState(ngo.district) === normalizeState(selectedDirectoryDistrict)) && (!selectedDirectoryCategory || normalizeState(ngo.type) === normalizeState(selectedDirectoryCategory)) && (!directorySearch.trim() || [ngo.name, ngo.type, ngo.city, ngo.district, ngo.state, ngo.address].join(' ').toLocaleLowerCase().includes(directorySearch.trim().toLocaleLowerCase())));
   const [selectedNgo, setSelectedNgo] = useState<PublicNgo | null>(null);
   const [profileLoginRequired, setProfileLoginRequired] = useState(false);
   const [directoryLoading, setDirectoryLoading] = useState(true);
@@ -116,6 +122,7 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
             name: str('name', 'ngoName', 'organizationName', 'orgName') || (hi ? 'NGO का नाम उपलब्ध नहीं' : 'NGO name unavailable'),
             type: str('type', 'category', 'focusArea', 'mission') || (hi ? 'सामाजिक संस्था' : 'Social organization'),
             city: str('city', 'district', 'location'),
+            district: str('district', 'districtName', 'city'),
             state: str('state', 'stateName', 'province'),
             logo: str('logoUrl', 'logo', 'imageUrl', 'photoURL', 'photoUrl'),
             mission: str('description', 'mission', 'about', 'purpose'),
@@ -150,6 +157,13 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
           <button type="button" className="public-state-toggle" aria-expanded={stateDropdownOpen} aria-controls="public-state-options" onClick={() => setStateDropdownOpen(open => !open)}><span className="public-state-toggle-icon"><Globe2 size={22}/></span><span><strong>NGO LIST</strong><small>{hi ? 'राज्य चुनकर NGO की सूची देखें' : 'Choose a state to browse its NGOs'}</small></span><ChevronDown className={stateDropdownOpen ? 'state-chevron is-open' : 'state-chevron'} size={22}/></button>
           {stateDropdownOpen && <div className="public-state-options" id="public-state-options"><button type="button" className={selectedDirectoryState === '__ALL__' ? 'public-state-option selected' : 'public-state-option'} onClick={() => { setSelectedDirectoryState('__ALL__'); setStateDropdownOpen(false); }}>{hi ? 'सभी राज्य और केंद्र शासित प्रदेश' : 'All states and union territories'} <span>{publicNgos.length}</span></button>{INDIAN_STATES.map(state => { const count = publicNgos.filter(ngo => normalizeState(ngo.state) === normalizeState(state)).length; return <button type="button" key={state} className={selectedDirectoryState === state ? 'public-state-option selected' : 'public-state-option'} onClick={() => { setSelectedDirectoryState(state); setStateDropdownOpen(false); }}><span>{state}</span><span>{count}</span></button>; })}</div>}
         </div>
+        <div className="public-directory-filters">
+          <label><span>{hi ? 'जिला' : 'District'}</span><select value={selectedDirectoryDistrict} onChange={e => setSelectedDirectoryDistrict(e.target.value)}><option value="">{hi ? 'सभी जिले' : 'All districts'}</option>{availableDistricts.map(district => <option key={district} value={district}>{district}</option>)}</select></label>
+          <label><span>{hi ? 'NGO श्रेणी' : 'NGO category'}</span><select value={selectedDirectoryCategory} onChange={e => setSelectedDirectoryCategory(e.target.value)}><option value="">{hi ? 'सभी श्रेणियाँ' : 'All categories'}</option>{availableCategories.map(category => <option key={category} value={category}>{category}</option>)}</select></label>
+          <label className="public-directory-search"><span>{hi ? 'नाम / स्थान खोजें' : 'Search name / location'}</span><input value={directorySearch} onChange={e => setDirectorySearch(e.target.value)} placeholder={hi ? 'NGO का नाम, शहर या पता…' : 'NGO name, city or address…'} /></label>
+          <a className="public-official-directory-link" href="https://thenationaltrust.gov.in/content/repository_centers_list.php" target="_blank" rel="noreferrer">{hi ? 'सरकारी National Trust सूची खोलें ↗' : 'Open official National Trust directory ↗'}</a>
+        </div>
+        <p className="public-directory-source-note">{hi ? 'यहाँ NGO Connect के सक्रिय रिकॉर्ड दिखते हैं। सरकारी National Trust की सूची अलग है; दिए गए सरकारी पेज पर अभी “No record found” दिख रहा है, इसलिए बिना सत्यापित रिकॉर्ड के सरकारी NGO यहाँ नहीं जोड़े गए हैं।' : 'This list shows active NGO Connect records. The National Trust directory is separate; the supplied government page currently shows “No record found”, so unverified government records have not been added.'}</p>
         {directoryLoading ? <p className="public-directory-empty">{hi ? 'NGO सूची लोड हो रही है…' : 'Loading NGO directory…'}</p> : !selectedDirectoryState ? <p className="public-directory-empty">{hi ? 'NGO की सूची देखने के लिए ऊपर NGO LIST बटन दबाएँ और राज्य चुनें।' : 'Click NGO LIST above and choose a state to view its NGOs.'}</p> : filteredDirectoryNgos.length === 0 ? <p className="public-directory-empty">{hi ? (selectedDirectoryState === '__ALL__' ? 'अभी कोई सक्रिय NGO नहीं मिला।' : selectedDirectoryState + ' में अभी कोई सक्रिय NGO नहीं मिला।') : (selectedDirectoryState === '__ALL__' ? 'No active NGOs found in the directory yet.' : 'No active NGOs found in ' + selectedDirectoryState + ' yet.')}</p> : <div className="public-ngo-grid">{filteredDirectoryNgos.map(ngo => <button type="button" className="public-ngo-card" key={ngo.id} onClick={() => { setSelectedNgo(ngo); setProfileLoginRequired(!authUser); }}><div className="public-ngo-logo">{ngo.logo ? <img src={ngo.logo} alt="" /> : <HeartHandshake size={28}/>}</div><h3>{ngo.name}</h3><p>{ngo.type}</p><span>{[ngo.city, ngo.state].filter(Boolean).join(', ') || (hi ? 'स्थान उपलब्ध नहीं' : 'Location not listed')}</span><strong>{hi ? 'प्रोफ़ाइल देखें' : 'View profile'} <ArrowUpRight size={15}/></strong></button>)}</div>}
       </section>
       <section className="public-features" id="features"><div className="public-section-heading"><span>{hi ? 'एक ही जगह सब कुछ' : 'EVERYTHING IN ONE PLACE'}</span><h2>{hi ? 'समाज सेवा को आसान और व्यवस्थित बनाएँ' : 'Make community work simpler and organized'}</h2></div><div className="public-feature-grid"><article><div className="public-feature-icon"><HeartHandshake size={24}/></div><h3>{hi ? 'NGO प्रोफ़ाइल' : 'NGO profiles'}</h3><p>{hi ? 'संस्था की पहचान, उद्देश्य और सार्वजनिक जानकारी दिखाने के लिए।' : 'Share an organization’s mission and public information.'}</p></article><article><div className="public-feature-icon"><Users size={24}/></div><h3>{hi ? 'सदस्य और स्वयंसेवक' : 'Members & volunteers'}</h3><p>{hi ? 'टीम और स्वयंसेवकों के काम को व्यवस्थित करने की सुविधा।' : 'Organize teams and volunteer activity.'}</p></article><article><div className="public-feature-icon"><HandCoins size={24}/></div><h3>{hi ? 'दान और खर्च' : 'Donations & expenses'}</h3><p>{hi ? 'दान और खर्च का रिकॉर्ड रखने के लिए नियोजित सुविधा।' : 'Planned tools to keep donation and expense records.'}</p></article><article><div className="public-feature-icon"><CalendarDays size={24}/></div><h3>{hi ? 'कार्यक्रम और रिपोर्ट' : 'Events & reports'}</h3><p>{hi ? 'कार्यक्रम, दस्तावेज़, प्रमाणपत्र और रिपोर्ट के लिए।' : 'Tools for events, documents, certificates and reports.'}</p></article></div></section>
