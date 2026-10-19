@@ -120,3 +120,20 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
 .ngo-workspace-record-actions{display:flex;gap:4px;flex-shrink:0}.ngo-workspace-record-actions button{display:grid;place-items:center}
 @media(max-width:900px){.ngo-workspace-grid{grid-template-columns:1fr}.ngo-workspace{padding:0 12px 30px}.ngo-workspace-tabs button{flex:1 1 160px;justify-content:center}}
 @media(max-width:520px){.ngo-workspace-summary article{flex:1;min-width:125px;padding:13px}.ngo-workspace-tabs button{flex-basis:100%;justify-content:flex-start}.ngo-workspace-record{gap:8px}.ngo-workspace-record-actions{flex-direction:column}}
+
+
+/* Public state-wise NGO directory: colorful 3D button and state dropdown */
+.public-state-directory{position:relative;max-width:620px;margin:28px auto 8px;z-index:3}
+.public-state-toggle{width:100%;display:flex;align-items:center;gap:14px;text-align:left;padding:17px 20px;border:1px solid rgba(255,255,255,.72);border-radius:20px;background:linear-gradient(135deg,#0f766e 0%,#2563eb 52%,#7c3aed 100%);color:#fff;cursor:pointer;font:inherit;box-shadow:0 8px 0 #153d86,0 14px 28px rgba(37,99,235,.25),inset 0 1px 0 rgba(255,255,255,.35);transform:translateY(0);transition:transform .18s ease,box-shadow .18s ease}
+.public-state-toggle:hover,.public-state-toggle:focus-visible{transform:translateY(-3px);box-shadow:0 11px 0 #153d86,0 20px 34px rgba(37,99,235,.3),inset 0 1px 0 rgba(255,255,255,.4);outline:3px solid #bfdbfe;outline-offset:3px}
+.public-state-toggle:active{transform:translateY(4px);box-shadow:0 3px 0 #153d86,0 7px 15px rgba(37,99,235,.2)}
+.public-state-toggle-icon{width:48px;height:48px;flex:0 0 48px;display:grid;place-items:center;border-radius:15px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.25);box-shadow:inset 0 2px 5px rgba(255,255,255,.12)}
+.public-state-toggle>span:nth-child(2){display:grid;gap:3px;flex:1;min-width:0}
+.public-state-toggle strong{font-size:1.08rem;letter-spacing:1.5px;font-weight:900}
+.public-state-toggle small{font-size:.84rem;font-weight:500;color:#e0f2fe}
+.state-chevron{transition:transform .2s ease;flex:0 0 auto}.state-chevron.is-open{transform:rotate(180deg)}
+.public-state-options{position:absolute;top:calc(100% + 12px);left:0;right:0;max-height:340px;overflow:auto;padding:8px;border:1px solid #dce5f0;border-radius:18px;background:#fff;box-shadow:0 24px 55px rgba(15,23,42,.22);z-index:20}
+.public-state-option{width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;padding:11px 13px;border:0;border-radius:10px;background:#fff;color:#20334b;font:inherit;cursor:pointer;transition:background .15s ease,color .15s ease}
+.public-state-option:hover,.public-state-option:focus-visible,.public-state-option.selected{background:linear-gradient(90deg,#e0f2fe,#ecfdf5);color:#075e57;outline:none}
+.public-state-option>span:last-child{min-width:28px;text-align:center;padding:3px 8px;border-radius:999px;background:#eef2ff;color:#4f46e5;font-size:.78rem;font-weight:800}
+@media(max-width:640px){.public-state-directory{margin:22px auto 8px}.public-state-toggle{padding:14px;border-radius:17px;gap:11px}.public-state-toggle-icon{width:42px;height:42px;flex-basis:42px}.public-state-toggle small{font-size:.75rem}.public-state-options{max-height:55vh}}
