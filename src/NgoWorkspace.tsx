@@ -72,11 +72,12 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
   }, [kind, hi]);
 
   const loadNgos = async () => {
-    // Super Admin can switch between all NGOs; owners are restricted to their own NGO records.
-    const snap = isPlatformAdmin(authUser)
-      ? await getDocs(collection(db, 'ngos'))
-      : await getDocs(query(collection(db, 'ngos'), where('ownerUid', '==', authUser.uid)));
-    const list = snap.docs.map(d => ({ id: d.id, name: String(d.data().name || d.data().ngoName || 'NGO'), status: String(d.data().status || '') }));
+    // Each signed-in account can access only NGOs explicitly linked to its own UID.
+    // Cross-NGO administration stays in the platform dashboard.
+    const snap = await getDocs(query(collection(db, 'ngos'), where('ownerUid', '==', authUser.uid)));
+    const list = snap.docs
+      .map(d => ({ id: d.id, name: String(d.data().name || d.data().ngoName || 'NGO'), status: String(d.data().status || '').toUpperCase() }))
+      .filter(n => ['LIVE', 'ACTIVE', 'APPROVED'].includes(n.status));
     setNgos(list);
     setNgoId(current => list.some(n => n.id === current) ? current : list[0]?.id || '');
     setLoading(false);
