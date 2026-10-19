@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowUpRight, ExternalLink, FileText, Search } from 'lucide-react';
+import { ArrowUpRight, ExternalLink, Search } from 'lucide-react';
 
 type RecordItem = { id: number; state: string; district: string; name: string; address: string; contact: string; email: string; phone: string; schemes: string; report: string; coordinates: string; category: 'NGO' | 'LLC' | 'SNAC' };
 const records: RecordItem[] = [
