@@ -129,7 +129,6 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
       <div className="public-actions"><button className="language-button" onClick={() => setLanguage(hi ? 'en' : 'hi')}>{hi ? 'English' : 'हिन्दी'}</button><button className="outline-button" onClick={() => { setRegistrationMessage(''); setShowPublicRegistration(true); }}>{hi ? 'NGO रजिस्टर करें' : 'Register NGO'}</button>{authUser ? <div className="public-user"><span>{authUser.email}</span><button className="outline-button" onClick={onLogout}>{hi ? 'लॉगआउट' : 'Sign out'}</button></div> : <button className="primary-button" onClick={onLogin} disabled={!firebaseConfigured}><Globe2 size={17}/>{hi ? 'Google से लॉगिन' : 'Sign in with Google'}</button>}</div>
     </header>
     <main>
-      <section className="public-hero" id="about" style={{display:"block", padding:"clamp(1rem, 3vw, 2rem)"}}><div className="public-hero-video-wrap" style={{width:"100%", maxWidth:"1200px", margin:"0 auto", overflow:"hidden", borderRadius:"24px", background:"#101827", boxShadow:"0 18px 48px rgba(15, 23, 42, 0.2)"}}><DynamicHomepageVideo language={language} /></div></section>
       <section className="public-directory" id="ngos">
         <div className="public-section-heading"><span>{hi ? 'हमारे साथ जुड़ी संस्थाएँ' : 'ORGANIZATIONS ON NGO CONNECT'}</span><h2>{hi ? 'सभी सक्रिय NGOs' : 'Explore active NGOs'}</h2><p>{hi ? 'हर संस्था का कार्ड देखें। पूरा सार्वजनिक प्रोफ़ाइल देखने के लिए Google लॉगिन ज़रूरी है।' : 'Browse NGO cards. Sign in with Google to view a complete public profile.'}</p></div>
         {directoryLoading ? <p className="public-directory-empty">{hi ? 'NGO सूची लोड हो रही है…' : 'Loading NGO directory…'}</p> : publicNgos.length === 0 ? <p className="public-directory-empty">{hi ? 'अभी कोई स्वीकृत NGO सूची में नहीं है।' : 'No approved NGOs are listed yet.'}</p> : <div className="public-ngo-grid">{publicNgos.map(ngo => <button type="button" className="public-ngo-card" key={ngo.id} onClick={() => { setSelectedNgo(ngo); setProfileLoginRequired(!authUser); }}><div className="public-ngo-logo">{ngo.logo ? <img src={ngo.logo} alt="" /> : <HeartHandshake size={28}/>}</div><h3>{ngo.name}</h3><p>{ngo.type}</p><span>{ngo.city || (hi ? 'स्थान उपलब्ध नहीं' : 'Location not listed')}</span><strong>{hi ? 'प्रोफ़ाइल देखें' : 'View profile'} <ArrowUpRight size={15}/></strong></button>)}</div>}
@@ -169,20 +168,6 @@ function isHomepageVideoLink(value: unknown): value is HomepageVideoLink {
     && /^[A-Za-z0-9_-]{11}$/.test(row.videoId);
 }
 
-function DynamicHomepageVideo({ language }: { language: Language }) {
-  const [videos, setVideos] = useState<HomepageVideoLink[]>([]);
-  useEffect(() => {
-    let active = true;
-    getDocs(collection(db, 'homepageVideos')).then(snapshot => {
-      if (!active) return;
-      const rows = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
-      setVideos(rows.filter(isHomepageVideoLink).sort((a, b) => a.title.localeCompare(b.title)));
-    }).catch(() => { if (active) setVideos([]); });
-    return () => { active = false; };
-  }, []);
-  if (!videos.length) return <div style={{width:'100%',maxWidth:'1200px',margin:'0 auto',aspectRatio:'16 / 9',display:'grid',placeItems:'center',borderRadius:'24px',background:'linear-gradient(135deg,#0f766e,#1e293b)',color:'#fff',padding:'24px',textAlign:'center'}}><div><HeartHandshake size={52}/><h2>{language === 'hi' ? 'NGO Connect — समाज सेवा का डिजिटल मंच' : 'NGO Connect — A digital platform for community service'}</h2><p>{language === 'hi' ? 'वीडियो जल्द उपलब्ध होगा।' : 'Video coming soon.'}</p></div></div>;
-  return <div style={{width:'100%',maxWidth:'1200px',margin:'0 auto',display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,340px),1fr))',gap:'18px'}}>{videos.map((video, index) => <article key={video.id} style={{overflow:'hidden',borderRadius:'18px',background:'#101827',boxShadow:'0 18px 48px rgba(15, 23, 42, 0.16)'}}><div style={{position:'relative',width:'100%',aspectRatio:'16 / 9'}}><iframe src={`https://www.youtube-nocookie.com/embed/${video.videoId}?autoplay=${index === 0 ? 1 : 0}&mute=1&playsinline=1&rel=0`} title={video.title} loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen style={{position:'absolute',inset:0,width:'100%',height:'100%',border:0}}/></div><h3 style={{margin:0,padding:'14px 16px',color:'#fff',fontSize:'1rem'}}>{video.title}</h3></article>)}</div>;
-}
 
 export default function App() {
   const [language, setLanguage] = useState<Language>('hi');
