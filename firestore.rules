@@ -78,9 +78,9 @@ service cloud.firestore {
       allow update, delete: if isSuperAdmin();
     }
 
-    // Public homepage YouTube videos; only verified Super Admins may manage links.
+    // Private Super Admin YouTube video manager; visitors and regular users cannot read links.
     match /homepageVideos/{videoId} {
-      allow read: if true;
+      allow read: if isSuperAdmin();
       allow create, update: if isSuperAdmin()
         && request.resource.data.keys().hasOnly(['title', 'url', 'videoId', 'createdAt', 'updatedBy'])
         && request.resource.data.title is string
