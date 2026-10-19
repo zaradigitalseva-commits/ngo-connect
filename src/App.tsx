@@ -4,7 +4,7 @@ import { Activity, ArrowUpRight, BadgeCheck, Bell, CalendarDays, CheckCircle2, C
 import { auth, db, firebaseConfigured } from './firebase';
 import { MemberIDPortal, MemberVerifyPage, NgoAdminPortal } from './MemberIDPortal';
 import { NgoWorkspacePortal } from './NgoWorkspace';
-import { addDoc, collection, doc, getDoc, getDocs, query as firestoreQuery, serverTimestamp, setDoc, where, runTransaction } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query as firestoreQuery, serverTimestamp, setDoc, where, runTransaction } from 'firebase/firestore';
 
 const SUPER_ADMIN_EMAILS = ['ngogrant454@gmail.com', 'zaradigitalseva@gmail.com'];
 const isSuperAdmin = (user: User | null) => Boolean(user?.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase()));
@@ -163,10 +163,10 @@ function DynamicHomepageVideo({ language }: { language: Language }) {
   const [videos, setVideos] = useState<HomepageVideoLink[]>([]);
   useEffect(() => {
     let active = true;
-    getDoc(doc(db, 'publicSettings', 'homepageVideo')).then(snapshot => {
-      if (!active || !snapshot.exists()) return;
-      const rows = snapshot.data().videos;
-      if (Array.isArray(rows)) setVideos(rows.filter((row): row is HomepageVideoLink => Boolean(row && typeof row.id === 'string' && typeof row.title === 'string' && typeof row.url === 'string' && typeof row.videoId === 'string' && /^[A-Za-z0-9_-]{11}$/.test(row.videoId))));
+    getDocs(collection(db, 'homepageVideos')).then(snapshot => {
+      if (!active) return;
+      const rows = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+      setVideos(rows.filter((row): row is HomepageVideoLink => Boolean(row && typeof row.id === 'string' && typeof row.title === 'string' && typeof row.url === 'string' && typeof row.videoId === 'string' && /^[A-Za-z0-9_-]{11}$/.test(row.videoId))).sort((a, b) => a.title.localeCompare(b.title)));
     }).catch(() => { if (active) setVideos([]); });
     return () => { active = false; };
   }, []);
@@ -264,10 +264,10 @@ export default function App() {
   useEffect(() => {
     if (!authUser || !isSuperAdmin(authUser)) return;
     let active = true;
-    getDoc(doc(db, 'publicSettings', 'homepageVideo')).then(snapshot => {
-      if (!active || !snapshot.exists()) return;
-      const rows = snapshot.data().videos;
-      if (Array.isArray(rows)) setHomepageVideoLinks(rows.filter((row): row is HomepageVideoLink => Boolean(row && typeof row.id === 'string' && typeof row.title === 'string' && typeof row.url === 'string' && typeof row.videoId === 'string' && /^[A-Za-z0-9_-]{11}$/.test(row.videoId))));
+    getDocs(collection(db, 'homepageVideos')).then(snapshot => {
+      if (!active) return;
+      const rows = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+      setHomepageVideoLinks(rows.filter((row): row is HomepageVideoLink => Boolean(row && typeof row.id === 'string' && typeof row.title === 'string' && typeof row.url === 'string' && typeof row.videoId === 'string' && /^[A-Za-z0-9_-]{11}$/.test(row.videoId))).sort((a, b) => a.title.localeCompare(b.title)));
     }).catch(() => {
       if (active) setHomepageVideoMessage('वीडियो लिंक लोड नहीं हुए। Firestore Rules जाँचें।');
     });
@@ -296,21 +296,6 @@ export default function App() {
     reader.onerror = () => setQrSaveMessage('इमेज पढ़ी नहीं जा सकी। दूसरी इमेज चुनें।');
     reader.readAsDataURL(file);
   };
-  const saveHomepageVideoLinks = async (nextLinks: HomepageVideoLink[]) => {
-    if (!authUser || !isSuperAdmin(authUser)) { setHomepageVideoMessage('केवल Super Admin वीडियो लिंक बदल सकता है।'); return false; }
-    setHomepageVideoBusy(true); setHomepageVideoMessage('');
-    try {
-      await setDoc(doc(db, 'publicSettings', 'homepageVideo'), {
-        videos: nextLinks, updatedAt: serverTimestamp(), updatedBy: authUser.email || ''
-      });
-      setHomepageVideoLinks(nextLinks);
-      setHomepageVideoMessage('YouTube वीडियो लिंक सेव हो गए। Home Page अपडेट हो गया।');
-      return true;
-    } catch (error) {
-      setHomepageVideoMessage(error instanceof Error ? error.message : 'लिंक सेव नहीं हुए। Firestore Rules जाँचें।');
-      return false;
-    } finally { setHomepageVideoBusy(false); }
-  };
   const addHomepageVideoLink = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!authUser || !isSuperAdmin(authUser)) { setHomepageVideoMessage('केवल Super Admin वीडियो लिंक जोड़ सकता है।'); return; }
@@ -318,14 +303,30 @@ export default function App() {
     const videoId = getYouTubeVideoId(url);
     if (!videoId) { setHomepageVideoMessage('सही YouTube वीडियो लिंक डालें (youtube.com/watch, youtu.be, Shorts या live)।'); return; }
     if (homepageVideoLinks.some(video => video.videoId === videoId)) { setHomepageVideoMessage('यह वीडियो पहले से सूची में है।'); return; }
-    const title = homepageVideoTitle.trim() || 'NGO Connect वीडियो ' + (homepageVideoLinks.length + 1);
-    const next = [...homepageVideoLinks, { id: videoId, title: title.slice(0, 120), url, videoId }];
-    if (await saveHomepageVideoLinks(next)) { setHomepageVideoInput(''); setHomepageVideoTitle(''); }
+    const title = (homepageVideoTitle.trim() || 'NGO Connect वीडियो ' + (homepageVideoLinks.length + 1)).slice(0, 120);
+    setHomepageVideoBusy(true); setHomepageVideoMessage('');
+    try {
+      await setDoc(doc(db, 'homepageVideos', videoId), {
+        title, url, videoId, createdAt: serverTimestamp(), updatedBy: authUser.email || ''
+      });
+      setHomepageVideoLinks([...homepageVideoLinks, { id: videoId, title, url, videoId }].sort((a, b) => a.title.localeCompare(b.title)));
+      setHomepageVideoInput(''); setHomepageVideoTitle('');
+      setHomepageVideoMessage('YouTube वीडियो लिंक सेव हो गया। Home Page अपडेट हो गया।');
+    } catch (error) {
+      setHomepageVideoMessage(error instanceof Error ? error.message : 'लिंक सेव नहीं हुआ। Firestore Rules जाँचें।');
+    } finally { setHomepageVideoBusy(false); }
   };
   const removeHomepageVideoLink = async (videoId: string) => {
     if (!authUser || !isSuperAdmin(authUser)) return;
     if (!window.confirm('क्या इस YouTube वीडियो को Home Page से हटाना चाहते हैं?')) return;
-    await saveHomepageVideoLinks(homepageVideoLinks.filter(video => video.videoId !== videoId));
+    setHomepageVideoBusy(true); setHomepageVideoMessage('');
+    try {
+      await deleteDoc(doc(db, 'homepageVideos', videoId));
+      setHomepageVideoLinks(homepageVideoLinks.filter(video => video.videoId !== videoId));
+      setHomepageVideoMessage('YouTube वीडियो Home Page से हटा दिया गया।');
+    } catch (error) {
+      setHomepageVideoMessage(error instanceof Error ? error.message : 'वीडियो हटाया नहीं जा सका। Firestore Rules जाँचें।');
+    } finally { setHomepageVideoBusy(false); }
   };
   const approveRegistration = async (registration: Record<string, unknown> & { id: string }) => {
     if (!registration.paymentReference || String(registration.paymentReference).trim().length < 4) {
