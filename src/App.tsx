@@ -50,6 +50,8 @@ type PublicNgo = {
 function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authError }: PublicHomeProps) {
   const hi = language === 'hi';
   const [publicNgos, setPublicNgos] = useState<PublicNgo[]>([]);
+  const [publicVideos, setPublicVideos] = useState<Array<{ id: string; title: string; videoId: string }>>([]);
+  const [activePublicVideoId, setActivePublicVideoId] = useState('');
   const [selectedNgo, setSelectedNgo] = useState<PublicNgo | null>(null);
   const [profileLoginRequired, setProfileLoginRequired] = useState(false);
   const [directoryLoading, setDirectoryLoading] = useState(true);
@@ -58,6 +60,22 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
   const [registrationMessage, setRegistrationMessage] = useState('');
   const [paymentQrImage, setPaymentQrImage] = useState('');
   const [publicForm, setPublicForm] = useState({ name: '', contact: '', phone: '', state: '', mission: '', plan: '₹300 / 28 days', paymentReference: '' });
+  useEffect(() => {
+    let active = true;
+    getDocs(collection(db, 'homepageVideos')).then(snapshot => {
+      if (!active) return;
+      const rows = snapshot.docs.map(item => {
+        const data = item.data();
+        return { id: item.id, title: typeof data.title === 'string' ? data.title : 'NGO Connect वीडियो', videoId: typeof data.videoId === 'string' ? data.videoId : item.id };
+      }).filter(video => /^[A-Za-z0-9_-]{11}$/.test(video.videoId));
+      rows.sort((a, b) => a.title.localeCompare(b.title));
+      setPublicVideos(rows);
+      setActivePublicVideoId(current => rows.some(video => video.videoId === current) ? current : (rows[0]?.videoId || ''));
+    }).catch(error => console.error('Homepage videos could not be loaded', error));
+    return () => { active = false; };
+  }, []);
+  const activePublicVideo = publicVideos.find(video => video.videoId === activePublicVideoId) || publicVideos[0];
+
   const submitPublicRegistration = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!authUser || !authUser.email) { onLogin(); return; }
@@ -129,6 +147,24 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
       <div className="public-actions"><button className="language-button" onClick={() => setLanguage(hi ? 'en' : 'hi')}>{hi ? 'English' : 'हिन्दी'}</button><button className="outline-button" onClick={() => { setRegistrationMessage(''); setShowPublicRegistration(true); }}>{hi ? 'NGO रजिस्टर करें' : 'Register NGO'}</button>{authUser ? <div className="public-user"><span>{authUser.email}</span><button className="outline-button" onClick={onLogout}>{hi ? 'लॉगआउट' : 'Sign out'}</button></div> : <button className="primary-button" onClick={onLogin} disabled={!firebaseConfigured}><Globe2 size={17}/>{hi ? 'Google से लॉगिन' : 'Sign in with Google'}</button>}</div>
     </header>
     <main>
+      {publicVideos.length > 0 && activePublicVideo && <section id="homepage-videos" style={{ padding: '36px 20px', background: 'linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%)' }}>
+        <div style={{ maxWidth: 1080, margin: '0 auto' }}>
+          <div className="public-section-heading"><span>{hi ? 'NGO CONNECT वीडियो' : 'NGO CONNECT VIDEOS'}</span><h2>{hi ? 'हमारे वीडियो देखें' : 'Watch our videos'}</h2><p>{hi ? 'NGO Connect की जानकारी और अपडेट वीडियो में देखें।' : 'Learn about NGO Connect through our latest videos.'}</p></div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 20, alignItems: 'start' }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', overflow: 'hidden', borderRadius: 18, background: '#111827', boxShadow: '0 18px 45px rgba(15,23,42,.18)' }}>
+                <iframe key={activePublicVideo.videoId} src={`https://www.youtube-nocookie.com/embed/${activePublicVideo.videoId}?autoplay=1&mute=1&playsinline=1&loop=1&playlist=${activePublicVideo.videoId}&rel=0`} title={activePublicVideo.title} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }} />
+              </div>
+              <h3 style={{ margin: '14px 0 0', color: '#172554' }}>{activePublicVideo.title}</h3>
+              <p style={{ marginTop: 6, color: '#475569', fontSize: 13 }}>{hi ? 'वीडियो अपने-आप शुरू होगा (आवाज़ बंद)। आवाज़ के लिए वीडियो पर क्लिक करें।' : 'Video starts automatically muted. Click the player to turn sound on.'}</p>
+            </div>
+            {publicVideos.length > 1 && <div style={{ display: 'grid', gap: 10, alignContent: 'start' }}>
+              <h3 style={{ margin: '0 0 4px', color: '#172554' }}>{hi ? 'और वीडियो' : 'More videos'}</h3>
+              {publicVideos.map(video => <button key={video.id} type="button" onClick={() => setActivePublicVideoId(video.videoId)} aria-pressed={activePublicVideo.videoId === video.videoId} style={{ textAlign: 'left', padding: '13px 15px', borderRadius: 12, border: activePublicVideo.videoId === video.videoId ? '2px solid #4f46e5' : '1px solid #dbeafe', background: activePublicVideo.videoId === video.videoId ? '#eef2ff' : '#fff', color: '#1e293b', fontWeight: 600, cursor: 'pointer' }}>{video.title}</button>)}
+            </div>}
+          </div>
+        </div>
+      </section>}
       <section className="public-directory" id="ngos">
         <div className="public-section-heading"><span>{hi ? 'हमारे साथ जुड़ी संस्थाएँ' : 'ORGANIZATIONS ON NGO CONNECT'}</span><h2>{hi ? 'सभी सक्रिय NGOs' : 'Explore active NGOs'}</h2><p>{hi ? 'हर संस्था का कार्ड देखें। पूरा सार्वजनिक प्रोफ़ाइल देखने के लिए Google लॉगिन ज़रूरी है।' : 'Browse NGO cards. Sign in with Google to view a complete public profile.'}</p></div>
         {directoryLoading ? <p className="public-directory-empty">{hi ? 'NGO सूची लोड हो रही है…' : 'Loading NGO directory…'}</p> : publicNgos.length === 0 ? <p className="public-directory-empty">{hi ? 'अभी कोई स्वीकृत NGO सूची में नहीं है।' : 'No approved NGOs are listed yet.'}</p> : <div className="public-ngo-grid">{publicNgos.map(ngo => <button type="button" className="public-ngo-card" key={ngo.id} onClick={() => { setSelectedNgo(ngo); setProfileLoginRequired(!authUser); }}><div className="public-ngo-logo">{ngo.logo ? <img src={ngo.logo} alt="" /> : <HeartHandshake size={28}/>}</div><h3>{ngo.name}</h3><p>{ngo.type}</p><span>{ngo.city || (hi ? 'स्थान उपलब्ध नहीं' : 'Location not listed')}</span><strong>{hi ? 'प्रोफ़ाइल देखें' : 'View profile'} <ArrowUpRight size={15}/></strong></button>)}</div>}
