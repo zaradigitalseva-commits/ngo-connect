@@ -39,6 +39,7 @@ type PublicNgo = {
   name: string;
   type: string;
   city: string;
+  state: string;
   logo: string;
   mission: string;
   status: string;
@@ -47,9 +48,14 @@ type PublicNgo = {
   website: string;
   address: string;
 };
+const INDIAN_STATES = ['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Andaman and Nicobar Islands','Chandigarh','Dadra and Nagar Haveli and Daman and Diu','Delhi','Jammu and Kashmir','Ladakh','Lakshadweep','Puducherry'];
+const normalizeState = (value: string) => value.trim().toLocaleLowerCase().replace(/&/g, 'and').replace(/[^a-z]/g, '');
 function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authError }: PublicHomeProps) {
   const hi = language === 'hi';
   const [publicNgos, setPublicNgos] = useState<PublicNgo[]>([]);
+  const [selectedDirectoryState, setSelectedDirectoryState] = useState('');
+  const [stateDropdownOpen, setStateDropdownOpen] = useState(false);
+  const filteredDirectoryNgos = selectedDirectoryState === '__ALL__' ? publicNgos : publicNgos.filter(ngo => selectedDirectoryState && normalizeState(ngo.state) === normalizeState(selectedDirectoryState));
   const [selectedNgo, setSelectedNgo] = useState<PublicNgo | null>(null);
   const [profileLoginRequired, setProfileLoginRequired] = useState(false);
   const [directoryLoading, setDirectoryLoading] = useState(true);
@@ -109,7 +115,8 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
             id: doc.id,
             name: str('name', 'ngoName', 'organizationName', 'orgName') || (hi ? 'NGO का नाम उपलब्ध नहीं' : 'NGO name unavailable'),
             type: str('type', 'category', 'focusArea', 'mission') || (hi ? 'सामाजिक संस्था' : 'Social organization'),
-            city: str('city', 'district', 'location', 'state'),
+            city: str('city', 'district', 'location'),
+            state: str('state', 'stateName', 'province'),
             logo: str('logoUrl', 'logo', 'imageUrl', 'photoURL', 'photoUrl'),
             mission: str('description', 'mission', 'about', 'purpose'),
             status: str('status'),
