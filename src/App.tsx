@@ -34,30 +34,8 @@ type PublicHomeProps = {
   onLogout: () => void;
   authError: string;
 };
-type PublicNgo = {
-  id: string;
-  name: string;
-  type: string;
-  city: string;
-  district: string;
-  state: string;
-  logo: string;
-  mission: string;
-  status: string;
-  phone: string;
-  email: string;
-  website: string;
-  address: string;
-};
-const INDIAN_STATES = ['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Andaman and Nicobar Islands','Chandigarh','Dadra and Nagar Haveli and Daman and Diu','Delhi','Jammu and Kashmir','Ladakh','Lakshadweep','Puducherry'];
-const normalizeState = (value: string) => value.trim().toLocaleLowerCase().replace(/&/g, 'and').replace(/[^a-z]/g, '');
 function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authError }: PublicHomeProps) {
   const hi = language === 'hi';
-  const [publicNgos, setPublicNgos] = useState<PublicNgo[]>([]);
-  const filteredDirectoryNgos = publicNgos;
-  const [selectedNgo, setSelectedNgo] = useState<PublicNgo | null>(null);
-  const [profileLoginRequired, setProfileLoginRequired] = useState(false);
-  const [directoryLoading, setDirectoryLoading] = useState(true);
   const [showPublicRegistration, setShowPublicRegistration] = useState(false);
   const [registrationBusy, setRegistrationBusy] = useState(false);
   const [registrationMessage, setRegistrationMessage] = useState('');
@@ -97,43 +75,6 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
     getDoc(doc(db, 'publicSettings', 'payment')).then(snapshot => {
       if (active && snapshot.exists() && typeof snapshot.data().qrImage === 'string') setPaymentQrImage(snapshot.data().qrImage as string);
     }).catch(() => { if (active) setPaymentQrImage(''); });
-    const loadPublicNgos = async () => {
-      try {
-        const snapshot = await getDocs(firestoreQuery(
-          collection(db, 'ngos'),
-          where('status', 'in', ['LIVE', 'ACTIVE', 'APPROVED'])
-        ));
-        if (!active) return;
-        const records = snapshot.docs.map((doc) => {
-          const d = doc.data() as Record<string, unknown>;
-          const str = (...keys: string[]) => {
-            for (const key of keys) if (typeof d[key] === 'string' && d[key]) return d[key] as string;
-            return '';
-          };
-          return {
-            id: doc.id,
-            name: str('name', 'ngoName', 'organizationName', 'orgName') || (hi ? 'NGO का नाम उपलब्ध नहीं' : 'NGO name unavailable'),
-            type: str('type', 'category', 'focusArea', 'mission') || (hi ? 'सामाजिक संस्था' : 'Social organization'),
-            city: str('city', 'district', 'location'),
-            district: str('district', 'districtName', 'city'),
-            state: str('state', 'stateName', 'province'),
-            logo: str('logoUrl', 'logo', 'imageUrl', 'photoURL', 'photoUrl'),
-            mission: str('description', 'mission', 'about', 'purpose'),
-            status: str('status'),
-            phone: str('publicPhone', 'phone', 'contactPhone'),
-            email: str('publicEmail', 'email', 'contactEmail'),
-            website: str('website', 'websiteUrl'),
-            address: str('publicAddress', 'address', 'city', 'state'),
-          } satisfies PublicNgo;
-        });
-        setPublicNgos(records);
-      } catch {
-        if (active) setPublicNgos([]);
-      } finally {
-        if (active) setDirectoryLoading(false);
-      }
-    };
-    void loadPublicNgos();
     return () => { active = false; };
   }, [hi]);
   return <div className="public-site">
@@ -147,7 +88,6 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
       <section className="public-features" id="features"><div className="public-section-heading"><span>{hi ? 'एक ही जगह सब कुछ' : 'EVERYTHING IN ONE PLACE'}</span><h2>{hi ? 'समाज सेवा को आसान और व्यवस्थित बनाएँ' : 'Make community work simpler and organized'}</h2></div><div className="public-feature-grid"><article><div className="public-feature-icon"><HeartHandshake size={24}/></div><h3>{hi ? 'NGO प्रोफ़ाइल' : 'NGO profiles'}</h3><p>{hi ? 'संस्था की पहचान, उद्देश्य और सार्वजनिक जानकारी दिखाने के लिए।' : 'Share an organization’s mission and public information.'}</p></article><article><div className="public-feature-icon"><Users size={24}/></div><h3>{hi ? 'सदस्य और स्वयंसेवक' : 'Members & volunteers'}</h3><p>{hi ? 'टीम और स्वयंसेवकों के काम को व्यवस्थित करने की सुविधा।' : 'Organize teams and volunteer activity.'}</p></article><article><div className="public-feature-icon"><HandCoins size={24}/></div><h3>{hi ? 'दान और खर्च' : 'Donations & expenses'}</h3><p>{hi ? 'दान और खर्च का रिकॉर्ड रखने के लिए नियोजित सुविधा।' : 'Planned tools to keep donation and expense records.'}</p></article><article><div className="public-feature-icon"><CalendarDays size={24}/></div><h3>{hi ? 'कार्यक्रम और रिपोर्ट' : 'Events & reports'}</h3><p>{hi ? 'कार्यक्रम, दस्तावेज़, प्रमाणपत्र और रिपोर्ट के लिए।' : 'Tools for events, documents, certificates and reports.'}</p></article></div></section>
       <section className="public-cta" id="contact"><div><span>NGO CONNECT</span><h2>{hi ? 'बेहतर बदलाव के लिए साथ आएँ।' : 'Come together for a better impact.'}</h2><button className="primary-button" onClick={() => { setRegistrationMessage(''); setShowPublicRegistration(true); }}>{hi ? 'अपना NGO रजिस्टर करें' : 'Register your NGO'} <ArrowUpRight size={17}/></button></div></section>
       {showPublicRegistration && <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget && !registrationBusy) setShowPublicRegistration(false); }}><section className="registration-modal" role="dialog" aria-modal="true" aria-labelledby="public-registration-title"><div className="modal-heading"><div><span className="modal-eyebrow">NGO CONNECT</span><h2 id="public-registration-title">{hi ? 'NGO रजिस्ट्रेशन' : 'NGO registration'}</h2><p>{hi ? 'Google लॉगिन के बाद जानकारी भेजें। भुगतान सत्यापन और एडमिन मंज़ूरी तक NGO सक्रिय नहीं होगा।' : 'Sign in with Google and submit your details. Activation happens only after payment verification and admin approval.'}</p></div><button className="icon-button" onClick={() => setShowPublicRegistration(false)} aria-label={hi ? 'बंद करें' : 'Close'}><X size={20}/></button></div>{!authUser ? <div className="public-profile-gate"><p>{hi ? 'रजिस्ट्रेशन के लिए पहले Google से लॉगिन करें।' : 'Sign in with Google before registering.'}</p><button className="primary-button" onClick={onLogin} disabled={!firebaseConfigured}><Globe2 size={17}/>{hi ? 'Google से लॉगिन' : 'Sign in with Google'}</button></div> : <form onSubmit={submitPublicRegistration}><label>{hi ? 'NGO / संस्था का नाम' : 'NGO / organization name'} *<input required maxLength={120} value={publicForm.name} onChange={e => setPublicForm({...publicForm, name:e.target.value})}/></label><label>{hi ? 'संपर्क व्यक्ति' : 'Contact person'} *<input required maxLength={100} value={publicForm.contact} onChange={e => setPublicForm({...publicForm, contact:e.target.value})}/></label><label>{hi ? 'मोबाइल नंबर' : 'Phone number'} *<input required type="tel" maxLength={25} value={publicForm.phone} onChange={e => setPublicForm({...publicForm, phone:e.target.value})}/></label><label>{hi ? 'राज्य' : 'State'}<select value={publicForm.state} onChange={e => setPublicForm({...publicForm, state:e.target.value})}><option value="">{hi ? 'राज्य चुनें' : 'Select state'}</option>{['Maharashtra','Uttar Pradesh','Madhya Pradesh','Gujarat','Karnataka','Rajasthan','Delhi','Other'].map(s => <option key={s}>{s}</option>)}</select></label><label>{hi ? 'संस्था का उद्देश्य' : 'Mission / purpose'}<textarea rows={3} maxLength={1000} value={publicForm.mission} onChange={e => setPublicForm({...publicForm, mission:e.target.value})}/></label><label>{hi ? 'सब्सक्रिप्शन प्लान' : 'Subscription plan'}<select required value={publicForm.planId} onChange={e => setPublicForm({...publicForm, planId:e.target.value})}><option value="">{hi ? 'प्लान चुनें' : 'Choose a plan'}</option>{subscriptionPlans.map(plan => <option key={plan.id} value={plan.id}>{plan.name} — ₹{plan.price} / {plan.durationDays} {hi ? 'दिन' : 'days'}</option>)}</select>{subscriptionPlans.length === 0 && <small>{hi ? 'अभी कोई सक्रिय प्लान उपलब्ध नहीं है। एडमिन से संपर्क करें।' : 'No active plans are available. Contact the administrator.'}</small>}</label>{paymentQrImage && <div className="payment-qr-preview"><h3>{hi ? 'UPI से भुगतान करें' : 'Pay by UPI'}</h3><img src={paymentQrImage} alt={hi ? 'NGO Connect UPI QR कोड' : 'NGO Connect UPI QR code'} /><p>{hi ? 'QR स्कैन करके भुगतान करें, फिर नीचे UTR नंबर भरें।' : 'Scan this QR to pay, then enter the UTR below.'}</p></div>}<label>{hi ? 'भुगतान UTR / संदर्भ नंबर (यदि भुगतान कर दिया है)' : 'Payment UTR / reference (if already paid)'}<input maxLength={80} value={publicForm.paymentReference} onChange={e => setPublicForm({...publicForm, paymentReference:e.target.value})} placeholder="UTR / transaction reference"/></label><div className="form-note"><ShieldCheck size={17}/><span>{hi ? 'UTR भेजना भुगतान का प्रमाण नहीं है। एडमिन बैंक/UPI रिकॉर्ड से सत्यापन करेगा। भुगतान निर्देश एडमिन से प्राप्त करें।' : 'A UTR is not proof by itself. Admin will verify against UPI/bank records. Obtain payment instructions from the administrator.'}</span></div>{registrationMessage && <p role="status" className="public-auth-error">{registrationMessage}</p>}<div className="modal-actions"><button type="button" className="outline-button" disabled={registrationBusy} onClick={() => setShowPublicRegistration(false)}>{hi ? 'बंद करें' : 'Close'}</button><button type="submit" className="primary-button" disabled={registrationBusy || subscriptionPlans.length === 0 || !publicForm.planId}>{registrationBusy ? (hi ? 'सेव हो रहा है…' : 'Saving…') : (hi ? 'रजिस्ट्रेशन जमा करें' : 'Submit registration')}</button></div></form>}</section></div>}
-      {selectedNgo && <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget) { setSelectedNgo(null); setProfileLoginRequired(false); } }}><section className="registration-modal public-profile-modal" role="dialog" aria-modal="true" aria-labelledby="public-profile-title"><div className="modal-heading"><div><span className="modal-eyebrow">NGO CONNECT</span><h2 id="public-profile-title">{profileLoginRequired || !authUser ? (hi ? 'पूरा प्रोफ़ाइल देखने के लिए लॉगिन करें' : 'Sign in to view the full profile') : selectedNgo.name}</h2><p>{profileLoginRequired || !authUser ? (hi ? 'NGO की पूरी सार्वजनिक जानकारी देखने के लिए Google से लॉगिन करें।' : 'Sign in with Google to view the full public NGO profile.') : selectedNgo.type}</p></div><button className="icon-button" onClick={() => { setSelectedNgo(null); setProfileLoginRequired(false); }} aria-label={hi ? 'बंद करें' : 'Close'}><X size={20}/></button></div>{profileLoginRequired || !authUser ? <div className="public-profile-gate"><button className="primary-button" onClick={() => { setProfileLoginRequired(false); onLogin(); }} disabled={!firebaseConfigured}><Globe2 size={17}/>{hi ? 'Google से लॉगिन करें' : 'Sign in with Google'}</button></div> : <div className="public-profile-details"><h3>{selectedNgo.name}</h3><p>{selectedNgo.mission || (hi ? 'इस NGO ने अभी अपना परिचय नहीं जोड़ा है।' : 'This NGO has not added a description yet.')}</p>{selectedNgo.address && <p><strong>{hi ? 'पता:' : 'Address:'}</strong> {selectedNgo.address}</p>}{selectedNgo.phone && <p><strong>{hi ? 'संपर्क नंबर:' : 'Contact phone:'}</strong> {selectedNgo.phone}</p>}{selectedNgo.email && <p><strong>{hi ? 'संपर्क ईमेल:' : 'Contact email:'}</strong> {selectedNgo.email}</p>}{selectedNgo.website && <p><strong>{hi ? 'वेबसाइट:' : 'Website:'}</strong> <a href={selectedNgo.website.startsWith('http') ? selectedNgo.website : 'https://' + selectedNgo.website} target="_blank" rel="noreferrer">{selectedNgo.website}</a></p>}</div>}</section></div>}
       {authError && <p className="public-auth-error">{authError}</p>}
     </main><footer className="public-footer"><span>© 2026 NGO Connect</span></footer>
   </div>;
