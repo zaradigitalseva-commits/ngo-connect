@@ -4,7 +4,6 @@ import { Activity, ArrowUpRight, BadgeCheck, Bell, CalendarDays, CheckCircle2, C
 import { auth, db, firebaseConfigured } from './firebase';
 import { MemberIDPortal, MemberVerifyPage, NgoAdminPortal } from './MemberIDPortal';
 import { NgoWorkspacePortal } from './NgoWorkspace';
-import { NationalTrustDirectory } from './NationalTrustDirectory';
 import { addDoc, collection, doc, getDoc, getDocs, query as firestoreQuery, serverTimestamp, setDoc, where, runTransaction, Timestamp, updateDoc } from 'firebase/firestore';
 
 const SUPER_ADMIN_EMAILS = ['ngogrant454@gmail.com', 'zaradigitalseva@gmail.com'];
@@ -147,7 +146,7 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
   return <div className="public-site">
     <header className="public-header">
       <a className="public-brand" href="/" aria-label="NGO Connect home"><span className="brand-mark"><Leaf size={23}/></span><span>NGO<span>Connect</span><small>{hi ? 'मजबूत समुदाय। बेहतर बदलाव।' : 'Stronger communities. Better impact.'}</small></span></a>
-      <nav className="public-nav"><a href="/members">{hi ? "Member ID कार्ड" : "Member ID Card"}</a><a href="/national-trust">{hi ? 'सरकारी NGO सूची' : 'Government NGO List'}</a><a href="/ngo-admin">{hi ? "NGO Admin" : "NGO Admin"}</a><a href="#about">{hi ? 'हमारे बारे में' : 'About'}</a><a href="#features">{hi ? 'सुविधाएँ' : 'Features'}</a><a href="#contact">{hi ? 'संपर्क' : 'Contact'}</a></nav>
+      <nav className="public-nav"><a href="/members">{hi ? "Member ID कार्ड" : "Member ID Card"}</a><a href="/ngo-admin">{hi ? "NGO Admin" : "NGO Admin"}</a><a href="#about">{hi ? 'हमारे बारे में' : 'About'}</a><a href="#features">{hi ? 'सुविधाएँ' : 'Features'}</a><a href="#contact">{hi ? 'संपर्क' : 'Contact'}</a></nav>
       <div className="public-actions"><button className="language-button" onClick={() => setLanguage(hi ? 'en' : 'hi')}>{hi ? 'English' : 'हिन्दी'}</button><button className="outline-button" onClick={() => { setRegistrationMessage(''); setShowPublicRegistration(true); }}>{hi ? 'NGO रजिस्टर करें' : 'Register NGO'}</button>{authUser ? <div className="public-user"><span>{authUser.email}</span><button className="outline-button" onClick={onLogout}>{hi ? 'लॉगआउट' : 'Sign out'}</button></div> : <button className="primary-button" onClick={onLogin} disabled={!firebaseConfigured}><Globe2 size={17}/>{hi ? 'Google से लॉगिन' : 'Sign in with Google'}</button>}</div>
     </header>
     <main>
@@ -461,7 +460,6 @@ export default function App() {
   };
   const pageTitle = nav.find(item => item.id === section)?.key ?? 'overview';
 
-  if (window.location.pathname.startsWith('/national-trust')) return <NationalTrustDirectory />;
   if (window.location.pathname.startsWith('/member-verify')) return <MemberVerifyPage />;
   if (window.location.pathname.startsWith('/ngo-workspace')) {
     if (authUser) return <NgoWorkspacePortal authUser={authUser} language={language} />;
