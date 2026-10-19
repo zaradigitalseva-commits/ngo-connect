@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { GoogleAuthProvider, getRedirectResult, onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut, type User } from 'firebase/auth';
 import { Activity, ArrowUpRight, BadgeCheck, Bell, CalendarDays, CheckCircle2, ChevronDown, CircleHelp, ClipboardList, FileBadge, FileText, Globe2, HandCoins, HeartHandshake, LayoutDashboard, Leaf, LogOut, Menu, Plus, Search, ShieldCheck, Users, Wallet, X } from 'lucide-react';
-import { auth, db, firebaseConfigured } from './firebase';
+import { auth, db, firebaseConfigured, storage } from './firebase';
+import { deleteObject, getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage';
 import { MemberIDPortal, MemberVerifyPage, NgoAdminPortal } from './MemberIDPortal';
 import { NgoWorkspacePortal } from './NgoWorkspace';
 import { addDoc, collection, doc, getDoc, getDocs, query as firestoreQuery, serverTimestamp, setDoc, where, runTransaction } from 'firebase/firestore';
@@ -10,16 +11,17 @@ const SUPER_ADMIN_EMAILS = ['ngogrant454@gmail.com', 'zaradigitalseva@gmail.com'
 const isSuperAdmin = (user: User | null) => Boolean(user?.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase()));
 
 type Language = 'en' | 'hi';
-type Section = 'overview' | 'ngos' | 'members' | 'finance' | 'events' | 'documents' | 'subscriptions';
+type Section = 'overview' | 'ngos' | 'members' | 'finance' | 'events' | 'documents' | 'subscriptions' | 'homepageVideo';
 const copy = {
-  en: { tagline: 'Stronger communities. Better impact.', overview: 'Overview', ngos: 'NGO Directory', members: 'Members & Volunteers', finance: 'Donations & Expenses', events: 'Programs & Events', documents: 'Reports & Certificates', subscriptions: 'Subscriptions', welcome: 'Good morning 👋', intro: 'Here is what is happening across your NGO workspace.', totalDonations: 'Total donations', expenses: 'Total expenses', membersCount: 'Members & volunteers', programs: 'Programs this month', recent: 'Recent activity', quick: 'Quick actions', register: 'Register an NGO', addMember: 'Add a member', recordDonation: 'Record donation', createEvent: 'Create an event', directory: 'NGO directory', viewAll: 'View all', active: 'Active', pending: 'Pending review', draft: 'Draft', month: 'This month', activityTitle: 'Your impact at a glance', activityText: 'Keep your team, community and finances in one place.', registerTitle: 'Register your NGO', orgName: 'NGO / organization name', contactName: 'Contact person', email: 'Email address', phone: 'Phone number', state: 'State', mission: 'Short mission / purpose', submit: 'Submit registration', cancel: 'Cancel', registrationNote: 'New registrations are reviewed after subscription payment is submitted. Approval is manual.', saved: 'Registration saved in this demo. Connect Firebase to enable secure saving.', language: 'Language', dashboard: 'Dashboard', platform: 'Platform workspace', setup: 'Firebase setup needed', setupText: 'Firebase is not configured. Set the NGO Connect environment variables before using real records.', seeSetup: 'View setup guide', subscriptionNote: 'UPI payment verification and activation are manual and must be implemented before launch.', noData: 'No live records yet', demo: 'Live Firebase data', search: 'Search NGOs, members…', all: 'All activity', registered: 'Registered', volunteers: 'Volunteers', donatedBy: 'Community contributions', expenseBy: 'Program spending', event1: 'Community health camp', event2: 'Youth skills workshop', event3: 'Winter relief distribution', status: 'Status', plan: 'Plan', amount: 'Amount', due: 'Next renewal', footer: 'Built for grassroots organizations' },
-  hi: { tagline: 'मजबूत समुदाय। बेहतर बदलाव।', overview: 'डैशबोर्ड', ngos: 'NGO सूची', members: 'सदस्य और स्वयंसेवक', finance: 'दान और खर्च', events: 'कार्यक्रम और इवेंट', documents: 'रिपोर्ट और प्रमाणपत्र', subscriptions: 'सब्सक्रिप्शन', welcome: 'सुप्रभात 👋', intro: 'आपके NGO कार्यक्षेत्र की ताज़ा जानकारी यहाँ है।', totalDonations: 'कुल दान', expenses: 'कुल खर्च', membersCount: 'सदस्य और स्वयंसेवक', programs: 'इस महीने के कार्यक्रम', recent: 'हाल की गतिविधियाँ', quick: 'जल्दी करें', register: 'NGO रजिस्टर करें', addMember: 'सदस्य जोड़ें', recordDonation: 'दान दर्ज करें', createEvent: 'कार्यक्रम बनाएँ', directory: 'NGO सूची', viewAll: 'सभी देखें', active: 'सक्रिय', pending: 'जाँच बाकी', draft: 'ड्राफ्ट', month: 'इस महीने', activityTitle: 'आपके काम की एक झलक', activityText: 'टीम, समुदाय और हिसाब-किताब एक जगह रखें।', registerTitle: 'अपना NGO रजिस्टर करें', orgName: 'NGO / संस्था का नाम', contactName: 'संपर्क व्यक्ति', email: 'ईमेल पता', phone: 'मोबाइल नंबर', state: 'राज्य', mission: 'संस्था का उद्देश्य', submit: 'रजिस्ट्रेशन भेजें', cancel: 'रद्द करें', registrationNote: 'सब्सक्रिप्शन भुगतान भेजने के बाद नए रजिस्ट्रेशन की मैनुअल जाँच होगी।', saved: 'डेमो में रजिस्ट्रेशन दर्ज हुआ। सुरक्षित सेविंग के लिए Firebase जोड़ें।', language: 'भाषा', dashboard: 'डैशबोर्ड', platform: 'प्लेटफ़ॉर्म कार्यक्षेत्र', setup: 'Firebase सेटअप बाकी', setupText: 'Firebase सेटअप उपलब्ध नहीं है। असली रिकॉर्ड के लिए NGO Connect के environment variables जाँचें।', seeSetup: 'सेटअप गाइड देखें', subscriptionNote: 'UPI भुगतान की जाँच और NGO सक्रिय करना मैनुअल होगा; लॉन्च से पहले इसे बनाना ज़रूरी है।', noData: 'अभी लाइव रिकॉर्ड नहीं हैं', demo: 'लाइव Firebase डेटा', search: 'NGO, सदस्य खोजें…', all: 'सभी गतिविधियाँ', registered: 'रजिस्टर', volunteers: 'स्वयंसेवक', donatedBy: 'समुदाय का योगदान', expenseBy: 'कार्यक्रम पर खर्च', event1: 'सामुदायिक स्वास्थ्य शिविर', event2: 'युवाओं के कौशल की कार्यशाला', event3: 'सर्दियों में राहत वितरण', status: 'स्थिति', plan: 'प्लान', amount: 'राशि', due: 'अगला नवीनीकरण', footer: 'जमीनी स्तर पर काम करने वाली संस्थाओं के लिए' }
+  en: { tagline: 'Stronger communities. Better impact.', overview: 'Overview', ngos: 'NGO Directory', members: 'Members & Volunteers', finance: 'Donations & Expenses', events: 'Programs & Events', documents: 'Reports & Certificates', subscriptions: 'Subscriptions', homepageVideo: 'Homepage Video', welcome: 'Good morning 👋', intro: 'Here is what is happening across your NGO workspace.', totalDonations: 'Total donations', expenses: 'Total expenses', membersCount: 'Members & volunteers', programs: 'Programs this month', recent: 'Recent activity', quick: 'Quick actions', register: 'Register an NGO', addMember: 'Add a member', recordDonation: 'Record donation', createEvent: 'Create an event', directory: 'NGO directory', viewAll: 'View all', active: 'Active', pending: 'Pending review', draft: 'Draft', month: 'This month', activityTitle: 'Your impact at a glance', activityText: 'Keep your team, community and finances in one place.', registerTitle: 'Register your NGO', orgName: 'NGO / organization name', contactName: 'Contact person', email: 'Email address', phone: 'Phone number', state: 'State', mission: 'Short mission / purpose', submit: 'Submit registration', cancel: 'Cancel', registrationNote: 'New registrations are reviewed after subscription payment is submitted. Approval is manual.', saved: 'Registration saved in this demo. Connect Firebase to enable secure saving.', language: 'Language', dashboard: 'Dashboard', platform: 'Platform workspace', setup: 'Firebase setup needed', setupText: 'Firebase is not configured. Set the NGO Connect environment variables before using real records.', seeSetup: 'View setup guide', subscriptionNote: 'UPI payment verification and activation are manual and must be implemented before launch.', noData: 'No live records yet', demo: 'Live Firebase data', search: 'Search NGOs, members…', all: 'All activity', registered: 'Registered', volunteers: 'Volunteers', donatedBy: 'Community contributions', expenseBy: 'Program spending', event1: 'Community health camp', event2: 'Youth skills workshop', event3: 'Winter relief distribution', status: 'Status', plan: 'Plan', amount: 'Amount', due: 'Next renewal', footer: 'Built for grassroots organizations' },
+  hi: { tagline: 'मजबूत समुदाय। बेहतर बदलाव।', overview: 'डैशबोर्ड', ngos: 'NGO सूची', members: 'सदस्य और स्वयंसेवक', finance: 'दान और खर्च', events: 'कार्यक्रम और इवेंट', documents: 'रिपोर्ट और प्रमाणपत्र', subscriptions: 'सब्सक्रिप्शन', homepageVideo: 'होमपेज वीडियो', welcome: 'सुप्रभात 👋', intro: 'आपके NGO कार्यक्षेत्र की ताज़ा जानकारी यहाँ है।', totalDonations: 'कुल दान', expenses: 'कुल खर्च', membersCount: 'सदस्य और स्वयंसेवक', programs: 'इस महीने के कार्यक्रम', recent: 'हाल की गतिविधियाँ', quick: 'जल्दी करें', register: 'NGO रजिस्टर करें', addMember: 'सदस्य जोड़ें', recordDonation: 'दान दर्ज करें', createEvent: 'कार्यक्रम बनाएँ', directory: 'NGO सूची', viewAll: 'सभी देखें', active: 'सक्रिय', pending: 'जाँच बाकी', draft: 'ड्राफ्ट', month: 'इस महीने', activityTitle: 'आपके काम की एक झलक', activityText: 'टीम, समुदाय और हिसाब-किताब एक जगह रखें।', registerTitle: 'अपना NGO रजिस्टर करें', orgName: 'NGO / संस्था का नाम', contactName: 'संपर्क व्यक्ति', email: 'ईमेल पता', phone: 'मोबाइल नंबर', state: 'राज्य', mission: 'संस्था का उद्देश्य', submit: 'रजिस्ट्रेशन भेजें', cancel: 'रद्द करें', registrationNote: 'सब्सक्रिप्शन भुगतान भेजने के बाद नए रजिस्ट्रेशन की मैनुअल जाँच होगी।', saved: 'डेमो में रजिस्ट्रेशन दर्ज हुआ। सुरक्षित सेविंग के लिए Firebase जोड़ें।', language: 'भाषा', dashboard: 'डैशबोर्ड', platform: 'प्लेटफ़ॉर्म कार्यक्षेत्र', setup: 'Firebase सेटअप बाकी', setupText: 'Firebase सेटअप उपलब्ध नहीं है। असली रिकॉर्ड के लिए NGO Connect के environment variables जाँचें।', seeSetup: 'सेटअप गाइड देखें', subscriptionNote: 'UPI भुगतान की जाँच और NGO सक्रिय करना मैनुअल होगा; लॉन्च से पहले इसे बनाना ज़रूरी है।', noData: 'अभी लाइव रिकॉर्ड नहीं हैं', demo: 'लाइव Firebase डेटा', search: 'NGO, सदस्य खोजें…', all: 'सभी गतिविधियाँ', registered: 'रजिस्टर', volunteers: 'स्वयंसेवक', donatedBy: 'समुदाय का योगदान', expenseBy: 'कार्यक्रम पर खर्च', event1: 'सामुदायिक स्वास्थ्य शिविर', event2: 'युवाओं के कौशल की कार्यशाला', event3: 'सर्दियों में राहत वितरण', status: 'स्थिति', plan: 'प्लान', amount: 'राशि', due: 'अगला नवीनीकरण', footer: 'जमीनी स्तर पर काम करने वाली संस्थाओं के लिए' }
 };
 const nav = [
   { id: 'overview' as const, icon: LayoutDashboard, key: 'overview' as const }, { id: 'ngos' as const, icon: HeartHandshake, key: 'ngos' as const },
   { id: 'members' as const, icon: Users, key: 'members' as const }, { id: 'finance' as const, icon: Wallet, key: 'finance' as const },
   { id: 'events' as const, icon: CalendarDays, key: 'events' as const }, { id: 'documents' as const, icon: FileText, key: 'documents' as const },
-  { id: 'subscriptions' as const, icon: BadgeCheck, key: 'subscriptions' as const }
+  { id: 'subscriptions' as const, icon: BadgeCheck, key: 'subscriptions' as const },
+  { id: 'homepageVideo' as const, icon: FileText, key: 'homepageVideo' as const }
 ];
 type DashboardNgo = { id: string; name: string; type: string; city: string; status: string; ownerUid: string; people: number };
 type DashboardRecord = Record<string, any> & { id: string };
@@ -128,7 +130,7 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
       <div className="public-actions"><button className="language-button" onClick={() => setLanguage(hi ? 'en' : 'hi')}>{hi ? 'English' : 'हिन्दी'}</button><button className="outline-button" onClick={() => { setRegistrationMessage(''); setShowPublicRegistration(true); }}>{hi ? 'NGO रजिस्टर करें' : 'Register NGO'}</button>{authUser ? <div className="public-user"><span>{authUser.email}</span><button className="outline-button" onClick={onLogout}>{hi ? 'लॉगआउट' : 'Sign out'}</button></div> : <button className="primary-button" onClick={onLogin} disabled={!firebaseConfigured}><Globe2 size={17}/>{hi ? 'Google से लॉगिन' : 'Sign in with Google'}</button>}</div>
     </header>
     <main>
-      <section className="public-hero" id="about" style={{display:"block", padding:"clamp(1rem, 3vw, 2rem)"}}><div className="public-hero-video-wrap" style={{width:"100%", maxWidth:"1200px", margin:"0 auto", overflow:"hidden", borderRadius:"24px", background:"#101827", boxShadow:"0 18px 48px rgba(15, 23, 42, 0.2)"}}><video autoPlay muted loop playsInline preload="metadata" controls aria-label={hi ? "NGO Connect समाज सेवा वीडियो" : "NGO Connect community service video"} style={{display:"block", width:"100%", aspectRatio:"16 / 9", objectFit:"cover"}}><source src="/videos/ngo-connect-home.mp4" type="video/mp4" />{hi ? "आपका ब्राउज़र वीडियो नहीं चला सकता।" : "Your browser does not support video playback."}</video></div></section>
+      <section className="public-hero" id="about" style={{display:"block", padding:"clamp(1rem, 3vw, 2rem)"}}><div className="public-hero-video-wrap" style={{width:"100%", maxWidth:"1200px", margin:"0 auto", overflow:"hidden", borderRadius:"24px", background:"#101827", boxShadow:"0 18px 48px rgba(15, 23, 42, 0.2)"}}><DynamicHomepageVideo language={language} /></div></section>
       <section className="public-directory" id="ngos">
         <div className="public-section-heading"><span>{hi ? 'हमारे साथ जुड़ी संस्थाएँ' : 'ORGANIZATIONS ON NGO CONNECT'}</span><h2>{hi ? 'सभी सक्रिय NGOs' : 'Explore active NGOs'}</h2><p>{hi ? 'हर संस्था का कार्ड देखें। पूरा सार्वजनिक प्रोफ़ाइल देखने के लिए Google लॉगिन ज़रूरी है।' : 'Browse NGO cards. Sign in with Google to view a complete public profile.'}</p></div>
         {directoryLoading ? <p className="public-directory-empty">{hi ? 'NGO सूची लोड हो रही है…' : 'Loading NGO directory…'}</p> : publicNgos.length === 0 ? <p className="public-directory-empty">{hi ? 'अभी कोई स्वीकृत NGO सूची में नहीं है।' : 'No approved NGOs are listed yet.'}</p> : <div className="public-ngo-grid">{publicNgos.map(ngo => <button type="button" className="public-ngo-card" key={ngo.id} onClick={() => { setSelectedNgo(ngo); setProfileLoginRequired(!authUser); }}><div className="public-ngo-logo">{ngo.logo ? <img src={ngo.logo} alt="" /> : <HeartHandshake size={28}/>}</div><h3>{ngo.name}</h3><p>{ngo.type}</p><span>{ngo.city || (hi ? 'स्थान उपलब्ध नहीं' : 'Location not listed')}</span><strong>{hi ? 'प्रोफ़ाइल देखें' : 'View profile'} <ArrowUpRight size={15}/></strong></button>)}</div>}
@@ -140,6 +142,19 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
       {authError && <p className="public-auth-error">{authError}</p>}
     </main><footer className="public-footer"><span>© 2026 NGO Connect</span></footer>
   </div>;
+}
+
+function DynamicHomepageVideo({ language }: { language: Language }) {
+  const [videoUrl, setVideoUrl] = useState('');
+  useEffect(() => {
+    let active = true;
+    getDoc(doc(db, 'publicSettings', 'homepageVideo')).then(snapshot => {
+      if (active && snapshot.exists()) setVideoUrl(String(snapshot.data().videoUrl || ''));
+    }).catch(() => { if (active) setVideoUrl(''); });
+    return () => { active = false; };
+  }, []);
+  if (!videoUrl) return <div style={{width:'100%',maxWidth:'1200px',margin:'0 auto',aspectRatio:'16 / 9',display:'grid',placeItems:'center',borderRadius:'24px',background:'linear-gradient(135deg,#0f766e,#1e293b)',color:'#fff',padding:'24px',textAlign:'center'}}><div><HeartHandshake size={52}/><h2>{language === 'hi' ? 'NGO Connect — समाज सेवा का डिजिटल मंच' : 'NGO Connect — A digital platform for community service'}</h2><p>{language === 'hi' ? 'वीडियो जल्द उपलब्ध होगा।' : 'Video coming soon.'}</p></div></div>;
+  return <div style={{width:'100%',maxWidth:'1200px',margin:'0 auto',overflow:'hidden',borderRadius:'24px',background:'#101827',boxShadow:'0 18px 48px rgba(15, 23, 42, 0.2)'}}><video key={videoUrl} autoPlay muted loop playsInline preload="metadata" controls aria-label={language === 'hi' ? 'NGO Connect समाज सेवा वीडियो' : 'NGO Connect community service video'} style={{display:'block',width:'100%',aspectRatio:'16 / 9',objectFit:'cover'}}><source src={videoUrl} type="video/mp4"/>{language === 'hi' ? 'आपका ब्राउज़र वीडियो नहीं चला सकता।' : 'Your browser does not support video playback.'}</video></div>;
 }
 
 export default function App() {
@@ -165,6 +180,10 @@ export default function App() {
   const [adminQrImage, setAdminQrImage] = useState('');
   const [qrSaveBusy, setQrSaveBusy] = useState(false);
   const [qrSaveMessage, setQrSaveMessage] = useState('');
+  const [homepageVideoUrl, setHomepageVideoUrl] = useState('');
+  const [homepageVideoPath, setHomepageVideoPath] = useState('');
+  const [homepageVideoBusy, setHomepageVideoBusy] = useState(false);
+  const [homepageVideoMessage, setHomepageVideoMessage] = useState('');
   useEffect(() => {
     if (!authUser || !isSuperAdmin(authUser) || section !== 'subscriptions') return;
     let active = true;
@@ -224,6 +243,18 @@ export default function App() {
     void loadDashboard();
     return () => { active = false; };
   }, [authUser]);
+  useEffect(() => {
+    if (!authUser || !isSuperAdmin(authUser)) return;
+    let active = true;
+    getDoc(doc(db, 'publicSettings', 'homepageVideo')).then(snapshot => {
+      if (!active || !snapshot.exists()) return;
+      setHomepageVideoUrl(String(snapshot.data().videoUrl || ''));
+      setHomepageVideoPath(String(snapshot.data().storagePath || ''));
+    }).catch(() => {
+      if (active) setHomepageVideoMessage('मौजूदा वीडियो लोड नहीं हुआ। Firestore Rules जाँचें।');
+    });
+    return () => { active = false; };
+  }, [authUser]);
   const savePaymentQr = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!authUser || !isSuperAdmin(authUser)) return;
@@ -246,6 +277,43 @@ export default function App() {
     };
     reader.onerror = () => setQrSaveMessage('इमेज पढ़ी नहीं जा सकी। दूसरी इमेज चुनें।');
     reader.readAsDataURL(file);
+  };
+  const saveHomepageVideo = async (file?: File) => {
+    if (!file) return;
+    if (!authUser || !isSuperAdmin(authUser)) { setHomepageVideoMessage('केवल Super Admin वीडियो अपलोड कर सकता है।'); return; }
+    if (file.type !== 'video/mp4') { setHomepageVideoMessage('कृपया MP4 वीडियो फ़ाइल चुनें।'); return; }
+    if (file.size > 100 * 1024 * 1024) { setHomepageVideoMessage('वीडियो 100 MB से छोटी रखें।'); return; }
+    setHomepageVideoBusy(true); setHomepageVideoMessage('वीडियो अपलोड हो रहा है…');
+    const objectPath = 'homepage-video/ngo-connect-home-' + Date.now() + '.mp4';
+    try {
+      const objectRef = storageRef(storage, objectPath);
+      await uploadBytes(objectRef, file, { contentType: 'video/mp4' });
+      const downloadUrl = await getDownloadURL(objectRef);
+      await setDoc(doc(db, 'publicSettings', 'homepageVideo'), {
+        videoUrl: downloadUrl, storagePath: objectPath, updatedAt: serverTimestamp(),
+        updatedBy: authUser.email || ''
+      });
+      setHomepageVideoUrl(downloadUrl);
+      setHomepageVideoPath(objectPath);
+      setHomepageVideoMessage('वीडियो सेव हो गया। Home Page पर नया वीडियो दिखेगा।');
+    } catch (error) {
+      setHomepageVideoMessage(error instanceof Error ? error.message : 'वीडियो अपलोड नहीं हुआ। Firebase Storage और Rules जाँचें।');
+    } finally { setHomepageVideoBusy(false); }
+  };
+  const removeHomepageVideo = async () => {
+    if (!authUser || !isSuperAdmin(authUser)) return;
+    if (!window.confirm('क्या Home Page से मौजूदा वीडियो हटाना चाहते हैं?')) return;
+    setHomepageVideoBusy(true); setHomepageVideoMessage('');
+    try {
+      if (homepageVideoPath) await deleteObject(storageRef(storage, homepageVideoPath)).catch(() => undefined);
+      await setDoc(doc(db, 'publicSettings', 'homepageVideo'), {
+        videoUrl: '', storagePath: '', updatedAt: serverTimestamp(), updatedBy: authUser.email || ''
+      });
+      setHomepageVideoUrl(''); setHomepageVideoPath('');
+      setHomepageVideoMessage('Home Page वीडियो हटा दिया गया।');
+    } catch (error) {
+      setHomepageVideoMessage(error instanceof Error ? error.message : 'वीडियो हटाया नहीं जा सका।');
+    } finally { setHomepageVideoBusy(false); }
   };
   const approveRegistration = async (registration: Record<string, unknown> & { id: string }) => {
     if (!registration.paymentReference || String(registration.paymentReference).trim().length < 4) {
@@ -400,6 +468,7 @@ export default function App() {
         <div className="eyebrow"><span className="eyebrow-dot"/>{language === 'hi' ? 'लाइव Firebase डेटा' : 'Live Firebase data'}<span className="eyebrow-line"/></div>
         <section className="welcome-row"><div><h1>{section === 'overview' ? t.welcome : t[pageTitle]}</h1><p>{section === 'overview' ? t.intro : t.activityText}</p></div><button className="primary-button" onClick={() => setShowRegistration(true)}><Plus size={18}/>{t.register}</button></section>
         {!firebaseConfigured && <div className="setup-banner"><div className="setup-icon"><ShieldCheck size={20}/></div><div className="setup-copy"><strong>{t.setup}</strong><p>{t.setupText}</p></div><a href="https://console.firebase.google.com/" target="_blank" rel="noreferrer">{t.seeSetup}<ArrowUpRight size={15}/></a></div>}
+        {section === 'homepageVideo' && <section className="panel directory-panel payment-qr-admin"><div className="panel-heading"><div><h3>Home Page वीडियो</h3><p>केवल Super Admin MP4 वीडियो अपलोड या बदल सकता है। अधिकतम 100 MB।</p></div></div><form className="qr-admin-form" onSubmit={e => e.preventDefault()}><label>नई वीडियो फ़ाइल चुनें (MP4)<input type="file" accept="video/mp4,.mp4" disabled={homepageVideoBusy} onChange={e => { void saveHomepageVideo(e.target.files?.[0]); e.currentTarget.value = ''; }}/></label>{homepageVideoUrl && <video src={homepageVideoUrl} controls muted playsInline style={{display:'block',width:'100%',maxWidth:'720px',aspectRatio:'16 / 9',objectFit:'contain',borderRadius:'16px',background:'#101827'}}/>}{homepageVideoMessage && <p role="status" className="qr-save-message">{homepageVideoMessage}</p>}<div style={{display:'flex',gap:'12px',flexWrap:'wrap'}}><button className="outline-button" type="button" onClick={() => window.open('/', '_blank', 'noopener,noreferrer')}>Home Page देखें</button><button className="outline-button" type="button" onClick={() => void removeHomepageVideo()} disabled={homepageVideoBusy || !homepageVideoUrl}>मौजूदा वीडियो हटाएँ</button></div></form></section>}
         {section === 'subscriptions' && <><section className="panel directory-panel payment-qr-admin"><div className="panel-heading"><div><h3>UPI QR इमेज सेटिंग</h3><p>यह QR NGO रजिस्ट्रेशन फ़ॉर्म में सभी यूज़र को दिखेगा।</p></div></div><form onSubmit={savePaymentQr} className="qr-admin-form"><label>QR कोड इमेज अपलोड करें (JPG / PNG / WebP, अधिकतम 500 KB)<input type="file" accept="image/png,image/jpeg,image/webp" onChange={e => handleQrFile(e.target.files?.[0])}/></label>{adminQrImage && <img className="admin-qr-preview" src={adminQrImage} alt="UPI QR preview"/>}{qrSaveMessage && <p role="status" className="qr-save-message">{qrSaveMessage}</p>}<button className="primary-button" type="submit" disabled={qrSaveBusy || !adminQrImage}>{qrSaveBusy ? 'सेव हो रहा है…' : 'QR इमेज सेव करें'}</button></form></section><section className="panel directory-panel"><div className="panel-heading"><div><h3>NGO रजिस्ट्रेशन और भुगतान जाँच</h3><p>UTR को बैंक/UPI रिकॉर्ड से मिलाने के बाद ही Activate करें।</p></div><span className="status-pill pill-pending">{pendingRegistrations.filter(item => item.status === 'PENDING_PAYMENT').length} Pending</span></div>{registrationLoadError && <p role="alert">{registrationLoadError}</p>}{pendingRegistrations.length === 0 ? <div className="empty-state">अभी कोई रजिस्ट्रेशन नहीं मिला। Firebase में rules प्रकाशित करें और नए रजिस्ट्रेशन आने दें।</div> : <div className="ngo-table-wrap"><table className="ngo-table"><thead><tr><th>NGO</th><th>संपर्क</th><th>प्लान</th><th>UTR / स्थिति</th><th>कार्रवाई</th></tr></thead><tbody>{pendingRegistrations.map(item => <tr key={item.id}><td><strong>{String(item.name || 'नाम नहीं')}</strong><br/><span className="table-muted">{String(item.state || '')}</span></td><td>{String(item.contactName || '')}<br/><span className="table-muted">{String(item.email || '')} · {String(item.phone || '')}</span></td><td>{String(item.subscriptionPlan || '')}</td><td>{String(item.paymentReference || 'UTR नहीं दिया')}<br/><span className="table-muted">{String(item.paymentStatus || item.status || '')}</span></td><td>{item.status === 'PENDING_PAYMENT' ? <button className="primary-button" disabled={approvalBusyId === item.id} onClick={() => void approveRegistration(item)}>{approvalBusyId === item.id ? 'जाँच…' : 'भुगतान सत्यापित कर Activate'}</button> : <span className="status-pill pill-active">LIVE / VERIFIED</span>}</td></tr>)}</tbody></table></div>}</section></>}
         {section === 'overview' && <>
           {dashboardError && <div className="setup-banner" role="alert"><div className="setup-icon"><ShieldCheck size={20}/></div><div className="setup-copy"><strong>Firebase डेटा लोड नहीं हुआ</strong><p>{dashboardError}</p></div></div>}
