@@ -1,6 +1,6 @@
-# SevaOrbit
+# All All NGO Connect
 
-SevaOrbit is a separate bilingual (Hindi/English) NGO platform built with React, Vite and Firebase. It is independent of SchoolConnect.
+All All NGO Connect is a separate bilingual (Hindi/English) NGO platform built with React, Vite and Firebase. It is independent of SchoolConnect.
 
 ## Current features
 - Google sign-in through Firebase Authentication.
