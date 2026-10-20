@@ -95,7 +95,7 @@ service cloud.firestore {
 
     // Public payment QR: visitors can read, only admins can change it
     match /publicSettings/{settingId} {
-      allow read: if settingId == 'payment' || isSuperAdmin();
+      allow read: if settingId in ['payment', 'ticker'] || isSuperAdmin();
       allow write: if isSuperAdmin();
     }
 
