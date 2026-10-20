@@ -708,3 +708,46 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
     padding: 5px 2px;
   }
 }
+
+
+/* Brand lockup: put Connect on its own line under All NGO */
+.public-brand > .brand-name-stack {
+  display: flex !important;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0 !important;
+  min-width: 0;
+  line-height: 1.05 !important;
+  white-space: normal;
+  word-spacing: normal !important;
+}
+.public-brand > .brand-name-stack > span {
+  display: block;
+  line-height: 1.02;
+  letter-spacing: -0.25px !important;
+}
+.public-brand > .brand-name-stack > span:nth-child(2) {
+  font-size: 1.06em;
+}
+.public-brand > .brand-name-stack > small {
+  display: block;
+  margin-top: 5px;
+  line-height: 1.25;
+  letter-spacing: 0 !important;
+}
+@media (max-width: 600px) {
+  .public-site:not(.ngo-directory-site) > .public-header > .public-brand > .brand-name-stack {
+    font-size: 14px;
+    line-height: 1.05 !important;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-brand > .brand-name-stack > small {
+    font-size: 8px;
+    margin-top: 4px;
+  }
+}
+@media (max-width: 380px) {
+  .public-site:not(.ngo-directory-site) > .public-header > .public-brand > .brand-name-stack {
+    font-size: 12px;
+  }
+}
