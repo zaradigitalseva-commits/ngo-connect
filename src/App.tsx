@@ -313,7 +313,7 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
   return <div className="public-site">
     <header className="public-header">
       <a className="public-brand" href="/" aria-label="All NGO Connect home"><span className="brand-mark"><Leaf size={23}/></span><span className="brand-name-stack"><span className="brand-name-banner"><span>All NGO</span><span>Connect</span></span><small>{hi ? 'मजबूत समुदाय। बेहतर बदलाव।' : 'Stronger communities. Better impact.'}</small></span></a>
-      <nav className="public-nav"><a href="/ngo-list">{hi ? "NGO सूची" : "NGO List"}</a><a href="/ngo-admin">{hi ? "NGO Admin" : "NGO Admin"}</a><a href="#about">{hi ? 'हमारे बारे में' : 'About'}</a><a href="#features">{hi ? 'सुविधाएँ' : 'Features'}</a><a href="#contact">{hi ? 'संपर्क' : 'Contact'}</a></nav>
+      <nav className="public-nav"><a href="/ngo-list">{hi ? "NGO सूची" : "NGO List"}</a><a href="#about">{hi ? 'हमारे बारे में' : 'About'}</a><a href="#features">{hi ? 'सुविधाएँ' : 'Features'}</a><a href="#contact">{hi ? 'संपर्क' : 'Contact'}</a></nav>
       <div className="public-actions"><button className="language-button" onClick={() => setLanguage(hi ? 'en' : 'hi')}>{hi ? 'English' : 'हिन्दी'}</button><button className="outline-button" onClick={() => { setRegistrationMessage(''); setShowPublicRegistration(true); }}>{hi ? 'NGO रजिस्टर करें' : 'Register NGO'}</button>{authUser ? <div className="public-user"><span>{authUser.email}</span><button className="outline-button" onClick={onLogout}>{hi ? 'लॉगआउट' : 'Sign out'}</button></div> : <button className="primary-button" onClick={onLogin} disabled={!firebaseConfigured}><Globe2 size={17}/>{hi ? 'Google से लॉगिन' : 'Sign in with Google'}</button>}</div>
     </header>
     <main>
