@@ -1302,7 +1302,7 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
   width: max-content;
   align-items: center;
   white-space: nowrap;
-  animation: public-ticker-scroll 28s linear infinite;
+  animation: public-ticker-scroll 9s linear infinite;
   will-change: transform;
 }
 .public-ticker-track > span { display: inline-flex; align-items: center; flex-shrink: 0; padding-right: 56px; font-size: 16px; font-weight: 800; }
@@ -1350,17 +1350,22 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
 /* Replace the hero artwork with the scrolling announcement in the exact same spot */
 .public-hero > .public-ticker-box {
   width: min(42vw, 460px);
-  min-height: 88px;
+  min-height: 0;
+  height: fit-content;
   margin: 0;
   flex: 0 0 min(42vw, 460px);
-  border-radius: 18px;
+  border-radius: 14px;
 }
 .public-hero > .public-ticker-box .public-ticker-label {
-  min-height: 88px;
-  padding: 0 14px;
+  min-height: 0;
+  padding: 12px 14px;
 }
 .public-hero > .public-ticker-box .public-ticker-window {
-  padding: 12px 0;
+  padding: 8px 0;
+}
+.public-hero > .public-ticker-box .public-ticker-track > span {
+  font-size: 16px;
+  line-height: 1.35;
 }
 @media (max-width: 760px) {
   .public-hero > .public-ticker-box {
