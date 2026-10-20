@@ -574,13 +574,28 @@ export default function App() {
     finally { setSlideSaveBusy(false); }
   };
   const deleteDashboardSlide = async (slide: DashboardSlide) => {
-    if (!window.confirm('क्या यह स्लाइड हटानी है?')) return;
+    if (!authUser || !isSuperAdmin(authUser)) {
+      setSlideMessage('केवल Super Admin स्लाइड हटा सकता है।');
+      return;
+    }
+    const label = slide.title.trim() || 'यह इमेज';
+    if (!window.confirm(`“${label}” स्लाइड हटाएँ? यह कार्रवाई वापस नहीं होगी।`)) return;
     try {
       await deleteDoc(doc(db, 'dashboardSlides', slide.id));
-      setDashboardSlides(current => current.filter(item => item.id !== slide.id));
-      setDashboardSlideIndex(index => Math.max(0, Math.min(index, dashboardSlides.length - 2)));
-      setSlideMessage('स्लाइड हटा दी गई।');
-    } catch (error) { setSlideMessage(error instanceof Error ? error.message : 'स्लाइड हटाई नहीं जा सकी। Firestore Rules जाँचें।'); }
+      setDashboardSlides(current => {
+        const removedIndex = current.findIndex(item => item.id === slide.id);
+        const remaining = current.filter(item => item.id !== slide.id);
+        setDashboardSlideIndex(index => {
+          if (remaining.length === 0) return 0;
+          if (removedIndex >= 0 && index > removedIndex) return index - 1;
+          return Math.min(index, remaining.length - 1);
+        });
+        return remaining;
+      });
+      setSlideMessage(`“${label}” स्लाइड हटा दी गई।`);
+    } catch (error) {
+      setSlideMessage(error instanceof Error ? error.message : 'स्लाइड हटाई नहीं जा सकी। Firestore Rules जाँचें।');
+    }
   };
   const pageTitle = nav.find(item => item.id === section)?.key ?? 'overview';
 
