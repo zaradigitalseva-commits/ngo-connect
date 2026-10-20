@@ -1514,5 +1514,5 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
 
 /* Slow down the public scrolling announcement so it is easy to read */
 .public-ticker-track {
-  animation-duration: 10s !important;
+  animation-duration: 8s !important;
 }
