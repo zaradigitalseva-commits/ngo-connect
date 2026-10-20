@@ -1374,3 +1374,29 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
     margin-top: 8px;
   }
 }
+
+
+/* Super Admin controls for homepage announcement speed */
+.ticker-speed-controls {
+  display: grid;
+  grid-template-columns: minmax(190px, 1.2fr) minmax(180px, 1fr) 100px auto;
+  align-items: end;
+  gap: 14px;
+  margin: 18px 0 8px;
+  padding: 16px;
+  border: 1px solid #dbeafe;
+  border-radius: 16px;
+  background: linear-gradient(120deg, #f0f9ff, #fdf2f8);
+}
+.ticker-speed-copy { display: grid; gap: 5px; }
+.ticker-speed-copy strong { color: #312e81; font-size: 15px; }
+.ticker-speed-copy span, .ticker-speed-range > span { color: #64748b; font-size: 12px; line-height: 1.45; }
+.ticker-speed-range, .ticker-speed-number { display: grid; gap: 7px; color: #334155; font-size: 12px; font-weight: 800; }
+.ticker-speed-range input[type="range"] { width: 100%; accent-color: #7c3aed; cursor: pointer; }
+.ticker-speed-number input { width: 100%; min-width: 0; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 10px; padding: 9px 10px; background: white; color: #0f172a; }
+@media (max-width: 760px) {
+  .ticker-speed-controls { grid-template-columns: minmax(0, 1fr) minmax(84px, .45fr); align-items: end; padding: 12px; gap: 12px; }
+  .ticker-speed-copy { grid-column: 1 / -1; }
+  .ticker-speed-range { grid-column: 1 / -1; }
+  .ticker-speed-controls > .primary-button { width: 100%; justify-content: center; }
+}
