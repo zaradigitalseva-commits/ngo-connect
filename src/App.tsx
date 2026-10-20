@@ -195,14 +195,6 @@ function PublicDashboardSlider({ language }: { language: Language }) {
 function PublicTickerBanner({ language }: { language: Language }) {
   const hi = language === 'hi';
   const [messages, setMessages] = useState<Array<{ id: string; text: string; color: string; createdAt?: unknown }>>([]);
-  const [speedSeconds, setSpeedSeconds] = useState(9);
-  useEffect(() => {
-    const unsubscribeSpeed = onSnapshot(doc(db, 'publicSettings', 'ticker'), snapshot => {
-      const savedSpeed = snapshot.exists() ? Number(snapshot.data().speedSeconds) : 9;
-      if (Number.isFinite(savedSpeed)) setSpeedSeconds(Math.min(60, Math.max(1, savedSpeed)));
-    }, () => setSpeedSeconds(9));
-    return unsubscribeSpeed;
-  }, []);
   useEffect(() => {
     // Listen live so public visitors see announcements as soon as Super Admin saves them.
     const unsubscribe = onSnapshot(collection(db, 'publicTickerMessages'), snapshot => {
@@ -220,7 +212,7 @@ function PublicTickerBanner({ language }: { language: Language }) {
   return <section className="public-ticker-box" aria-label={hi ? 'सुपर एडमिन की सूचना' : 'Super Admin announcements'}>
     <div className="public-ticker-label"><span className="public-ticker-live-dot" />{hi ? 'खास सूचना' : 'ANNOUNCEMENT'}</div>
     <div className="public-ticker-window">{messages.length > 0
-      ? <div className="public-ticker-track" style={{ animationDuration: `${speedSeconds}s` }}><span>{tickerLine}</span><span aria-hidden="true">{tickerLine}</span></div>
+      ? <div className="public-ticker-track" style={{ animationDuration: "4s" }}><span>{tickerLine}</span><span aria-hidden="true">{tickerLine}</span></div>
       : <div className="public-ticker-placeholder">{hi ? 'यहाँ Super Admin की सूचना दिखाई देगी।' : 'Super Admin announcements will appear here.'}</div>}</div>
   </section>;
 }
@@ -313,12 +305,6 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
     getDocs(firestoreQuery(collection(db, 'subscriptionPlans'), where('active', '==', true))).then(snapshot => {
       if (active) setSubscriptionPlans(snapshot.docs.map(item => ({ id: item.id, name: String(item.data().name || ''), price: Number(item.data().price) || 0, durationDays: Number(item.data().durationDays) || 0, description: String(item.data().description || ''), active: item.data().active === true })).filter(p => p.name && p.price > 0 && p.durationDays > 0));
     }).catch(() => { if (active) setSubscriptionPlans([]); });
-    getDoc(doc(db, 'publicSettings', 'ticker')).then(snapshot => {
-      if (active && snapshot.exists()) {
-        const savedSpeed = Number(snapshot.data().speedSeconds);
-        if (Number.isFinite(savedSpeed)) setTickerSpeedSeconds(Math.min(60, Math.max(1, savedSpeed)));
-      }
-    }).catch(() => { if (active) setTickerSpeedStatus('स्पीड सेटिंग लोड नहीं हुई। Firestore Rules जाँचें।'); });
     getDoc(doc(db, 'publicSettings', 'payment')).then(snapshot => {
       if (active && snapshot.exists() && typeof snapshot.data().qrImage === 'string') setPaymentQrImage(snapshot.data().qrImage as string);
     }).catch(() => { if (active) setPaymentQrImage(''); });
@@ -380,9 +366,6 @@ export default function App() {
   const [tickerColor, setTickerColor] = useState('rainbow');
   const [tickerBusy, setTickerBusy] = useState(false);
   const [tickerMessage, setTickerMessage] = useState('');
-  const [tickerSpeedSeconds, setTickerSpeedSeconds] = useState(9);
-  const [tickerSpeedBusy, setTickerSpeedBusy] = useState(false);
-  const [tickerSpeedStatus, setTickerSpeedStatus] = useState('');
 
   useEffect(() => {
     if (!authUser || !isSuperAdmin(authUser) || section !== 'subscriptions') return;
@@ -679,20 +662,6 @@ export default function App() {
       notify(error instanceof Error ? error.message : (language === 'hi' ? 'रजिस्ट्रेशन सेव नहीं हुआ। Firestore Rules जाँचें।' : 'Registration failed. Check Firestore rules.'));
     }
   };
-  const saveTickerSpeed = async () => {
-    if (!authUser || !isSuperAdmin(authUser)) return;
-    setTickerSpeedBusy(true);
-    setTickerSpeedStatus('');
-    try {
-      const seconds = Math.min(60, Math.max(1, Number(tickerSpeedSeconds) || 9));
-      await setDoc(doc(db, 'publicSettings', 'ticker'), { speedSeconds: seconds, updatedAt: serverTimestamp(), updatedBy: authUser.email || '' }, { merge: true });
-      setTickerSpeedSeconds(seconds);
-      setTickerSpeedStatus(`स्पीड सेव हो गई: ${seconds} सेकंड प्रति चक्र।`);
-    } catch (error) {
-      setTickerSpeedStatus(error instanceof Error ? error.message : 'स्पीड सेव नहीं हुई। Firestore Rules जाँचें।');
-    } finally { setTickerSpeedBusy(false); }
-  };
-
   const saveTickerMessage = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!authUser || !isSuperAdmin(authUser) || !tickerDraft.trim()) { setTickerMessage('पहले सूचना का टेक्स्ट लिखें।'); return; }
@@ -810,18 +779,6 @@ export default function App() {
           </section>}
           <section className="ticker-admin-panel">
             <div className="ticker-admin-heading"><div><span className="modal-eyebrow">HOMEPAGE MESSAGE BAR</span><h2>रंगीन स्क्रॉलिंग टेक्स्ट</h2><p>यह सूचना होम पेज पर हेडिंग के नीचे अपने-आप चलेगी। इसे केवल Super Admin जोड़ या हटा सकता है।</p></div></div>
-            <div className="ticker-speed-controls">
-              <div className="ticker-speed-copy"><strong>स्क्रॉलिंग स्पीड सेट करें</strong><span>कम सेकंड = तेज़, ज़्यादा सेकंड = धीमा। 1 सेकंड सबसे तेज़, 60 सेकंड सबसे धीमा।</span></div>
-              <label className="ticker-speed-range">स्पीड चुनें
-                <input type="range" min="1" max="60" step="1" value={tickerSpeedSeconds} onChange={event => { setTickerSpeedSeconds(Number(event.target.value)); setTickerSpeedStatus(''); }} />
-                <span>{tickerSpeedSeconds} सेकंड प्रति चक्र</span>
-              </label>
-              <label className="ticker-speed-number">सेकंड
-                <input type="number" min="1" max="60" step="1" value={tickerSpeedSeconds} onChange={event => { setTickerSpeedSeconds(Math.min(60, Math.max(1, Number(event.target.value) || 1))); setTickerSpeedStatus(''); }} />
-              </label>
-              <button type="button" className="primary-button" onClick={() => void saveTickerSpeed()} disabled={tickerSpeedBusy}>{tickerSpeedBusy ? 'सेव हो रहा है…' : 'स्पीड सेव करें'}</button>
-            </div>
-            {tickerSpeedStatus && <p className="ticker-admin-message" role="status">{tickerSpeedStatus}</p>}
             <form className="ticker-admin-form" onSubmit={saveTickerMessage}>
               <label>सूचना का टेक्स्ट<input value={tickerDraft} onChange={event => setTickerDraft(event.target.value)} maxLength={300} placeholder="जैसे: NGO रजिस्ट्रेशन शुरू है — आज ही जुड़ें" required /></label>
               <label>रंग<select value={tickerColor} onChange={event => setTickerColor(event.target.value)}><option value="rainbow">रंग-बिरंगा</option><option value="blue">नीला</option><option value="green">हरा</option><option value="orange">नारंगी</option><option value="purple">बैंगनी</option></select></label>
