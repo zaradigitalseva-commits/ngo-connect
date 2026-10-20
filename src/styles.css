@@ -1418,3 +1418,40 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
     padding: 10px 12px;
   }
 }
+
+
+/* Colorful 3D buttons for each public header destination */
+.public-site:not(.ngo-directory-site) > .public-header > .public-nav {
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:11px;
+  padding:10px 12px; border-radius:12px; background:#ffeb3b;
+}
+.public-site:not(.ngo-directory-site) > .public-header > .public-nav > .nav-3d {
+  display:inline-flex; align-items:center; justify-content:center; min-height:36px; padding:0 13px;
+  border:1px solid #ffffff9c; border-radius:10px; color:#fff; font-size:12px; font-weight:800;
+  white-space:nowrap; text-decoration:none; box-shadow:0 4px 0 #24374665,0 7px 12px #172c3026,inset 0 1px 0 #ffffff75;
+  transform:translateY(-2px); transition:transform .16s ease,box-shadow .16s ease,filter .16s ease;
+}
+.public-site:not(.ngo-directory-site) > .public-header > .public-nav > .nav-3d:hover {
+  color:#fff; filter:brightness(1.08) saturate(1.12); transform:translateY(-4px);
+  box-shadow:0 6px 0 #24374665,0 10px 15px #172c3030,inset 0 1px 0 #ffffff75;
+}
+.public-site:not(.ngo-directory-site) > .public-header > .public-nav > .nav-3d:active { transform:translateY(2px); box-shadow:0 1px 0 #24374665; }
+.public-site:not(.ngo-directory-site) > .public-header > .public-nav > .nav-3d-green { background:linear-gradient(145deg,#35d69c,#087c60); }
+.public-site:not(.ngo-directory-site) > .public-header > .public-nav > .nav-3d-blue { background:linear-gradient(145deg,#55b8ff,#2459cf); }
+.public-site:not(.ngo-directory-site) > .public-header > .public-nav > .nav-3d-orange { background:linear-gradient(145deg,#ffc15b,#ed6b12); }
+.public-site:not(.ngo-directory-site) > .public-header > .public-nav > .nav-3d-purple { background:linear-gradient(145deg,#c18aff,#7438ce); }
+.public-site:not(.ngo-directory-site) > .public-header > .public-nav > .nav-3d-pink { background:linear-gradient(145deg,#ff8bc1,#d83270); }
+.public-info-main { width:min(900px,calc(100% - 36px)); margin:52px auto 70px; padding:clamp(24px,5vw,48px); border:1px solid #dceee5; border-radius:24px; background:linear-gradient(145deg,#fff,#f0fbf5); box-shadow:0 18px 42px #164e3b12; }
+.public-info-main h1 { margin:20px 0 12px; font:800 clamp(30px,4vw,46px)/1.15 Manrope,sans-serif; color:#183b32; }
+.public-info-intro { color:#62796f; font-size:15px; line-height:1.9; }
+.public-info-list { display:grid; gap:13px; margin:26px 0; }
+.public-info-list article { display:flex; align-items:flex-start; gap:13px; padding:16px; border:1px solid #e0eee6; border-radius:14px; background:#fff; box-shadow:0 5px 0 #dcece4; }
+.public-info-list article > span { display:grid; place-items:center; flex:0 0 32px; height:32px; border-radius:10px; color:#fff; font-weight:800; background:linear-gradient(145deg,#24c89a,#087568); box-shadow:0 3px 0 #07594f; }
+.public-info-list article p { margin:3px 0; color:#3d5c50; line-height:1.7; }
+.public-info-home { display:inline-flex; align-items:center; gap:8px; text-decoration:none; }
+@media(max-width:900px) { .public-site:not(.ngo-directory-site) > .public-header > .public-nav { order:3; width:100%; gap:10px; } }
+@media(max-width:600px) {
+ .public-site:not(.ngo-directory-site) > .public-header > .public-nav { justify-content:center; padding:10px 8px; gap:9px; }
+ .public-site:not(.ngo-directory-site) > .public-header > .public-nav > .nav-3d { min-height:34px; padding:0 10px; font-size:11px; }
+ .public-info-main { margin:28px auto 40px; }
+}
