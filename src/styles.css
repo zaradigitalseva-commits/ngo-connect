@@ -600,3 +600,111 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
     font-size: 11px;
   }
 }
+
+
+/* Compact mobile header: small action buttons sit beside the NGO Connect name */
+@media (max-width: 600px) {
+  .public-site:not(.ngo-directory-site) > .public-header {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-items: center;
+    column-gap: 8px !important;
+    row-gap: 12px !important;
+    padding: 12px 10px !important;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-brand {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+    width: auto;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    gap: 7px !important;
+    align-items: center;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-brand .brand-mark {
+    width: 31px;
+    height: 31px;
+    flex: 0 0 31px;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-brand > span:last-child {
+    min-width: 0;
+    font-size: 15px;
+    line-height: 1.15 !important;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-brand small {
+    display: block;
+    margin-top: 4px;
+    font-size: 9px;
+    line-height: 1.3;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions {
+    grid-column: 2;
+    grid-row: 1;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 5px !important;
+    width: clamp(132px, 42vw, 190px);
+    padding: 0;
+    margin: 0;
+    border: 0;
+    align-items: center;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .language-button {
+    grid-column: 1 / -1;
+    justify-self: end;
+    min-height: 24px;
+    padding: 3px 8px;
+    font-size: 10px;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .outline-button,
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .primary-button {
+    min-width: 0;
+    width: 100%;
+    min-height: 32px;
+    padding: 5px 4px;
+    border-radius: 8px;
+    gap: 3px;
+    font-size: 9px;
+    line-height: 1.15;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: center;
+    box-shadow: 0 2px 0 rgba(20, 40, 80, .12), 0 3px 7px rgba(20, 40, 80, .08);
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .primary-button svg {
+    width: 12px;
+    height: 12px;
+    flex: 0 0 12px;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    padding-top: 2px;
+  }
+}
+@media (max-width: 380px) {
+  .public-site:not(.ngo-directory-site) > .public-header {
+    grid-template-columns: minmax(0, 1fr) 126px;
+    column-gap: 6px !important;
+    padding: 10px 8px !important;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-brand > span:last-child {
+    font-size: 13px;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-brand small {
+    font-size: 8px;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions {
+    width: 126px;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .outline-button,
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .primary-button {
+    font-size: 8px;
+    padding: 5px 2px;
+  }
+}
