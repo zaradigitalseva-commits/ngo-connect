@@ -1399,32 +1399,3 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
     padding-top: 8px;
   }
 }
-
-
-/* Visible thin yellow underlines on the NGO list page and homepage NGO cards */
-.ngo-directory-site .ngo-directory-main .directory-back-link,
-.ngo-directory-site .ngo-directory-heading h1,
-.ngo-directory-site .ngo-directory-heading p,
-.ngo-directory-site .ngo-directory-results,
-.ngo-directory-site .ngo-directory-card h2,
-.ngo-directory-site .ngo-directory-card .ngo-directory-category,
-.ngo-directory-site .ngo-directory-card .ngo-directory-location,
-.ngo-directory-site .ngo-directory-card .ngo-directory-mission,
-.ngo-directory-site .ngo-directory-empty strong,
-.ngo-directory-site .ngo-directory-empty p,
-.ngo-directory-site .ngo-directory-footer,
-.public-home-ngo-directory .public-section-heading > span,
-.public-home-ngo-directory .public-section-heading > p,
-.public-home-ngo-directory .public-home-ngo-card h3,
-.public-home-ngo-directory .public-home-ngo-category,
-.public-home-ngo-directory .public-home-ngo-location,
-.public-home-ngo-directory .ngo-directory-mission,
-.public-home-ngo-directory .public-home-ngo-empty p,
-.public-home-ngo-directory .ngo-directory-empty strong,
-.public-home-ngo-directory .ngo-directory-empty p {
-  text-decoration: underline !important;
-  text-decoration-color: #facc15 !important;
-  text-decoration-thickness: 2px !important;
-  text-underline-offset: 5px !important;
-  text-decoration-skip-ink: none !important;
-}
