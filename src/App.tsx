@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { GoogleAuthProvider, getRedirectResult, onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut, type User } from 'firebase/auth';
-import { Activity, ArrowLeft, ArrowUpRight, BadgeCheck, Bell, Building2, CalendarDays, CheckCircle2, ChevronDown, CircleHelp, ClipboardList, FileBadge, FileText, Globe2, HandCoins, HeartHandshake, LayoutDashboard, Leaf, LogOut, MapPin, Menu, Plus, Search, ShieldCheck, Users, Wallet, X } from 'lucide-react';
+import { Activity, ArrowLeft, ArrowUpRight, BadgeCheck, Bell, Building2, CalendarDays, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, ClipboardList, FileBadge, FileText, Globe2, HandCoins, HeartHandshake, ImagePlus, LayoutDashboard, Leaf, LogOut, MapPin, Menu, Plus, Search, ShieldCheck, Trash2, Users, Wallet, X } from 'lucide-react';
 import { auth, db, firebaseConfigured } from './firebase';
 import { MemberIDPortal, MemberVerifyPage, NgoAdminPortal } from './MemberIDPortal';
 import { NgoWorkspacePortal } from './NgoWorkspace';
-import { addDoc, collection, doc, getDoc, getDocs, query as firestoreQuery, serverTimestamp, setDoc, where, runTransaction, Timestamp, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query as firestoreQuery, serverTimestamp, setDoc, where, runTransaction, Timestamp, updateDoc } from 'firebase/firestore';
 
 const SUPER_ADMIN_EMAILS = ['ngogrant454@gmail.com', 'zaradigitalseva@gmail.com'];
 const isSuperAdmin = (user: User | null) => Boolean(user?.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase()));
@@ -24,6 +24,51 @@ const nav = [
 type DashboardNgo = { id: string; name: string; type: string; city: string; status: string; ownerUid: string; people: number };
 type DashboardRecord = Record<string, any> & { id: string };
 type SubscriptionPlan = { id: string; name: string; price: number; durationDays: number; description: string; active: boolean };
+type DashboardSlide = { id: string; title: string; imageData: string; createdAt?: unknown };
+
+function compressDashboardImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) { reject(new Error('कृपया इमेज फ़ाइल चुनें।')); return; }
+    if (file.size > 12 * 1024 * 1024) { reject(new Error('इमेज 12 MB से छोटी होनी चाहिए।')); return; }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('इमेज पढ़ी नहीं जा सकी।'));
+    reader.onload = () => {
+      const image = new Image();
+      image.onerror = () => reject(new Error('इमेज फ़ाइल खुल नहीं सकी।'));
+      image.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = image.naturalWidth;
+        let height = image.naturalHeight;
+        const scale = Math.min(1, 1400 / width, 800 / height);
+        width = Math.max(1, Math.round(width * scale));
+        height = Math.max(1, Math.round(height * scale));
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d');
+        if (!context) { reject(new Error('इमेज प्रोसेस नहीं हो सकी।')); return; }
+        context.drawImage(image, 0, 0, width, height);
+        let quality = 0.82;
+        let result = canvas.toDataURL('image/jpeg', quality);
+        while (result.length > 650000 && quality > 0.42) {
+          quality -= 0.08;
+          result = canvas.toDataURL('image/jpeg', quality);
+        }
+        while (result.length > 650000 && width > 480 && height > 280) {
+          width = Math.round(width * 0.82);
+          height = Math.round(height * 0.82);
+          canvas.width = width;
+          canvas.height = height;
+          context.drawImage(image, 0, 0, width, height);
+          result = canvas.toDataURL('image/jpeg', 0.58);
+        }
+        if (result.length > 700000) { reject(new Error('यह इमेज बहुत बड़ी है। छोटी इमेज चुनें।')); return; }
+        resolve(result);
+      };
+      image.src = String(reader.result || '');
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 
 type PublicHomeProps = {
@@ -191,6 +236,12 @@ export default function App() {
   const [adminQrImage, setAdminQrImage] = useState('');
   const [qrSaveBusy, setQrSaveBusy] = useState(false);
   const [qrSaveMessage, setQrSaveMessage] = useState('');
+  const [dashboardSlides, setDashboardSlides] = useState<DashboardSlide[]>([]);
+  const [dashboardSlideIndex, setDashboardSlideIndex] = useState(0);
+  const [slideTitle, setSlideTitle] = useState('');
+  const [slideImageData, setSlideImageData] = useState('');
+  const [slideSaveBusy, setSlideSaveBusy] = useState(false);
+  const [slideMessage, setSlideMessage] = useState('');
   useEffect(() => {
     if (!authUser || !isSuperAdmin(authUser) || section !== 'subscriptions') return;
     let active = true;
@@ -205,6 +256,26 @@ export default function App() {
     }).catch(() => { if (active) setRegistrationLoadError('रजिस्ट्रेशन लोड नहीं हुए। Firestore rules प्रकाशित हैं या नहीं, जाँचें।'); });
     return () => { active = false; };
   }, [authUser, section]);
+  useEffect(() => {
+    if (!authUser || !isSuperAdmin(authUser) || !firebaseConfigured) return;
+    let active = true;
+    getDocs(collection(db, 'dashboardSlides')).then(snapshot => {
+      if (!active) return;
+      const slides = snapshot.docs.map(item => ({ id: item.id, title: String(item.data().title || ''), imageData: String(item.data().imageData || ''), createdAt: item.data().createdAt } as DashboardSlide)).filter(item => item.imageData).sort((a, b) => {
+        const at = a.createdAt && typeof (a.createdAt as { toMillis?: () => number }).toMillis === 'function' ? (a.createdAt as { toMillis: () => number }).toMillis() : 0;
+        const bt = b.createdAt && typeof (b.createdAt as { toMillis?: () => number }).toMillis === 'function' ? (b.createdAt as { toMillis: () => number }).toMillis() : 0;
+        return at - bt;
+      });
+      setDashboardSlides(slides);
+    }).catch(error => { if (active) setSlideMessage(error instanceof Error ? error.message : 'स्लाइड लोड नहीं हुए। Firestore Rules जाँचें।'); });
+    return () => { active = false; };
+  }, [authUser]);
+  useEffect(() => {
+    if (dashboardSlides.length < 2) return;
+    const timer = window.setInterval(() => setDashboardSlideIndex(index => (index + 1) % dashboardSlides.length), 5000);
+    return () => window.clearInterval(timer);
+  }, [dashboardSlides.length]);
+
   useEffect(() => {
     if (!authUser || !isSuperAdmin(authUser) || !firebaseConfigured) {
       setDashboardLoading(false);
@@ -449,6 +520,30 @@ export default function App() {
       notify(error instanceof Error ? error.message : (language === 'hi' ? 'रजिस्ट्रेशन सेव नहीं हुआ। Firestore Rules जाँचें।' : 'Registration failed. Check Firestore rules.'));
     }
   };
+  const saveDashboardSlide = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!authUser || !isSuperAdmin(authUser) || !slideImageData) { setSlideMessage('पहले इमेज चुनें।'); return; }
+    setSlideSaveBusy(true);
+    setSlideMessage('');
+    try {
+      const ref = await addDoc(collection(db, 'dashboardSlides'), { title: slideTitle.trim(), imageData: slideImageData, createdAt: serverTimestamp(), createdBy: authUser.email || '' });
+      setDashboardSlides(current => [...current, { id: ref.id, title: slideTitle.trim(), imageData: slideImageData }]);
+      setDashboardSlideIndex(dashboardSlides.length);
+      setSlideTitle('');
+      setSlideImageData('');
+      setSlideMessage('इमेज स्लाइडर में सेव हो गई।');
+    } catch (error) { setSlideMessage(error instanceof Error ? error.message : 'इमेज सेव नहीं हुई। Firestore Rules जाँचें।'); }
+    finally { setSlideSaveBusy(false); }
+  };
+  const deleteDashboardSlide = async (slide: DashboardSlide) => {
+    if (!window.confirm('क्या यह स्लाइड हटानी है?')) return;
+    try {
+      await deleteDoc(doc(db, 'dashboardSlides', slide.id));
+      setDashboardSlides(current => current.filter(item => item.id !== slide.id));
+      setDashboardSlideIndex(index => Math.max(0, Math.min(index, dashboardSlides.length - 2)));
+      setSlideMessage('स्लाइड हटा दी गई।');
+    } catch (error) { setSlideMessage(error instanceof Error ? error.message : 'स्लाइड हटाई नहीं जा सकी। Firestore Rules जाँचें।'); }
+  };
   const pageTitle = nav.find(item => item.id === section)?.key ?? 'overview';
 
   if (window.location.pathname.startsWith('/member-verify')) return <MemberVerifyPage />;
@@ -498,7 +593,10 @@ export default function App() {
         {section === 'overview' && <>
           {dashboardError && <div className="setup-banner" role="alert"><div className="setup-icon"><ShieldCheck size={20}/></div><div className="setup-copy"><strong>Firebase डेटा लोड नहीं हुआ</strong><p>{dashboardError}</p></div></div>}
           {dashboardLoading && <div className="empty-state">Firebase से असली डेटा लोड हो रहा है…</div>}
-          {!dashboardLoading && !dashboardError && <section className="hero-panel"><div className="hero-copy"><div className="hero-pill"><Activity size={14}/>{language === 'hi' ? 'सामाजिक प्रभाव, एक जगह' : 'Social impact, all in one place'}</div><h2>{t.activityTitle}</h2><button className="hero-button" onClick={() => chooseSection('ngos')}>{t.directory}<ArrowUpRight size={16}/></button><div className="hero-avatars"><div className="mini-avatar mini-one">NG</div><div className="mini-avatar mini-two">CO</div><div className="mini-avatar mini-three">NN</div><span>{liveNgos.length} {language === 'hi' ? 'संस्थाएँ' : 'organizations'}</span></div></div><div className="hero-art" aria-hidden="true"><div className="orbit orbit-one"/><div className="orbit orbit-two"/><div className="hero-circle"><HeartHandshake size={68} strokeWidth={1.35}/></div><div className="floating-chip chip-top"><span className="chip-icon green"><Users size={16}/></span><span><b>{liveMembers.length}</b><small>{t.membersCount}</small></span></div><div className="floating-chip chip-bottom"><span className="chip-icon yellow"><HandCoins size={16}/></span><span><b>₹{totalDonations.toLocaleString('en-IN')}</b><small>{t.totalDonations}</small></span></div><div className="sparkle sparkle-one">✦</div><div className="sparkle sparkle-two">✳</div></div></section>}
+          {!dashboardLoading && !dashboardError && <section className="dashboard-slider-panel" aria-label="Dashboard image slider">
+            {dashboardSlides.length > 0 ? <><img className="dashboard-slide-image" src={dashboardSlides[dashboardSlideIndex % dashboardSlides.length].imageData} alt={dashboardSlides[dashboardSlideIndex % dashboardSlides.length].title || 'NGO Connect banner'} /><div className="dashboard-slide-shade"/><div className="dashboard-slide-caption"><span className="dashboard-slide-kicker"><HeartHandshake size={15}/> NGO CONNECT</span>{dashboardSlides[dashboardSlideIndex % dashboardSlides.length].title && <h2>{dashboardSlides[dashboardSlideIndex % dashboardSlides.length].title}</h2>}<p>{language === 'hi' ? 'बेहतर बदलाव के लिए साथ आएँ।' : 'Together for better impact.'}</p></div>{dashboardSlides.length > 1 && <><button className="dashboard-slide-arrow slide-prev" aria-label="Previous slide" onClick={() => setDashboardSlideIndex(index => (index - 1 + dashboardSlides.length) % dashboardSlides.length)}><ChevronLeft size={23}/></button><button className="dashboard-slide-arrow slide-next" aria-label="Next slide" onClick={() => setDashboardSlideIndex(index => (index + 1) % dashboardSlides.length)}><ChevronRight size={23}/></button><div className="dashboard-slide-dots">{dashboardSlides.map((slide, index) => <button key={slide.id} aria-label={`Slide ${index + 1}`} className={index === dashboardSlideIndex ? 'active' : ''} onClick={() => setDashboardSlideIndex(index}/>)}</div></>}</> : <div className="dashboard-slide-empty"><div className="dashboard-slide-empty-icon"><ImagePlus size={36}/></div><h2>{language === 'hi' ? 'अपनी NGO की कहानी दिखाएँ' : 'Show your NGO story'}</h2><p>{language === 'hi' ? 'सुपर एडमिन यहाँ अपनी पसंद की तस्वीरें जोड़ सकता है।' : 'The Super Admin can add any images here.'}</p></div>}
+            <div className="dashboard-slide-admin"><form onSubmit={saveDashboardSlide} className="dashboard-slide-upload-form"><label className="dashboard-slide-title-label"><span>{language === 'hi' ? 'स्लाइड का शीर्षक (वैकल्पिक)' : 'Slide title (optional)'}</span><input value={slideTitle} maxLength={100} onChange={event => setSlideTitle(event.target.value)} placeholder={language === 'hi' ? 'जैसे: हमारी नई पहल' : 'e.g. Our latest initiative'}/></label><label className="dashboard-slide-file-button"><ImagePlus size={17}/><span>{slideImageData ? (language === 'hi' ? 'इमेज चुनी गई' : 'Image selected') : (language === 'hi' ? 'इमेज चुनें' : 'Choose image')}<input type="file" accept="image/*" onChange={async event => { const file = event.currentTarget.files?.[0]; if (!file) return; setSlideMessage('इमेज तैयार हो रही है…'); try { setSlideImageData(await compressDashboardImage(file)); setSlideMessage('इमेज तैयार है। सेव करें।'); } catch (error) { setSlideMessage(error instanceof Error ? error.message : 'इमेज तैयार नहीं हुई।'); } event.currentTarget.value = ''; }}/></label><button type="submit" className="dashboard-slide-save-button" disabled={slideSaveBusy || !slideImageData}>{slideSaveBusy ? (language === 'hi' ? 'सेव हो रहा है…' : 'Saving…') : (language === 'hi' ? 'स्लाइड जोड़ें' : 'Add slide')}<Plus size={16}/></button></form>{slideMessage && <p className="dashboard-slide-message" role="status">{slideMessage}</p>}{dashboardSlides.length > 0 && <div className="dashboard-slide-manage-list"><span>{language === 'hi' ? `कुल ${dashboardSlides.length} स्लाइड` : `${dashboardSlides.length} slides total`}</span>{dashboardSlides.map((slide, index) => <div key={slide.id}><button type="button" className={index === dashboardSlideIndex ? 'selected' : ''} onClick={() => setDashboardSlideIndex(index)}>{slide.title || (language === 'hi' ? `इमेज ${index + 1}` : `Image ${index + 1}`)}</button><button type="button" aria-label="Delete slide" onClick={() => void deleteDashboardSlide(slide)}><Trash2 size={14}/></button></div>)}</div>}</div>
+          </section>}
           <section className="stats-grid"><article className="stat-card"><div className="stat-top"><span>{t.totalDonations}</span><span className="stat-icon icon-green"><HandCoins size={19}/></span></div><div className="stat-number">₹{totalDonations.toLocaleString('en-IN')}</div><div className="stat-foot"><span className="trend neutral">{liveTransactions.filter(row => String(row.type || '').toUpperCase() === 'DONATION').length}</span><span>{language === 'hi' ? 'दान रिकॉर्ड' : 'donation records'}</span></div></article><article className="stat-card"><div className="stat-top"><span>{t.expenses}</span><span className="stat-icon icon-orange"><Wallet size={19}/></span></div><div className="stat-number">₹{totalExpenses.toLocaleString('en-IN')}</div><div className="stat-foot"><span className="trend neutral">{liveTransactions.filter(row => String(row.type || '').toUpperCase() === 'EXPENSE').length}</span><span>{language === 'hi' ? 'खर्च रिकॉर्ड' : 'expense records'}</span></div></article><article className="stat-card"><div className="stat-top"><span>{t.membersCount}</span><span className="stat-icon icon-purple"><Users size={19}/></span></div><div className="stat-number">{liveMembers.length}</div><div className="stat-foot"><span className="trend neutral">{liveMembers.filter(row => String(row.role || '').toUpperCase() === 'VOLUNTEER').length}</span><span>{t.volunteers}</span></div></article><article className="stat-card"><div className="stat-top"><span>{t.programs}</span><span className="stat-icon icon-blue"><CalendarDays size={19}/></span></div><div className="stat-number">{liveEvents.length}</div><div className="stat-foot"><span className="trend neutral">{activeEvents} {t.active.toLowerCase()}</span><span>{t.month}</span></div></article></section>
           <section className="content-grid"><div className="panel activity-panel"><div className="panel-heading"><div><h3>{t.recent}</h3><p>{language === 'hi' ? 'Firebase में सेव हाल के रिकॉर्ड' : 'Recent records saved in Firebase'}</p></div><button className="text-button" onClick={() => chooseSection('finance')}>{t.viewAll}<ArrowUpRight size={15}/></button></div><div className="activity-list">{recentItems.length === 0 ? <div className="empty-state">{t.noData}</div> : recentItems.map(row => <div className="activity-item" key={row.kind + row.id}><div className={`activity-icon ${row.kind === 'transaction' ? 'activity-donation' : row.kind === 'member' ? 'activity-member' : row.kind === 'event' ? 'activity-event' : 'activity-doc'}`}>{row.kind === 'transaction' ? <HandCoins size={17}/> : row.kind === 'member' ? <Users size={17}/> : row.kind === 'event' ? <CalendarDays size={17}/> : <FileBadge size={17}/>}</div><div className="activity-description"><strong>{String(row.name || row.title || row.category || (row.kind === 'transaction' ? row.type : row.kind === 'member' ? (language === 'hi' ? 'नया सदस्य' : 'Member record') : 'Record'))}</strong><span>{String(row.ngoName || liveNgos.find(n => n.id === row.ngoId)?.name || 'NGO')} · {row.when && !Number.isNaN(row.when.getTime()) ? row.when.toLocaleString(language === 'hi' ? 'hi-IN' : 'en-IN') : (language === 'hi' ? 'तारीख उपलब्ध नहीं' : 'Date unavailable')}</span></div><div className="activity-amount">{row.kind === 'transaction' ? (String(row.type).toUpperCase() === 'DONATION' ? '+' : '−') + '₹' + (Number(row.amount) || 0).toLocaleString('en-IN') : String(row.status || '')}</div></div>)}</div></div>
           <div className="panel quick-panel"><div className="panel-heading"><div><h3>{t.quick}</h3><p>{language === 'hi' ? 'काम जल्दी शुरू करें' : 'Get things moving'}</p></div><div className="panel-heading-icon"><ClipboardList size={18}/></div></div><div className="quick-actions"><button onClick={() => setShowRegistration(true)}><span className="quick-icon quick-green"><HeartHandshake size={19}/></span><span><b>{t.register}</b><small>{language === 'hi' ? 'नई संस्था जोड़ें' : 'Add a new organization'}</small></span><Plus size={16}/></button><button onClick={() => chooseSection('members')}><span className="quick-icon quick-purple"><Users size={19}/></span><span><b>{t.addMember}</b><small>{language === 'hi' ? 'टीम में लोगों को जोड़ें' : 'Grow your team'}</small></span><Plus size={16}/></button><button onClick={() => chooseSection('finance')}><span className="quick-icon quick-yellow"><HandCoins size={19}/></span><span><b>{t.recordDonation}</b><small>{language === 'hi' ? 'दान और खर्च का हिसाब' : 'Track contributions'}</small></span><Plus size={16}/></button><button onClick={() => chooseSection('events')}><span className="quick-icon quick-blue"><CalendarDays size={19}/></span><span><b>{t.createEvent}</b><small>{language === 'hi' ? 'अगला कार्यक्रम प्लान करें' : 'Plan what comes next'}</small></span><Plus size={16}/></button></div></div></section>
