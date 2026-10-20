@@ -257,3 +257,19 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
   font-weight: 900;
   letter-spacing: -.8px;
 }
+
+
+/* Larger, clearer All NGO Connect brand name */
+.brand-name { font-size: 27px; line-height: 1.15; letter-spacing: -1px; }
+.public-brand { font-size: clamp(22px, 2vw, 28px); line-height: 1.15; letter-spacing: -1px; }
+.member-brand { font-size: clamp(27px, 3vw, 34px); line-height: 1.15; letter-spacing: -1px; }
+@media (max-width: 600px) {
+  .brand-name { font-size: 23px; }
+  .public-brand { font-size: 21px; gap: 8px; }
+  .public-brand .brand-mark { flex-shrink: 0; }
+  .member-brand { font-size: 27px; }
+}
+@media (max-width: 380px) {
+  .brand-name { font-size: 21px; }
+  .public-brand { font-size: 19px; }
+}
