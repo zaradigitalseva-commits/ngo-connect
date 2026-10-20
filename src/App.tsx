@@ -210,10 +210,10 @@ function PublicTickerBanner({ language }: { language: Language }) {
     return () => { active = false; };
   }, []);
   if (!messages.length) return null;
-  const line = messages.map(item => item.text).join('   ✦   ');
+  const tickerLine = <>{messages.map((item, index) => <span className={'ticker-text ticker-tone-' + item.color} key={item.id}>{index > 0 ? '   ✦   ' : ''}{item.text}</span>)}</>;
   return <section className="public-ticker-box" aria-label={hi ? 'सुपर एडमिन की सूचना' : 'Super Admin announcements'}>
     <div className="public-ticker-label"><span className="public-ticker-live-dot" />{hi ? 'खास सूचना' : 'ANNOUNCEMENT'}</div>
-    <div className="public-ticker-window"><div className="public-ticker-track"><span>{line}</span><span aria-hidden="true">{line}</span></div></div>
+    <div className="public-ticker-window"><div className="public-ticker-track"><span>{tickerLine}</span><span aria-hidden="true">{tickerLine}</span></div></div>
   </section>;
 }
 
