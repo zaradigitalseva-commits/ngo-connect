@@ -210,7 +210,7 @@ function PublicTickerBanner({ language }: { language: Language }) {
   }, []);
   const tickerLine = <>{messages.map((item, index) => <span className={'ticker-text ticker-tone-' + item.color} key={item.id}>{index > 0 ? '   ✦   ' : ''}{item.text}</span>)}</>;
   return <section className="public-ticker-box" aria-label={hi ? 'सुपर एडमिन की सूचना' : 'Super Admin announcements'}>
-    <div className="public-ticker-label"><span className="public-ticker-live-dot" />{hi ? 'खास सूचना' : 'ANNOUNCEMENT'}</div>
+    
     <div className="public-ticker-window">{messages.length > 0
       ? <div className="public-ticker-track" style={{ animationDuration: "4s" }}><span>{tickerLine}</span><span aria-hidden="true">{tickerLine}</span></div>
       : <div className="public-ticker-placeholder">{hi ? 'यहाँ Super Admin की सूचना दिखाई देगी।' : 'Super Admin announcements will appear here.'}</div>}</div>
