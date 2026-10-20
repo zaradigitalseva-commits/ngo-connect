@@ -86,6 +86,11 @@ service cloud.firestore {
       allow update, delete: if isSuperAdmin();
     }
 
+    // Dashboard carousel images: only Super Admins can manage and read these records.
+    match /dashboardSlides/{slideId} {
+      allow read, create, update, delete: if isSuperAdmin();
+    }
+
     // Public payment QR: visitors can read, only admins can change it
     match /publicSettings/{settingId} {
       allow read: if settingId == 'payment' || isSuperAdmin();
