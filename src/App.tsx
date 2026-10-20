@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowUpRight, BadgeCheck, Bell, Building2, CalendarDays, Che
 import { auth, db, firebaseConfigured } from './firebase';
 import { MemberIDPortal, MemberVerifyPage, NgoAdminPortal } from './MemberIDPortal';
 import { NgoWorkspacePortal } from './NgoWorkspace';
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query as firestoreQuery, serverTimestamp, setDoc, where, runTransaction, Timestamp, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, query as firestoreQuery, serverTimestamp, setDoc, where, runTransaction, Timestamp, updateDoc } from 'firebase/firestore';
 
 const SUPER_ADMIN_EMAILS = ['ngogrant454@gmail.com', 'zaradigitalseva@gmail.com'];
 const isSuperAdmin = (user: User | null) => Boolean(user?.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase()));
@@ -196,9 +196,8 @@ function PublicTickerBanner({ language }: { language: Language }) {
   const hi = language === 'hi';
   const [messages, setMessages] = useState<Array<{ id: string; text: string; color: string; createdAt?: unknown }>>([]);
   useEffect(() => {
-    let active = true;
-    getDocs(collection(db, 'publicTickerMessages')).then(snapshot => {
-      if (!active) return;
+    // Listen live so public visitors see announcements as soon as Super Admin saves them.
+    const unsubscribe = onSnapshot(collection(db, 'publicTickerMessages'), snapshot => {
       const rows = snapshot.docs.map(item => ({ id: item.id, text: String(item.data().text || '').trim(), color: String(item.data().color || 'rainbow'), createdAt: item.data().createdAt }))
         .filter(item => item.text).sort((a, b) => {
           const at = a.createdAt && typeof (a.createdAt as { toMillis?: () => number }).toMillis === 'function' ? (a.createdAt as { toMillis: () => number }).toMillis() : 0;
@@ -206,8 +205,8 @@ function PublicTickerBanner({ language }: { language: Language }) {
           return at - bt;
         });
       setMessages(rows);
-    }).catch(() => { if (active) setMessages([]); });
-    return () => { active = false; };
+    }, () => setMessages([]));
+    return unsubscribe;
   }, []);
   const tickerLine = <>{messages.map((item, index) => <span className={'ticker-text ticker-tone-' + item.color} key={item.id}>{index > 0 ? '   ✦   ' : ''}{item.text}</span>)}</>;
   return <section className="public-ticker-box" aria-label={hi ? 'सुपर एडमिन की सूचना' : 'Super Admin announcements'}>
