@@ -1516,37 +1516,3 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
 .public-ticker-track {
   animation-duration: 8s !important;
 }
-
-/* Make every public header navigation button equal-width across the screen */
-.public-site:not(.ngo-directory-site) > .public-header > .public-nav {
-  display: flex;
-  width: 100%;
-  box-sizing: border-box;
-  gap: 6px;
-  overflow-x: hidden;
-}
-.public-site:not(.ngo-directory-site) > .public-header > .public-nav > .nav-3d {
-  flex: 1 1 0;
-  min-width: 0;
-  box-sizing: border-box;
-  padding: 6px 4px;
-  text-align: center;
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-@media (max-width: 600px) {
-  .public-site:not(.ngo-directory-site) > .public-header > .public-nav {
-    gap: 4px;
-    padding: 8px 5px;
-  }
-  .public-site:not(.ngo-directory-site) > .public-header > .public-nav > .nav-3d {
-    flex: 1 1 0;
-    min-width: 0;
-    min-height: 34px;
-    padding: 5px 2px;
-    font-size: clamp(9px, 2.5vw, 11px);
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
-}
-
