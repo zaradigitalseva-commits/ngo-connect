@@ -249,7 +249,7 @@ function PublicHomeNgoCards({ language }: { language: Language }) {
   return <section className="public-home-ngo-directory" aria-labelledby="home-ngo-heading">
     <div className="public-section-heading">
       <span>{hi ? 'ALL NGO CONNECT · NGO परिवार' : 'ALL NGO CONNECT · NGO COMMUNITY'}</span>
-      <h2 id="home-ngo-heading">{hi ? 'हमसे जुड़े NGO' : 'NGOs connected with us'}</h2>
+      
       <p>{hi ? 'सामाजिक बदलाव के लिए साथ काम करने वाली संस्थाएँ।' : 'Organizations working together for social impact.'}</p>
     </div>
     {loading ? <div className="public-home-ngo-empty"><span className="directory-loader"/><p>{hi ? 'NGO की सूची लोड हो रही है…' : 'Loading NGOs…'}</p></div>
