@@ -769,3 +769,74 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
     letter-spacing: 0.7px !important;
   }
 }
+
+
+/* Match the stacked brand height to the action buttons and add a green name strip */
+.public-site:not(.ngo-directory-site) > .public-header > .public-brand {
+  align-self: center;
+  min-width: 0;
+}
+.public-site:not(.ngo-directory-site) > .public-header > .public-brand > .brand-name-stack > span {
+  display: table;
+  background: linear-gradient(180deg, #22a447 0%, #087a32 100%);
+  color: #fff !important;
+  padding: 3px 7px;
+  border-radius: 4px;
+  letter-spacing: 1px !important;
+  line-height: 1.05 !important;
+  box-shadow: 0 2px 0 #075c28, 0 3px 6px rgba(0, 70, 25, .2);
+}
+.public-site:not(.ngo-directory-site) > .public-header > .public-brand > .brand-name-stack > span + span {
+  margin-top: 3px;
+}
+@media (max-width: 600px) {
+  .public-site:not(.ngo-directory-site) > .public-header {
+    grid-template-columns: minmax(0, 1fr) minmax(126px, 42%);
+    align-items: center;
+    column-gap: 8px !important;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-brand {
+    height: 66px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow: visible;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-brand > .brand-mark {
+    flex: 0 0 auto;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-brand > .brand-name-stack {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 13px;
+    line-height: 1.05 !important;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-brand > .brand-name-stack > span {
+    padding: 3px 5px;
+    letter-spacing: .65px !important;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-brand > .brand-name-stack > small {
+    font-size: 7px;
+    margin-top: 3px;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions {
+    align-self: center;
+  }
+}
+@media (max-width: 380px) {
+  .public-site:not(.ngo-directory-site) > .public-header {
+    grid-template-columns: minmax(0, 1fr) 126px;
+    column-gap: 6px !important;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-brand {
+    height: 64px;
+    gap: 4px;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-brand > .brand-name-stack {
+    font-size: 11px;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-brand > .brand-name-stack > span {
+    padding: 3px 4px;
+    letter-spacing: .4px !important;
+  }
+}
