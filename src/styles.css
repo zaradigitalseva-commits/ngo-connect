@@ -321,3 +321,58 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
+
+
+/* Mobile header spacing: prevent the brand and action buttons from touching */
+@media (max-width: 600px) {
+  .public-header {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 15px;
+    padding: 16px 18px;
+  }
+  .public-brand {
+    width: 100%;
+    min-width: 0;
+    white-space: normal;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    font-size: 20px;
+    line-height: 1.25;
+  }
+  .public-brand > span:last-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .public-brand small { display: block; font-size: 10px; line-height: 1.4; }
+  .public-header .public-actions {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 10px;
+    padding-top: 12px;
+    border-top: 1px solid #f0f4f1;
+  }
+  .public-header .public-actions > * { max-width: 100%; }
+  .public-nav {
+    order: 3;
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 12px 20px;
+    padding: 12px 0 2px;
+    border-top: 1px solid #f0f4f1;
+  }
+}
+@media (max-width: 380px) {
+  .public-header { padding: 14px 14px; gap: 12px; }
+  .public-brand { font-size: 18px; gap: 9px; }
+  .public-brand .brand-mark { width: 36px; height: 36px; }
+  .public-header .public-actions { gap: 8px; }
+  .public-nav { gap: 10px 15px; }
+}
