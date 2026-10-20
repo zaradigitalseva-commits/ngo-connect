@@ -220,20 +220,20 @@ function PublicHomeNgoCards({ language }: { language: Language }) {
     return () => { active = false; };
   }, []);
 
-  return <section className="home-ngo-section" aria-labelledby="home-ngo-heading">
+  return <section className="public-home-ngo-directory" aria-labelledby="home-ngo-heading">
     <div className="public-section-heading">
       <span>{hi ? 'ALL NGO CONNECT · NGO परिवार' : 'ALL NGO CONNECT · NGO COMMUNITY'}</span>
       <h2 id="home-ngo-heading">{hi ? 'हमसे जुड़े NGO' : 'NGOs connected with us'}</h2>
       <p>{hi ? 'सामाजिक बदलाव के लिए साथ काम करने वाली संस्थाएँ।' : 'Organizations working together for social impact.'}</p>
     </div>
-    {loading ? <div className="ngo-directory-empty"><span className="directory-loader"/><p>{hi ? 'NGO की सूची लोड हो रही है…' : 'Loading NGOs…'}</p></div>
+    {loading ? <div className="public-home-ngo-empty"><span className="directory-loader"/><p>{hi ? 'NGO की सूची लोड हो रही है…' : 'Loading NGOs…'}</p></div>
       : loadError ? <div className="ngo-directory-empty"><Building2 size={28}/><p>{hi ? 'अभी NGO सूची लोड नहीं हो सकी।' : 'The NGO list could not be loaded right now.'}</p></div>
       : ngos.length === 0 ? <div className="ngo-directory-empty"><HeartHandshake size={30}/><strong>{hi ? 'अभी कोई सक्रिय NGO नहीं है' : 'No active NGOs yet'}</strong><p>{hi ? 'भुगतान सत्यापन और एडमिन की मंज़ूरी के बाद NGO के कार्ड यहाँ दिखाई देंगे।' : 'NGO cards will appear here after payment verification and admin approval.'}</p></div>
-      : <div className="ngo-directory-grid">{ngos.map((ngo, index) => <article className="ngo-directory-card" key={ngo.id}>
-          <div className="ngo-directory-card-top"><span className={`ngo-directory-logo directory-tone-${index % 4}`}>{ngo.name.slice(0, 2).toUpperCase()}</span><span className="directory-approved"><i/> {hi ? 'सक्रिय' : 'Active'}</span></div>
-          <h2>{ngo.name}</h2>
-          {ngo.category && <span className="ngo-directory-category">{ngo.category}</span>}
-          {ngo.location && <p className="ngo-directory-location"><MapPin size={15}/>{ngo.location}</p>}
+      : <div className="public-home-ngo-grid">{ngos.map((ngo, index) => <article className={`public-home-ngo-card public-home-ngo-tone-${index % 4}`} key={ngo.id}>
+          <div className="public-home-ngo-card-top"><span className="public-home-ngo-monogram">{ngo.name.slice(0, 2).toUpperCase()}</span><span className="public-home-ngo-active"><i/> {hi ? 'सक्रिय' : 'Active'}</span></div>
+          <h3>{ngo.name}</h3>
+          {ngo.category && <span className="public-home-ngo-category">{ngo.category}</span>}
+          {ngo.location && <p className="public-home-ngo-location"><MapPin size={15}/>{ngo.location}</p>}
           {ngo.mission && <p className="ngo-directory-mission">{ngo.mission}</p>}
         </article>)}</div>}
     <div className="home-ngo-view-all"><a className="outline-button" href="/ngo-list">{hi ? 'सभी NGO देखें' : 'View all NGOs'} <ArrowUpRight size={16}/></a></div>
