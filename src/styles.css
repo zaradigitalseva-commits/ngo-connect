@@ -498,3 +498,35 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
 @media (max-width: 380px) {
   .public-brand > span:last-child { letter-spacing: .4px !important; word-spacing: 2px; }
 }
+
+
+/* Keep the red 3D wordmark compact: remove excessive character spacing */
+.brand-name,
+.public-brand > span:last-child,
+.member-brand,
+.brand-name span,
+.public-brand > span:last-child > span,
+.member-brand span {
+  letter-spacing: -0.5px !important;
+  word-spacing: normal !important;
+}
+.brand-name,
+.member-brand {
+  padding-left: 0;
+  padding-right: 0;
+}
+.public-brand > span:last-child {
+  padding-left: 0;
+  padding-right: 0;
+}
+@media (max-width: 600px) {
+  .public-brand > span:last-child,
+  .brand-name,
+  .member-brand,
+  .brand-name span,
+  .public-brand > span:last-child > span,
+  .member-brand span {
+    letter-spacing: -0.3px !important;
+    word-spacing: normal !important;
+  }
+}
