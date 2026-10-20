@@ -1456,3 +1456,38 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
  .public-site:not(.ngo-directory-site) > .public-header > .public-nav > .nav-3d { flex:0 0 auto; min-height:32px; padding:0 8px; font-size:10px; }
  .public-info-main { margin:28px auto 40px; }
 }
+
+
+/* Colorful, polished 3D style for the NGO registration action only */
+.public-site:not(.ngo-directory-site) > .public-header > .public-actions > .outline-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 10px 16px;
+  border: 1px solid #ffffffb8;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ffca45 0%, #ff8b3d 48%, #f04483 100%);
+  color: #fff;
+  font-weight: 800;
+  text-shadow: 0 1px 2px #6f2d4250;
+  box-shadow: 0 4px 0 #a83b55, 0 8px 16px #e94f6b35, inset 0 1px 0 #ffffffb8;
+  transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;
+}
+.public-site:not(.ngo-directory-site) > .public-header > .public-actions > .outline-button:hover {
+  color: #fff;
+  filter: brightness(1.05) saturate(1.08);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 #a83b55, 0 11px 18px #e94f6b40, inset 0 1px 0 #ffffffb8;
+}
+.public-site:not(.ngo-directory-site) > .public-header > .public-actions > .outline-button:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #a83b55, inset 0 1px 0 #ffffff80;
+}
+@media (max-width: 600px) {
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .outline-button {
+    min-height: 38px;
+    padding: 8px 11px;
+    font-size: 12px;
+  }
+}
