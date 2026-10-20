@@ -1343,3 +1343,5 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
 @media (prefers-reduced-motion: reduce) {
   .public-ticker-track { animation-duration: 80s; }
 }
+
+.public-ticker-placeholder { padding: 3px 18px; color: #4c1d95; font-size: 14px; font-weight: 750; }
