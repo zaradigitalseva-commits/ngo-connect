@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { GoogleAuthProvider, getRedirectResult, onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut, type User } from 'firebase/auth';
-import { Activity, ArrowLeft, ArrowUpRight, BadgeCheck, Bell, Building2, CalendarDays, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, ClipboardList, FileBadge, FileText, Globe2, HandCoins, HeartHandshake, ImagePlus, LayoutDashboard, Leaf, LogOut, MapPin, Menu, Plus, Search, ShieldCheck, Trash2, Users, Wallet, X } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, BadgeCheck, Bell, Building2, CalendarDays, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, ClipboardList, FileBadge, FileText, Globe2, HandCoins, HeartHandshake, ImagePlus, LayoutDashboard, Leaf, LogOut, MapPin, Menu, Plus, Search, ShieldCheck, Trash2, Users, Wallet, X } from 'lucide-react';
 import { auth, db, firebaseConfigured } from './firebase';
 import { MemberIDPortal, MemberVerifyPage, NgoAdminPortal } from './MemberIDPortal';
 import { NgoWorkspacePortal } from './NgoWorkspace';
