@@ -300,3 +300,24 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
   text-shadow: none;
   filter: none;
 }
+
+
+/* Bold red 3D brand name */
+.brand-name,
+.public-brand > span:last-child,
+.member-brand {
+  background: linear-gradient(180deg, #ff7777 0%, #ef2020 38%, #c90000 72%, #8f0000 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 1px 1px 0 #a90000, 2px 2px 0 #8d0000, 3px 4px 0 rgba(90, 0, 0, .28), 0 6px 10px rgba(220, 0, 0, .22);
+  filter: drop-shadow(0 2px 2px rgba(170, 0, 0, .22));
+}
+.brand-name span,
+.public-brand > span:last-child > span,
+.member-brand span {
+  background: linear-gradient(180deg, #ff7777 0%, #ef2020 38%, #c90000 72%, #8f0000 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
