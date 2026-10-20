@@ -1375,3 +1375,27 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
   }
 }
 
+
+
+/* Tighten the space between the scrolling ticker and NGO cards */
+.public-hero {
+  min-height: 0;
+  padding-top: clamp(28px, 4vw, 48px);
+  padding-bottom: clamp(24px, 3vw, 36px);
+}
+.public-home-ngo-directory {
+  padding-top: 12px;
+}
+@media (max-width: 760px) {
+  .public-hero {
+    padding-top: 28px;
+    padding-bottom: 16px;
+  }
+  .public-hero > .public-ticker-box {
+    margin-top: 10px;
+    margin-bottom: 0;
+  }
+  .public-home-ngo-directory {
+    padding-top: 8px;
+  }
+}
