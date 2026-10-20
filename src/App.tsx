@@ -70,6 +70,11 @@ function compressDashboardImage(file: File): Promise<string> {
 }
 
 
+const INDIA_STATES_AND_UTS = [
+  'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal',
+  'Andaman and Nicobar Islands','Chandigarh','Dadra and Nagar Haveli and Daman and Diu','Delhi','Jammu and Kashmir','Ladakh','Lakshadweep','Puducherry'
+] as const;
+
 type PublicHomeProps = {
   language: Language;
   setLanguage: (language: Language) => void;
@@ -78,6 +83,65 @@ type PublicHomeProps = {
   onLogout: () => void;
   authError: string;
 };
+function PublicHomeNgoDirectory({ language }: { language: Language }) {
+  const hi = language === 'hi';
+  const [ngos, setNgos] = useState<Array<{ id: string; name: string; category: string; mission: string; state: string; district: string; city: string }>>([]);
+  const [selectedState, setSelectedState] = useState('');
+  const [selectedDistrict, setSelectedDistrict] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    getDocs(firestoreQuery(collection(db, 'ngos'), where('status', 'in', ['LIVE', 'ACTIVE', 'APPROVED'])))
+      .then(snapshot => {
+        if (!active) return;
+        const records = snapshot.docs.map(item => {
+          const data = item.data();
+          return {
+            id: item.id,
+            name: String(data.name || data.ngoName || 'NGO'),
+            category: String(data.type || data.category || ''),
+            mission: String(data.mission || data.description || ''),
+            state: String(data.state || data.stateName || data.province || ''),
+            district: String(data.district || ''),
+            city: String(data.city || data.location || ''),
+          };
+        }).sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
+        setNgos(records);
+      })
+      .catch(() => { if (active) setLoadError(hi ? 'NGO कार्ड लोड नहीं हो सके। कृपया बाद में फिर कोशिश करें।' : 'NGO cards could not load. Please try again later.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [hi]);
+
+  const districts = Array.from(new Set(ngos.filter(ngo => ngo.state === selectedState && ngo.district.trim()).map(ngo => ngo.district.trim()))).sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }));
+  const visibleNgos = ngos.filter(ngo => (!selectedState || ngo.state === selectedState) && (!selectedDistrict || ngo.district === selectedDistrict));
+
+  return <section className="public-home-ngo-directory" id="ngo-directory">
+    <div className="public-section-heading">
+      <span>{hi ? 'अपने राज्य में संस्थाएँ खोजें' : 'FIND ORGANIZATIONS BY LOCATION'}</span>
+      <h2>{hi ? 'सभी NGO के 3D कार्ड' : 'NGO directory'}</h2>
+      <p>{hi ? 'राज्य चुनें, फिर उस राज्य में सूचीबद्ध जिलों और NGO को देखें।' : 'Choose a state, then view districts and the NGOs listed there.'}</p>
+    </div>
+    <div className="public-ngo-location-filters">
+      <label><span>{hi ? 'राज्य चुनें' : 'Select state'}</span><select value={selectedState} onChange={e => { setSelectedState(e.target.value); setSelectedDistrict(''); }}><option value="">{hi ? 'सभी राज्य और केंद्र शासित प्रदेश' : 'All states and union territories'}</option>{INDIA_STATES_AND_UTS.map(state => <option key={state} value={state}>{state}</option>)}</select></label>
+      <label><span>{hi ? 'जिला चुनें' : 'Select district'}</span><select value={selectedDistrict} onChange={e => setSelectedDistrict(e.target.value)} disabled={!selectedState || districts.length === 0}><option value="">{!selectedState ? (hi ? 'पहले राज्य चुनें' : 'Select a state first') : (hi ? 'उस राज्य के सभी सूचीबद्ध जिले' : 'All listed districts in this state')}</option>{districts.map(district => <option key={district} value={district}>{district}</option>)}</select></label>
+    </div>
+    <div className="public-ngo-directory-count"><strong>{loading ? '…' : visibleNgos.length}</strong> {hi ? 'सक्रिय NGO' : 'active NGOs'}{selectedState ? <span> · {selectedState}{selectedDistrict ? ' · ' + selectedDistrict : ''}</span> : null}</div>
+    {loading ? <div className="public-home-ngo-empty">{hi ? 'NGO कार्ड लोड हो रहे हैं…' : 'Loading NGO cards…'}</div>
+      : loadError ? <div className="public-home-ngo-empty">{loadError}</div>
+      : visibleNgos.length === 0 ? <div className="public-home-ngo-empty">{hi ? 'इस चयन में अभी कोई स्वीकृत NGO नहीं है। भुगतान सत्यापन और मंज़ूरी के बाद NGO यहाँ दिखाई देंगे।' : 'No approved NGOs match this selection yet. NGOs appear here after payment verification and approval.'}</div>
+      : <div className="public-home-ngo-grid">{visibleNgos.map((ngo, index) => <article className={`public-home-ngo-card public-home-ngo-tone-${index % 4}`} key={ngo.id}>
+        <div className="public-home-ngo-card-top"><span className="public-home-ngo-monogram">{ngo.name.slice(0, 2).toUpperCase()}</span><span className="public-home-ngo-active"><i/> {hi ? 'सक्रिय' : 'Active'}</span></div>
+        <h3>{ngo.name}</h3>
+        {ngo.category && <span className="public-home-ngo-category">{ngo.category}</span>}
+        {ngo.mission && <p>{ngo.mission}</p>}
+        {(ngo.district || ngo.city || ngo.state) && <div className="public-home-ngo-location"><MapPin size={15}/><span>{[ngo.district, ngo.city, ngo.state].filter((v, i, all) => v && all.indexOf(v) === i).join(', ')}</span></div>}
+      </article>)}</div>}
+  </section>;
+}
+
 function PublicNgoList({ language, setLanguage }: { language: Language; setLanguage: (language: Language) => void }) {
   const hi = language === 'hi';
   const [ngos, setNgos] = useState<Array<{ id: string; name: string; category: string; location: string; mission: string }>>([]);
@@ -237,7 +301,8 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
       <div className="public-actions"><button className="language-button" onClick={() => setLanguage(hi ? 'en' : 'hi')}>{hi ? 'English' : 'हिन्दी'}</button><button className="outline-button" onClick={() => { setRegistrationMessage(''); setShowPublicRegistration(true); }}>{hi ? 'NGO रजिस्टर करें' : 'Register NGO'}</button>{authUser ? <div className="public-user"><span>{authUser.email}</span><button className="outline-button" onClick={onLogout}>{hi ? 'लॉगआउट' : 'Sign out'}</button></div> : <button className="primary-button" onClick={onLogin} disabled={!firebaseConfigured}><Globe2 size={17}/>{hi ? 'Google से लॉगिन' : 'Sign in with Google'}</button>}</div>
     </header>
     <main>
-      <section className="public-hero" id="about"><div className="public-hero-copy"><span className="public-kicker"><HeartHandshake size={15}/>{hi ? 'सामाजिक बदलाव के लिए एक मंच' : 'A platform for social impact'}</span><h1>{hi ? <>सेवा का हर कदम,<br/><em>बदलाव की नई उम्मीद।</em></> : <>Every act of service,<br/><em>a new hope for change.</em></>}</h1><p>{hi ? 'All NGO Connect संस्थाओं को अपने सदस्यों, स्वयंसेवकों, कार्यक्रमों, दान और रिपोर्ट को व्यवस्थित करने में मदद करने के लिए बनाया जा रहा है।' : 'All NGO Connect is being built to help organizations manage members, volunteers, events, donations and reports in one place.'}</p><div className="public-hero-actions"><a className="primary-button" href="#features">{hi ? 'वेबसाइट देखें' : 'Explore the website'} <ArrowUpRight size={17}/></a><a className="ngo-list-3d-button" href="/ngo-list"><HeartHandshake size={20}/><span>{hi ? 'सभी NGO की सूची' : 'Explore NGO List'}</span><ArrowUpRight size={18}/></a></div>{authUser && <p className="public-signed-in">{hi ? 'लॉगिन ईमेल:' : 'Signed in as:'} <strong>{authUser.email}</strong>{!isSuperAdmin(authUser) && <span> · {hi ? 'सामान्य यूज़र' : 'Regular user'}</span>}</p>}</div><div className="public-hero-art" aria-hidden="true"><div className="public-art-ring ring-a"/><div className="public-art-ring ring-b"/><div className="public-art-main"><HeartHandshake size={78} strokeWidth={1.4}/></div><div className="public-art-chip chip-a"><Users size={18}/><span>{hi ? 'समुदाय' : 'Community'}</span></div><div className="public-art-chip chip-b"><HandCoins size={18}/><span>{hi ? 'पारदर्शिता' : 'Transparency'}</span></div><span className="public-art-spark spark-a">✦</span><span className="public-art-spark spark-b">✳</span></div></section>
+      <section className="public-hero" id="about"><div className="public-hero-copy"><span className="public-kicker"><HeartHandshake size={15}/>{hi ? 'सामाजिक बदलाव के लिए एक मंच' : 'A platform for social impact'}</span><h1>{hi ? <>सेवा का हर कदम,<br/><em>बदलाव की नई उम्मीद।</em></> : <>Every act of service,<br/><em>a new hope for change.</em></>}</h1><p>{hi ? 'All NGO Connect संस्थाओं को अपने सदस्यों, स्वयंसेवकों, कार्यक्रमों, दान और रिपोर्ट को व्यवस्थित करने में मदद करने के लिए बनाया जा रहा है।' : 'All NGO Connect is being built to help organizations manage members, volunteers, events, donations and reports in one place.'}</p><div className="public-hero-actions"><a className="primary-button" href="#features">{hi ? 'वेबसाइट देखें' : 'Explore the website'} <ArrowUpRight size={17}/></a></div>{authUser && <p className="public-signed-in">{hi ? 'लॉगिन ईमेल:' : 'Signed in as:'} <strong>{authUser.email}</strong>{!isSuperAdmin(authUser) && <span> · {hi ? 'सामान्य यूज़र' : 'Regular user'}</span>}</p>}</div><div className="public-hero-art" aria-hidden="true"><div className="public-art-ring ring-a"/><div className="public-art-ring ring-b"/><div className="public-art-main"><HeartHandshake size={78} strokeWidth={1.4}/></div><div className="public-art-chip chip-a"><Users size={18}/><span>{hi ? 'समुदाय' : 'Community'}</span></div><div className="public-art-chip chip-b"><HandCoins size={18}/><span>{hi ? 'पारदर्शिता' : 'Transparency'}</span></div><span className="public-art-spark spark-a">✦</span><span className="public-art-spark spark-b">✳</span></div></section>
+      <PublicHomeNgoDirectory language={language} />
       <PublicDashboardSlider language={language} />
       <section className="public-features" id="features"><div className="public-section-heading"><span>{hi ? 'एक ही जगह सब कुछ' : 'EVERYTHING IN ONE PLACE'}</span><h2>{hi ? 'समाज सेवा को आसान और व्यवस्थित बनाएँ' : 'Make community work simpler and organized'}</h2></div><div className="public-feature-grid"><article><div className="public-feature-icon"><HeartHandshake size={24}/></div><h3>{hi ? 'NGO प्रोफ़ाइल' : 'NGO profiles'}</h3><p>{hi ? 'संस्था की पहचान, उद्देश्य और सार्वजनिक जानकारी दिखाने के लिए।' : 'Share an organization’s mission and public information.'}</p></article><article><div className="public-feature-icon"><Users size={24}/></div><h3>{hi ? 'सदस्य और स्वयंसेवक' : 'Members & volunteers'}</h3><p>{hi ? 'टीम और स्वयंसेवकों के काम को व्यवस्थित करने की सुविधा।' : 'Organize teams and volunteer activity.'}</p></article><article><div className="public-feature-icon"><HandCoins size={24}/></div><h3>{hi ? 'दान और खर्च' : 'Donations & expenses'}</h3><p>{hi ? 'दान और खर्च का रिकॉर्ड रखने के लिए नियोजित सुविधा।' : 'Planned tools to keep donation and expense records.'}</p></article><article><div className="public-feature-icon"><CalendarDays size={24}/></div><h3>{hi ? 'कार्यक्रम और रिपोर्ट' : 'Events & reports'}</h3><p>{hi ? 'कार्यक्रम, दस्तावेज़, प्रमाणपत्र और रिपोर्ट के लिए।' : 'Tools for events, documents, certificates and reports.'}</p></article></div></section>
       <section className="public-cta" id="contact"><div><span>ALL NGO CONNECT</span><h2>{hi ? 'बेहतर बदलाव के लिए साथ आएँ।' : 'Come together for a better impact.'}</h2><button className="primary-button" onClick={() => { setRegistrationMessage(''); setShowPublicRegistration(true); }}>{hi ? 'अपना NGO रजिस्टर करें' : 'Register your NGO'} <ArrowUpRight size={17}/></button></div></section>
