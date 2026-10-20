@@ -461,3 +461,40 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
   .public-header > .public-actions .public-user > button { min-height: 38px; }
   .public-header > .public-nav { gap: 12px 17px !important; }
 }
+
+
+/* Improve brand wordmark readability: add tracking between every character */
+.brand-name,
+.public-brand > span:last-child,
+.member-brand {
+  letter-spacing: 1.1px !important;
+  word-spacing: 5px;
+}
+.brand-name,
+.member-brand {
+  display: inline-block;
+  padding: 2px 5px 6px 2px;
+  line-height: 1.35 !important;
+}
+.public-brand > span:last-child {
+  line-height: 1.45 !important;
+  padding: 2px 5px 5px 1px;
+}
+.brand-name span,
+.public-brand > span:last-child > span,
+.member-brand span {
+  letter-spacing: 1.1px !important;
+}
+@media (max-width: 600px) {
+  .public-brand { gap: 12px !important; }
+  .public-brand > span:last-child {
+    letter-spacing: .8px !important;
+    word-spacing: 3px;
+    line-height: 1.45 !important;
+  }
+  .brand-name { letter-spacing: .7px !important; }
+  .member-brand { letter-spacing: .8px !important; }
+}
+@media (max-width: 380px) {
+  .public-brand > span:last-child { letter-spacing: .4px !important; word-spacing: 2px; }
+}
