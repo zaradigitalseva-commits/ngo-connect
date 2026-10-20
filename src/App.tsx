@@ -29,7 +29,7 @@ type DashboardSlide = { id: string; title: string; imageData: string; createdAt?
 function compressDashboardImage(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith('image/')) { reject(new Error('कृपया इमेज फ़ाइल चुनें।')); return; }
-    if (file.size > 12 * 1024 * 1024) { reject(new Error('इमेज 12 MB से छोटी होनी चाहिए।')); return; }
+    if (file.size > 20 * 1024 * 1024) { reject(new Error('मूल इमेज 20 MB से छोटी होनी चाहिए।')); return; }
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('इमेज पढ़ी नहीं जा सकी।'));
     reader.onload = () => {
@@ -37,31 +37,30 @@ function compressDashboardImage(file: File): Promise<string> {
       image.onerror = () => reject(new Error('इमेज फ़ाइल खुल नहीं सकी।'));
       image.onload = () => {
         const canvas = document.createElement('canvas');
-        let width = image.naturalWidth;
-        let height = image.naturalHeight;
-        const scale = Math.min(1, 1400 / width, 800 / height);
-        width = Math.max(1, Math.round(width * scale));
-        height = Math.max(1, Math.round(height * scale));
-        canvas.width = width;
-        canvas.height = height;
+        const maxWidth = 1000;
+        const maxHeight = 560;
+        const scale = Math.min(1, maxWidth / image.naturalWidth, maxHeight / image.naturalHeight);
+        let width = Math.max(1, Math.round(image.naturalWidth * scale));
+        let height = Math.max(1, Math.round(image.naturalHeight * scale));
         const context = canvas.getContext('2d');
         if (!context) { reject(new Error('इमेज प्रोसेस नहीं हो सकी।')); return; }
-        context.drawImage(image, 0, 0, width, height);
-        let quality = 0.82;
-        let result = canvas.toDataURL('image/jpeg', quality);
-        while (result.length > 650000 && quality > 0.42) {
-          quality -= 0.08;
-          result = canvas.toDataURL('image/jpeg', quality);
-        }
-        while (result.length > 650000 && width > 480 && height > 280) {
-          width = Math.round(width * 0.82);
-          height = Math.round(height * 0.82);
+        let result = '';
+        // Resize and compress until the stored data is small enough for Firestore.
+        for (let attempt = 0; attempt < 8; attempt++) {
           canvas.width = width;
           canvas.height = height;
+          context.clearRect(0, 0, width, height);
           context.drawImage(image, 0, 0, width, height);
-          result = canvas.toDataURL('image/jpeg', 0.58);
+          const quality = [0.72, 0.64, 0.56, 0.48, 0.42, 0.38, 0.34, 0.3][attempt];
+          result = canvas.toDataURL('image/jpeg', quality);
+          if (result.length <= 300000) break;
+          width = Math.max(320, Math.round(width * 0.82));
+          height = Math.max(180, Math.round(height * 0.82));
         }
-        if (result.length > 700000) { reject(new Error('यह इमेज बहुत बड़ी है। छोटी इमेज चुनें।')); return; }
+        if (!result || result.length > 420000) {
+          reject(new Error('इमेज छोटी नहीं हो पाई। कृपया दूसरी या कम साइज़ की इमेज चुनें।'));
+          return;
+        }
         resolve(result);
       };
       image.src = String(reader.result || '');
