@@ -191,6 +191,55 @@ function PublicDashboardSlider({ language }: { language: Language }) {
   </section>;
 }
 
+function PublicHomeNgoCards({ language }: { language: Language }) {
+  const hi = language === 'hi';
+  const [ngos, setNgos] = useState<Array<{ id: string; name: string; category: string; location: string; mission: string }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    if (!firebaseConfigured) { setLoading(false); setLoadError(true); return () => { active = false; }; }
+    getDocs(firestoreQuery(collection(db, 'ngos'), where('status', 'in', ['LIVE', 'ACTIVE', 'APPROVED'])))
+      .then(snapshot => {
+        if (!active) return;
+        setNgos(snapshot.docs.map(item => {
+          const data = item.data();
+          const parts = [data.city, data.district, data.state].filter(value => typeof value === 'string' && value.trim()).map(String);
+          return {
+            id: item.id,
+            name: String(data.name || data.ngoName || 'NGO'),
+            category: String(data.type || data.category || ''),
+            location: parts.filter((value, index) => parts.indexOf(value) === index).join(', ') || String(data.location || ''),
+            mission: String(data.mission || data.description || ''),
+          };
+        }).sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })));
+      })
+      .catch(() => { if (active) setLoadError(true); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+
+  return <section className="home-ngo-section" aria-labelledby="home-ngo-heading">
+    <div className="public-section-heading">
+      <span>{hi ? 'ALL NGO CONNECT · NGO परिवार' : 'ALL NGO CONNECT · NGO COMMUNITY'}</span>
+      <h2 id="home-ngo-heading">{hi ? 'हमसे जुड़े NGO' : 'NGOs connected with us'}</h2>
+      <p>{hi ? 'सामाजिक बदलाव के लिए साथ काम करने वाली संस्थाएँ।' : 'Organizations working together for social impact.'}</p>
+    </div>
+    {loading ? <div className="ngo-directory-empty"><span className="directory-loader"/><p>{hi ? 'NGO की सूची लोड हो रही है…' : 'Loading NGOs…'}</p></div>
+      : loadError ? <div className="ngo-directory-empty"><Building2 size={28}/><p>{hi ? 'अभी NGO सूची लोड नहीं हो सकी।' : 'The NGO list could not be loaded right now.'}</p></div>
+      : ngos.length === 0 ? <div className="ngo-directory-empty"><HeartHandshake size={30}/><strong>{hi ? 'अभी कोई सक्रिय NGO नहीं है' : 'No active NGOs yet'}</strong><p>{hi ? 'भुगतान सत्यापन और एडमिन की मंज़ूरी के बाद NGO के कार्ड यहाँ दिखाई देंगे।' : 'NGO cards will appear here after payment verification and admin approval.'}</p></div>
+      : <div className="ngo-directory-grid">{ngos.map((ngo, index) => <article className="ngo-directory-card" key={ngo.id}>
+          <div className="ngo-directory-card-top"><span className={`ngo-directory-logo directory-tone-${index % 4}`}>{ngo.name.slice(0, 2).toUpperCase()}</span><span className="directory-approved"><i/> {hi ? 'सक्रिय' : 'Active'}</span></div>
+          <h2>{ngo.name}</h2>
+          {ngo.category && <span className="ngo-directory-category">{ngo.category}</span>}
+          {ngo.location && <p className="ngo-directory-location"><MapPin size={15}/>{ngo.location}</p>}
+          {ngo.mission && <p className="ngo-directory-mission">{ngo.mission}</p>}
+        </article>)}</div>}
+    <div className="home-ngo-view-all"><a className="outline-button" href="/ngo-list">{hi ? 'सभी NGO देखें' : 'View all NGOs'} <ArrowUpRight size={16}/></a></div>
+  </section>;
+}
+
 function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authError }: PublicHomeProps) {
   const hi = language === 'hi';
   const [showPublicRegistration, setShowPublicRegistration] = useState(false);
@@ -243,6 +292,7 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
     </header>
     <main>
       <section className="public-hero" id="about"><div className="public-hero-copy"><span className="public-kicker"><HeartHandshake size={15}/>{hi ? 'सामाजिक बदलाव के लिए एक मंच' : 'A platform for social impact'}</span><h1>{hi ? <>आपकी छोटी-सी मदद,<br/><em>किसी की मुस्कान बन सकती है।</em></> : <>Your small act of kindness<br/><em>can bring a smile to someone.</em></>}</h1>{authUser && <p className="public-signed-in">{hi ? 'लॉगिन ईमेल:' : 'Signed in as:'} <strong>{authUser.email}</strong>{!isSuperAdmin(authUser) && <span> · {hi ? 'सामान्य यूज़र' : 'Regular user'}</span>}</p>}</div><div className="public-hero-art" aria-hidden="true"><div className="public-art-ring ring-a"/><div className="public-art-ring ring-b"/><div className="public-art-main"><HeartHandshake size={78} strokeWidth={1.4}/></div><div className="public-art-chip chip-a"><Users size={18}/><span>{hi ? 'समुदाय' : 'Community'}</span></div><div className="public-art-chip chip-b"><HandCoins size={18}/><span>{hi ? 'पारदर्शिता' : 'Transparency'}</span></div><span className="public-art-spark spark-a">✦</span><span className="public-art-spark spark-b">✳</span></div></section>
+      <PublicHomeNgoCards language={language} />
       <PublicDashboardSlider language={language} />
       <section className="public-features" id="features"><div className="public-section-heading"><span>{hi ? 'एक ही जगह सब कुछ' : 'EVERYTHING IN ONE PLACE'}</span><h2>{hi ? 'समाज सेवा को आसान और व्यवस्थित बनाएँ' : 'Make community work simpler and organized'}</h2></div><div className="public-feature-grid"><article><div className="public-feature-icon"><HeartHandshake size={24}/></div><h3>{hi ? 'NGO प्रोफ़ाइल' : 'NGO profiles'}</h3><p>{hi ? 'संस्था की पहचान, उद्देश्य और सार्वजनिक जानकारी दिखाने के लिए।' : 'Share an organization’s mission and public information.'}</p></article><article><div className="public-feature-icon"><Users size={24}/></div><h3>{hi ? 'सदस्य और स्वयंसेवक' : 'Members & volunteers'}</h3><p>{hi ? 'टीम और स्वयंसेवकों के काम को व्यवस्थित करने की सुविधा।' : 'Organize teams and volunteer activity.'}</p></article><article><div className="public-feature-icon"><HandCoins size={24}/></div><h3>{hi ? 'दान और खर्च' : 'Donations & expenses'}</h3><p>{hi ? 'दान और खर्च का रिकॉर्ड रखने के लिए नियोजित सुविधा।' : 'Planned tools to keep donation and expense records.'}</p></article><article><div className="public-feature-icon"><CalendarDays size={24}/></div><h3>{hi ? 'कार्यक्रम और रिपोर्ट' : 'Events & reports'}</h3><p>{hi ? 'कार्यक्रम, दस्तावेज़, प्रमाणपत्र और रिपोर्ट के लिए।' : 'Tools for events, documents, certificates and reports.'}</p></article></div></section>
       <section className="public-cta" id="contact"><div><span>ALL NGO CONNECT</span><h2>{hi ? 'बेहतर बदलाव के लिए साथ आएँ।' : 'Come together for a better impact.'}</h2><button className="primary-button" onClick={() => { setRegistrationMessage(''); setShowPublicRegistration(true); }}>{hi ? 'अपना NGO रजिस्टर करें' : 'Register your NGO'} <ArrowUpRight size={17}/></button></div></section>
