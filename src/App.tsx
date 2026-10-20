@@ -191,6 +191,32 @@ function PublicDashboardSlider({ language }: { language: Language }) {
   </section>;
 }
 
+
+function PublicTickerBanner({ language }: { language: Language }) {
+  const hi = language === 'hi';
+  const [messages, setMessages] = useState<Array<{ id: string; text: string; color: string; createdAt?: unknown }>>([]);
+  useEffect(() => {
+    let active = true;
+    getDocs(collection(db, 'publicTickerMessages')).then(snapshot => {
+      if (!active) return;
+      const rows = snapshot.docs.map(item => ({ id: item.id, text: String(item.data().text || '').trim(), color: String(item.data().color || 'rainbow'), createdAt: item.data().createdAt }))
+        .filter(item => item.text).sort((a, b) => {
+          const at = a.createdAt && typeof (a.createdAt as { toMillis?: () => number }).toMillis === 'function' ? (a.createdAt as { toMillis: () => number }).toMillis() : 0;
+          const bt = b.createdAt && typeof (b.createdAt as { toMillis?: () => number }).toMillis === 'function' ? (b.createdAt as { toMillis: () => number }).toMillis() : 0;
+          return at - bt;
+        });
+      setMessages(rows);
+    }).catch(() => { if (active) setMessages([]); });
+    return () => { active = false; };
+  }, []);
+  if (!messages.length) return null;
+  const line = messages.map(item => item.text).join('   ✦   ');
+  return <section className="public-ticker-box" aria-label={hi ? 'सुपर एडमिन की सूचना' : 'Super Admin announcements'}>
+    <div className="public-ticker-label"><span className="public-ticker-live-dot" />{hi ? 'खास सूचना' : 'ANNOUNCEMENT'}</div>
+    <div className="public-ticker-window"><div className="public-ticker-track"><span>{line}</span><span aria-hidden="true">{line}</span></div></div>
+  </section>;
+}
+
 function PublicHomeNgoCards({ language }: { language: Language }) {
   const hi = language === 'hi';
   const [ngos, setNgos] = useState<Array<{ id: string; name: string; category: string; location: string; mission: string }>>([]);
@@ -292,6 +318,7 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
     </header>
     <main>
       <section className="public-hero" id="about"><div className="public-hero-copy"><span className="public-kicker"><HeartHandshake size={15}/>{hi ? 'सामाजिक बदलाव के लिए एक मंच' : 'A platform for social impact'}</span><h1>{hi ? <>आपकी छोटी-सी मदद,<br/><em>किसी की मुस्कान बन सकती है।</em></> : <>Your small act of kindness<br/><em>can bring a smile to someone.</em></>}</h1>{authUser && <p className="public-signed-in">{hi ? 'लॉगिन ईमेल:' : 'Signed in as:'} <strong>{authUser.email}</strong>{!isSuperAdmin(authUser) && <span> · {hi ? 'सामान्य यूज़र' : 'Regular user'}</span>}</p>}</div><div className="public-hero-art" aria-hidden="true"><div className="public-art-ring ring-a"/><div className="public-art-ring ring-b"/><div className="public-art-main"><HeartHandshake size={78} strokeWidth={1.4}/></div><div className="public-art-chip chip-a"><Users size={18}/><span>{hi ? 'समुदाय' : 'Community'}</span></div><div className="public-art-chip chip-b"><HandCoins size={18}/><span>{hi ? 'पारदर्शिता' : 'Transparency'}</span></div><span className="public-art-spark spark-a">✦</span><span className="public-art-spark spark-b">✳</span></div></section>
+      <PublicTickerBanner language={language} />
       <PublicHomeNgoCards language={language} />
       <PublicDashboardSlider language={language} />
       <section className="public-features" id="features"><div className="public-section-heading"><span>{hi ? 'एक ही जगह सब कुछ' : 'EVERYTHING IN ONE PLACE'}</span><h2>{hi ? 'समाज सेवा को आसान और व्यवस्थित बनाएँ' : 'Make community work simpler and organized'}</h2></div><div className="public-feature-grid"><article><div className="public-feature-icon"><HeartHandshake size={24}/></div><h3>{hi ? 'NGO प्रोफ़ाइल' : 'NGO profiles'}</h3><p>{hi ? 'संस्था की पहचान, उद्देश्य और सार्वजनिक जानकारी दिखाने के लिए।' : 'Share an organization’s mission and public information.'}</p></article><article><div className="public-feature-icon"><Users size={24}/></div><h3>{hi ? 'सदस्य और स्वयंसेवक' : 'Members & volunteers'}</h3><p>{hi ? 'टीम और स्वयंसेवकों के काम को व्यवस्थित करने की सुविधा।' : 'Organize teams and volunteer activity.'}</p></article><article><div className="public-feature-icon"><HandCoins size={24}/></div><h3>{hi ? 'दान और खर्च' : 'Donations & expenses'}</h3><p>{hi ? 'दान और खर्च का रिकॉर्ड रखने के लिए नियोजित सुविधा।' : 'Planned tools to keep donation and expense records.'}</p></article><article><div className="public-feature-icon"><CalendarDays size={24}/></div><h3>{hi ? 'कार्यक्रम और रिपोर्ट' : 'Events & reports'}</h3><p>{hi ? 'कार्यक्रम, दस्तावेज़, प्रमाणपत्र और रिपोर्ट के लिए।' : 'Tools for events, documents, certificates and reports.'}</p></article></div></section>
@@ -335,6 +362,12 @@ export default function App() {
   const [slideImageData, setSlideImageData] = useState('');
   const [slideSaveBusy, setSlideSaveBusy] = useState(false);
   const [slideMessage, setSlideMessage] = useState('');
+  const [tickerMessages, setTickerMessages] = useState<Array<{ id: string; text: string; color: string; createdAt?: unknown }>>([]);
+  const [tickerDraft, setTickerDraft] = useState('');
+  const [tickerColor, setTickerColor] = useState('rainbow');
+  const [tickerBusy, setTickerBusy] = useState(false);
+  const [tickerMessage, setTickerMessage] = useState('');
+
   useEffect(() => {
     if (!authUser || !isSuperAdmin(authUser) || section !== 'subscriptions') return;
     let active = true;
@@ -361,6 +394,21 @@ export default function App() {
       });
       setDashboardSlides(slides);
     }).catch(error => { if (active) setSlideMessage(error instanceof Error ? error.message : 'स्लाइड लोड नहीं हुए। Firestore Rules जाँचें।'); });
+    return () => { active = false; };
+  }, [authUser]);
+  useEffect(() => {
+    if (!authUser || !isSuperAdmin(authUser) || !firebaseConfigured) return;
+    let active = true;
+    getDocs(collection(db, 'publicTickerMessages')).then(snapshot => {
+      if (!active) return;
+      const rows = snapshot.docs.map(item => ({ id: item.id, text: String(item.data().text || ''), color: String(item.data().color || 'rainbow'), createdAt: item.data().createdAt }));
+      rows.sort((a, b) => {
+        const at = a.createdAt && typeof (a.createdAt as { toMillis?: () => number }).toMillis === 'function' ? (a.createdAt as { toMillis: () => number }).toMillis() : 0;
+        const bt = b.createdAt && typeof (b.createdAt as { toMillis?: () => number }).toMillis === 'function' ? (b.createdAt as { toMillis: () => number }).toMillis() : 0;
+        return at - bt;
+      });
+      setTickerMessages(rows);
+    }).catch(() => { if (active) setTickerMessage('सूचना लोड नहीं हुई। Firestore Rules जाँचें।'); });
     return () => { active = false; };
   }, [authUser]);
   useEffect(() => {
@@ -615,6 +663,29 @@ export default function App() {
       notify(error instanceof Error ? error.message : (language === 'hi' ? 'रजिस्ट्रेशन सेव नहीं हुआ। Firestore Rules जाँचें।' : 'Registration failed. Check Firestore rules.'));
     }
   };
+  const saveTickerMessage = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!authUser || !isSuperAdmin(authUser) || !tickerDraft.trim()) { setTickerMessage('पहले सूचना का टेक्स्ट लिखें।'); return; }
+    setTickerBusy(true);
+    setTickerMessage('');
+    try {
+      const textValue = tickerDraft.trim().slice(0, 300);
+      const ref = await addDoc(collection(db, 'publicTickerMessages'), { text: textValue, color: tickerColor, createdAt: serverTimestamp(), createdBy: authUser.email || '' });
+      setTickerMessages(current => [...current, { id: ref.id, text: textValue, color: tickerColor }]);
+      setTickerDraft('');
+      setTickerMessage('सूचना वेबसाइट पर जोड़ दी गई।');
+    } catch (error) { setTickerMessage(error instanceof Error ? error.message : 'सूचना सेव नहीं हुई। Firestore Rules जाँचें।'); }
+    finally { setTickerBusy(false); }
+  };
+  const deleteTickerMessage = async (item: { id: string; text: string }) => {
+    if (!authUser || !isSuperAdmin(authUser)) return;
+    if (!window.confirm('यह सूचना वेबसाइट से हटाएँ?')) return;
+    try {
+      await deleteDoc(doc(db, 'publicTickerMessages', item.id));
+      setTickerMessages(current => current.filter(row => row.id !== item.id));
+      setTickerMessage('सूचना हटा दी गई।');
+    } catch (error) { setTickerMessage(error instanceof Error ? error.message : 'सूचना हटाई नहीं जा सकी।'); }
+  };
   const saveDashboardSlide = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!authUser || !isSuperAdmin(authUser) || !slideImageData) { setSlideMessage('पहले इमेज चुनें।'); return; }
@@ -707,6 +778,16 @@ export default function App() {
             {dashboardSlides.length > 0 ? <><img className="dashboard-slide-image" src={dashboardSlides[dashboardSlideIndex % dashboardSlides.length].imageData} alt={dashboardSlides[dashboardSlideIndex % dashboardSlides.length].title || 'All NGO Connect banner'} /><div className="dashboard-slide-shade"/><div className="dashboard-slide-caption"><span className="dashboard-slide-kicker"><HeartHandshake size={15}/> ALL NGO CONNECT</span>{dashboardSlides[dashboardSlideIndex % dashboardSlides.length].title && <h2>{dashboardSlides[dashboardSlideIndex % dashboardSlides.length].title}</h2>}<p>{language === 'hi' ? 'बेहतर बदलाव के लिए साथ आएँ।' : 'Together for better impact.'}</p></div>{dashboardSlides.length > 1 && <><button className="dashboard-slide-arrow slide-prev" aria-label="Previous slide" onClick={() => setDashboardSlideIndex(index => (index - 1 + dashboardSlides.length) % dashboardSlides.length)}><ChevronLeft size={23}/></button><button className="dashboard-slide-arrow slide-next" aria-label="Next slide" onClick={() => setDashboardSlideIndex(index => (index + 1) % dashboardSlides.length)}><ChevronRight size={23}/></button><div className="dashboard-slide-dots">{dashboardSlides.map((slide, index) => <button key={slide.id} aria-label={`Slide ${index + 1}`} className={index === dashboardSlideIndex ? 'active' : ''} onClick={() => setDashboardSlideIndex(index)}/>)}</div></>}</> : <div className="dashboard-slide-empty"><div className="dashboard-slide-empty-icon"><ImagePlus size={36}/></div><h2>{language === 'hi' ? 'अपनी NGO की कहानी दिखाएँ' : 'Show your NGO story'}</h2><p>{language === 'hi' ? 'सुपर एडमिन यहाँ अपनी पसंद की तस्वीरें जोड़ सकता है।' : 'The Super Admin can add any images here.'}</p></div>}
             <div className="dashboard-slide-admin"><form onSubmit={saveDashboardSlide} className="dashboard-slide-upload-form"><label className="dashboard-slide-title-label"><span>{language === 'hi' ? 'स्लाइड का शीर्षक (वैकल्पिक)' : 'Slide title (optional)'}</span><input value={slideTitle} maxLength={100} onChange={event => setSlideTitle(event.target.value)} placeholder={language === 'hi' ? 'जैसे: हमारी नई पहल' : 'e.g. Our latest initiative'}/></label><label className="dashboard-slide-file-button"><ImagePlus size={17}/><span>{slideImageData ? (language === 'hi' ? 'इमेज चुनी गई' : 'Image selected') : (language === 'hi' ? 'इमेज चुनें' : 'Choose image')}</span><input type="file" accept="image/*" onChange={async event => { const input = event.currentTarget; const file = input.files?.[0]; if (!file) return; setSlideMessage('इमेज तैयार हो रही है…'); try { setSlideImageData(await compressDashboardImage(file)); setSlideMessage('इमेज तैयार है। सेव करें।'); } catch (error) { setSlideMessage(error instanceof Error ? error.message : 'इमेज तैयार नहीं हुई।'); } input.value = ''; }}/></label><button type="submit" className="dashboard-slide-save-button" disabled={slideSaveBusy || !slideImageData}>{slideSaveBusy ? (language === 'hi' ? 'सेव हो रहा है…' : 'Saving…') : (language === 'hi' ? 'स्लाइड जोड़ें' : 'Add slide')}<Plus size={16}/></button></form>{slideMessage && <p className="dashboard-slide-message" role="status">{slideMessage}</p>}{dashboardSlides.length > 0 && <div className="dashboard-slide-manage-list"><span>{language === 'hi' ? `कुल ${dashboardSlides.length} स्लाइड` : `${dashboardSlides.length} slides total`}</span>{dashboardSlides.map((slide, index) => <div key={slide.id}><button type="button" className={index === dashboardSlideIndex ? 'selected' : ''} onClick={() => setDashboardSlideIndex(index)}>{slide.title || (language === 'hi' ? `इमेज ${index + 1}` : `Image ${index + 1}`)}</button><button type="button" aria-label="Delete slide" onClick={() => void deleteDashboardSlide(slide)}><Trash2 size={14}/></button></div>)}</div>}</div>
           </section>}
+          <section className="ticker-admin-panel">
+            <div className="ticker-admin-heading"><div><span className="modal-eyebrow">HOMEPAGE MESSAGE BAR</span><h2>रंगीन स्क्रॉलिंग टेक्स्ट</h2><p>यह सूचना होम पेज पर हेडिंग के नीचे अपने-आप चलेगी। इसे केवल Super Admin जोड़ या हटा सकता है।</p></div></div>
+            <form className="ticker-admin-form" onSubmit={saveTickerMessage}>
+              <label>सूचना का टेक्स्ट<input value={tickerDraft} onChange={event => setTickerDraft(event.target.value)} maxLength={300} placeholder="जैसे: NGO रजिस्ट्रेशन शुरू है — आज ही जुड़ें" required /></label>
+              <label>रंग<select value={tickerColor} onChange={event => setTickerColor(event.target.value)}><option value="rainbow">रंग-बिरंगा</option><option value="blue">नीला</option><option value="green">हरा</option><option value="orange">नारंगी</option><option value="purple">बैंगनी</option></select></label>
+              <button type="submit" className="primary-button" disabled={tickerBusy || !tickerDraft.trim()}>{tickerBusy ? 'सेव हो रहा है…' : 'टेक्स्ट जोड़ें'} <Plus size={16}/></button>
+            </form>
+            {tickerMessage && <p className="ticker-admin-message" role="status">{tickerMessage}</p>}
+            <div className="ticker-admin-list">{tickerMessages.length ? tickerMessages.map(item => <div className="ticker-admin-row" key={item.id}><span className={'ticker-admin-swatch ticker-tone-' + item.color}/><p>{item.text}</p><button type="button" className="icon-button" onClick={() => void deleteTickerMessage(item)} aria-label="सूचना हटाएँ"><Trash2 size={17}/></button></div>) : <p className="ticker-admin-empty">अभी कोई स्क्रॉलिंग सूचना नहीं है।</p>}</div>
+          </section>
           <section className="stats-grid"><article className="stat-card"><div className="stat-top"><span>{t.totalDonations}</span><span className="stat-icon icon-green"><HandCoins size={19}/></span></div><div className="stat-number">₹{totalDonations.toLocaleString('en-IN')}</div><div className="stat-foot"><span className="trend neutral">{liveTransactions.filter(row => String(row.type || '').toUpperCase() === 'DONATION').length}</span><span>{language === 'hi' ? 'दान रिकॉर्ड' : 'donation records'}</span></div></article><article className="stat-card"><div className="stat-top"><span>{t.expenses}</span><span className="stat-icon icon-orange"><Wallet size={19}/></span></div><div className="stat-number">₹{totalExpenses.toLocaleString('en-IN')}</div><div className="stat-foot"><span className="trend neutral">{liveTransactions.filter(row => String(row.type || '').toUpperCase() === 'EXPENSE').length}</span><span>{language === 'hi' ? 'खर्च रिकॉर्ड' : 'expense records'}</span></div></article><article className="stat-card"><div className="stat-top"><span>{t.membersCount}</span><span className="stat-icon icon-purple"><Users size={19}/></span></div><div className="stat-number">{liveMembers.length}</div><div className="stat-foot"><span className="trend neutral">{liveMembers.filter(row => String(row.role || '').toUpperCase() === 'VOLUNTEER').length}</span><span>{t.volunteers}</span></div></article><article className="stat-card"><div className="stat-top"><span>{t.programs}</span><span className="stat-icon icon-blue"><CalendarDays size={19}/></span></div><div className="stat-number">{liveEvents.length}</div><div className="stat-foot"><span className="trend neutral">{activeEvents} {t.active.toLowerCase()}</span><span>{t.month}</span></div></article></section>
           <section className="content-grid"><div className="panel activity-panel"><div className="panel-heading"><div><h3>{t.recent}</h3><p>{language === 'hi' ? 'Firebase में सेव हाल के रिकॉर्ड' : 'Recent records saved in Firebase'}</p></div><button className="text-button" onClick={() => chooseSection('finance')}>{t.viewAll}<ArrowUpRight size={15}/></button></div><div className="activity-list">{recentItems.length === 0 ? <div className="empty-state">{t.noData}</div> : recentItems.map(row => <div className="activity-item" key={row.kind + row.id}><div className={`activity-icon ${row.kind === 'transaction' ? 'activity-donation' : row.kind === 'member' ? 'activity-member' : row.kind === 'event' ? 'activity-event' : 'activity-doc'}`}>{row.kind === 'transaction' ? <HandCoins size={17}/> : row.kind === 'member' ? <Users size={17}/> : row.kind === 'event' ? <CalendarDays size={17}/> : <FileBadge size={17}/>}</div><div className="activity-description"><strong>{String(row.name || row.title || row.category || (row.kind === 'transaction' ? row.type : row.kind === 'member' ? (language === 'hi' ? 'नया सदस्य' : 'Member record') : 'Record'))}</strong><span>{String(row.ngoName || liveNgos.find(n => n.id === row.ngoId)?.name || 'NGO')} · {row.when && !Number.isNaN(row.when.getTime()) ? row.when.toLocaleString(language === 'hi' ? 'hi-IN' : 'en-IN') : (language === 'hi' ? 'तारीख उपलब्ध नहीं' : 'Date unavailable')}</span></div><div className="activity-amount">{row.kind === 'transaction' ? (String(row.type).toUpperCase() === 'DONATION' ? '+' : '−') + '₹' + (Number(row.amount) || 0).toLocaleString('en-IN') : String(row.status || '')}</div></div>)}</div></div>
           <div className="panel quick-panel"><div className="panel-heading"><div><h3>{t.quick}</h3><p>{language === 'hi' ? 'काम जल्दी शुरू करें' : 'Get things moving'}</p></div><div className="panel-heading-icon"><ClipboardList size={18}/></div></div><div className="quick-actions"><button onClick={() => setShowRegistration(true)}><span className="quick-icon quick-green"><HeartHandshake size={19}/></span><span><b>{t.register}</b><small>{language === 'hi' ? 'नई संस्था जोड़ें' : 'Add a new organization'}</small></span><Plus size={16}/></button><button onClick={() => chooseSection('members')}><span className="quick-icon quick-purple"><Users size={19}/></span><span><b>{t.addMember}</b><small>{language === 'hi' ? 'टीम में लोगों को जोड़ें' : 'Grow your team'}</small></span><Plus size={16}/></button><button onClick={() => chooseSection('finance')}><span className="quick-icon quick-yellow"><HandCoins size={19}/></span><span><b>{t.recordDonation}</b><small>{language === 'hi' ? 'दान और खर्च का हिसाब' : 'Track contributions'}</small></span><Plus size={16}/></button><button onClick={() => chooseSection('events')}><span className="quick-icon quick-blue"><CalendarDays size={19}/></span><span><b>{t.createEvent}</b><small>{language === 'hi' ? 'अगला कार्यक्रम प्लान करें' : 'Plan what comes next'}</small></span><Plus size={16}/></button></div></div></section>
