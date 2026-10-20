@@ -83,65 +83,6 @@ type PublicHomeProps = {
   onLogout: () => void;
   authError: string;
 };
-function PublicHomeNgoDirectory({ language }: { language: Language }) {
-  const hi = language === 'hi';
-  const [ngos, setNgos] = useState<Array<{ id: string; name: string; category: string; mission: string; state: string; district: string; city: string }>>([]);
-  const [selectedState, setSelectedState] = useState('');
-  const [selectedDistrict, setSelectedDistrict] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
-
-  useEffect(() => {
-    let active = true;
-    getDocs(firestoreQuery(collection(db, 'ngos'), where('status', 'in', ['LIVE', 'ACTIVE', 'APPROVED'])))
-      .then(snapshot => {
-        if (!active) return;
-        const records = snapshot.docs.map(item => {
-          const data = item.data();
-          return {
-            id: item.id,
-            name: String(data.name || data.ngoName || 'NGO'),
-            category: String(data.type || data.category || ''),
-            mission: String(data.mission || data.description || ''),
-            state: String(data.state || data.stateName || data.province || ''),
-            district: String(data.district || ''),
-            city: String(data.city || data.location || ''),
-          };
-        }).sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
-        setNgos(records);
-      })
-      .catch(() => { if (active) setLoadError(hi ? 'NGO कार्ड लोड नहीं हो सके। कृपया बाद में फिर कोशिश करें।' : 'NGO cards could not load. Please try again later.'); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [hi]);
-
-  const districts = Array.from(new Set(ngos.filter(ngo => ngo.state === selectedState && ngo.district.trim()).map(ngo => ngo.district.trim()))).sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }));
-  const visibleNgos = ngos.filter(ngo => (!selectedState || ngo.state === selectedState) && (!selectedDistrict || ngo.district === selectedDistrict));
-
-  return <section className="public-home-ngo-directory" id="ngo-directory">
-    <div className="public-section-heading">
-      <span>{hi ? 'अपने राज्य में संस्थाएँ खोजें' : 'FIND ORGANIZATIONS BY LOCATION'}</span>
-      <h2>{hi ? 'सभी NGO के 3D कार्ड' : 'NGO directory'}</h2>
-      <p>{hi ? 'राज्य चुनें, फिर उस राज्य में सूचीबद्ध जिलों और NGO को देखें।' : 'Choose a state, then view districts and the NGOs listed there.'}</p>
-    </div>
-    <div className="public-ngo-location-filters">
-      <label><span>{hi ? 'राज्य चुनें' : 'Select state'}</span><select value={selectedState} onChange={e => { setSelectedState(e.target.value); setSelectedDistrict(''); }}><option value="">{hi ? 'सभी राज्य और केंद्र शासित प्रदेश' : 'All states and union territories'}</option>{INDIA_STATES_AND_UTS.map(state => <option key={state} value={state}>{state}</option>)}</select></label>
-      <label><span>{hi ? 'जिला चुनें' : 'Select district'}</span><select value={selectedDistrict} onChange={e => setSelectedDistrict(e.target.value)} disabled={!selectedState || districts.length === 0}><option value="">{!selectedState ? (hi ? 'पहले राज्य चुनें' : 'Select a state first') : (hi ? 'उस राज्य के सभी सूचीबद्ध जिले' : 'All listed districts in this state')}</option>{districts.map(district => <option key={district} value={district}>{district}</option>)}</select></label>
-    </div>
-    <div className="public-ngo-directory-count"><strong>{loading ? '…' : visibleNgos.length}</strong> {hi ? 'सक्रिय NGO' : 'active NGOs'}{selectedState ? <span> · {selectedState}{selectedDistrict ? ' · ' + selectedDistrict : ''}</span> : null}</div>
-    {loading ? <div className="public-home-ngo-empty">{hi ? 'NGO कार्ड लोड हो रहे हैं…' : 'Loading NGO cards…'}</div>
-      : loadError ? <div className="public-home-ngo-empty">{loadError}</div>
-      : visibleNgos.length === 0 ? <div className="public-home-ngo-empty">{hi ? 'इस चयन में अभी कोई स्वीकृत NGO नहीं है। भुगतान सत्यापन और मंज़ूरी के बाद NGO यहाँ दिखाई देंगे।' : 'No approved NGOs match this selection yet. NGOs appear here after payment verification and approval.'}</div>
-      : <div className="public-home-ngo-grid">{visibleNgos.map((ngo, index) => <article className={`public-home-ngo-card public-home-ngo-tone-${index % 4}`} key={ngo.id}>
-        <div className="public-home-ngo-card-top"><span className="public-home-ngo-monogram">{ngo.name.slice(0, 2).toUpperCase()}</span><span className="public-home-ngo-active"><i/> {hi ? 'सक्रिय' : 'Active'}</span></div>
-        <h3>{ngo.name}</h3>
-        {ngo.category && <span className="public-home-ngo-category">{ngo.category}</span>}
-        {ngo.mission && <p>{ngo.mission}</p>}
-        {(ngo.district || ngo.city || ngo.state) && <div className="public-home-ngo-location"><MapPin size={15}/><span>{[ngo.district, ngo.city, ngo.state].filter((v, i, all) => v && all.indexOf(v) === i).join(', ')}</span></div>}
-      </article>)}</div>}
-  </section>;
-}
-
 function PublicNgoList({ language, setLanguage }: { language: Language; setLanguage: (language: Language) => void }) {
   const hi = language === 'hi';
   const [ngos, setNgos] = useState<Array<{ id: string; name: string; category: string; location: string; mission: string }>>([]);
