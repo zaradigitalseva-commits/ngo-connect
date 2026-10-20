@@ -1345,3 +1345,27 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
 }
 
 .public-ticker-placeholder { padding: 3px 18px; color: #4c1d95; font-size: 14px; font-weight: 750; }
+
+
+/* Replace the hero artwork with the scrolling announcement in the exact same spot */
+.public-hero > .public-ticker-box {
+  width: min(42vw, 460px);
+  min-height: 88px;
+  margin: 0;
+  flex: 0 0 min(42vw, 460px);
+  border-radius: 18px;
+}
+.public-hero > .public-ticker-box .public-ticker-label {
+  min-height: 88px;
+  padding: 0 14px;
+}
+.public-hero > .public-ticker-box .public-ticker-window {
+  padding: 12px 0;
+}
+@media (max-width: 760px) {
+  .public-hero > .public-ticker-box {
+    width: 100%;
+    flex: 0 0 auto;
+    margin-top: 8px;
+  }
+}
