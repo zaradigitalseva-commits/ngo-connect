@@ -920,3 +920,57 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
     letter-spacing: .4px !important;
   }
 }
+
+
+/* One continuous green banner behind both lines of the brand; white lettering */
+.public-site:not(.ngo-directory-site) > .public-header > .public-brand > .brand-name-stack > span {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  color: #fff !important;
+  background: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+@media (max-width: 600px) {
+  .public-site:not(.ngo-directory-site) > .public-header > .public-brand > .brand-name-stack {
+    display: inline-flex !important;
+    flex-direction: column;
+    align-items: flex-start;
+    align-self: center;
+    width: fit-content;
+    max-width: 100%;
+    gap: 0 !important;
+    padding: 5px 8px;
+    box-sizing: border-box;
+    border-radius: 6px;
+    background: linear-gradient(180deg, #22a447 0%, #087a32 100%);
+    box-shadow: 0 2px 0 #075c28, 0 3px 6px rgba(0, 70, 25, .2);
+    color: #fff;
+    font-size: 14px;
+    line-height: 1.05 !important;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-brand > .brand-name-stack > span {
+    width: auto;
+    max-width: none;
+    color: #fff !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    letter-spacing: .7px !important;
+    line-height: 1.08 !important;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-brand > .brand-name-stack > small {
+    color: #fff !important;
+    margin-top: 4px;
+    line-height: 1.2;
+  }
+}
+@media (max-width: 380px) {
+  .public-site:not(.ngo-directory-site) > .public-header > .public-brand > .brand-name-stack {
+    font-size: 12px;
+    padding: 5px 6px;
+  }
+}
