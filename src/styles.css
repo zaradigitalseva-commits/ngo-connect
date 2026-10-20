@@ -273,3 +273,30 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
   .brand-name { font-size: 21px; }
   .public-brand { font-size: 19px; }
 }
+
+
+/* Refined premium brand colors: royal blue, violet and teal with a crisp 3D finish */
+.brand-name,
+.public-brand > span:last-child,
+.member-brand {
+  background: linear-gradient(105deg, #0756c9 0%, #4f46e5 42%, #8b35c9 72%, #087f8c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 1px 1px 0 rgba(18, 45, 110, .22), 2px 3px 0 rgba(34, 47, 110, .13);
+  filter: drop-shadow(0 3px 3px rgba(53, 65, 145, .18));
+}
+.brand-name span,
+.public-brand > span:last-child > span,
+.member-brand span {
+  background: linear-gradient(105deg, #0b8b78, #10a6a0);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.public-brand small,
+.brand-caption {
+  -webkit-text-fill-color: #718096;
+  text-shadow: none;
+  filter: none;
+}
