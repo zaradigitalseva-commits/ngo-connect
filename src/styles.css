@@ -1516,3 +1516,36 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
 .public-ticker-track {
   animation-duration: 8s !important;
 }
+
+/* Keep public Login and Register buttons the same size on every screen */
+.public-site:not(.ngo-directory-site) > .public-header > .public-actions > .primary-button,
+.public-site:not(.ngo-directory-site) > .public-header > .public-actions > .outline-button {
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 168px !important;
+  min-width: 168px !important;
+  max-width: 168px !important;
+  height: 42px !important;
+  min-height: 42px !important;
+  padding: 0 10px !important;
+  margin: 0 !important;
+  border-radius: 12px !important;
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+}
+@media (max-width: 600px) {
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .primary-button,
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .outline-button {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+}
+
