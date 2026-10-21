@@ -93,7 +93,7 @@ function PublicNgoSite({ language, setLanguage, ngoId }: { language: Language; s
     let active = true;
     getDocs(firestoreQuery(collection(db, 'ngoMembers'), where('ngoId', '==', ngoId))).then(snapshot => {
       if (!active) return;
-      setTeam(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).filter(person => String(person.status || 'ACTIVE').toUpperCase() === 'ACTIVE').sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))));
+      setTeam(snapshot.docs.map(item => ({ id: item.id, ...item.data() } as Record<string, any>)).filter(person => String(person.status || 'ACTIVE').toUpperCase() === 'ACTIVE').sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))));
     }).catch(() => { if (active) setTeam([]); });
     getDoc(doc(db, 'ngos', ngoId)).then(snapshot => {
       if (!active) return;
