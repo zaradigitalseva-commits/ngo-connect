@@ -295,7 +295,12 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
     if (installPromptEvent) {
       await installPromptEvent.prompt();
       const choice = await installPromptEvent.userChoice;
-      if (choice?.outcome === 'accepted') setInstallPromptEvent(null);
+      if (choice?.outcome === 'accepted') {
+        setInstallPromptEvent(null);
+        setAppInstalled(true);
+        setInstallHelp(false);
+        try { window.localStorage.setItem('ngo-connect-app-installed', 'yes'); } catch (error) { /* storage may be unavailable */ }
+      }
     } else setInstallHelp(value => !value);
   };
   const [showCompassionQuote, setShowCompassionQuote] = useState(false);
