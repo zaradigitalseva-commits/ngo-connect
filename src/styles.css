@@ -1796,3 +1796,48 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
     margin: 18px 0 14px;
   }
 }
+
+
+/* Fit scrolling announcement text neatly inside its ticker box on desktop and mobile */
+.public-site .public-ticker-box {
+  min-height: 48px;
+  box-sizing: border-box;
+}
+.public-site .public-ticker-box .public-ticker-label {
+  min-height: 46px;
+  padding: 0 12px;
+  line-height: 1.15;
+  box-sizing: border-box;
+}
+.public-site .public-ticker-box .public-ticker-window {
+  min-width: 0;
+  padding: 7px 0;
+  box-sizing: border-box;
+}
+.public-site .public-ticker-box .public-ticker-track > span {
+  font-size: clamp(12px, 1.15vw, 15px);
+  line-height: 1.25;
+  padding-right: 34px;
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .public-site .public-ticker-box {
+    min-height: 44px;
+    width: calc(100% - 20px);
+    margin: 10px auto 16px;
+  }
+  .public-site .public-ticker-box .public-ticker-label {
+    min-height: 42px;
+    padding: 0 8px;
+    gap: 5px;
+    font-size: 10px;
+  }
+  .public-site .public-ticker-box .public-ticker-window {
+    padding: 5px 0;
+  }
+  .public-site .public-ticker-box .public-ticker-track > span {
+    font-size: 12px;
+    line-height: 1.2;
+    padding-right: 24px;
+  }
+}
