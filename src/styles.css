@@ -1773,3 +1773,26 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
 @media (prefers-reduced-motion: reduce) {
   .public-site .public-hero h1 em { animation: none; }
 }
+
+
+/* Keep both rotating Hindi/English hero quotes the same compact size */
+.public-site .public-hero h1.public-hero-rotating-quote {
+  font-size: clamp(25px, 3vw, 36px);
+  line-height: 1.24;
+  letter-spacing: -.8px;
+  max-width: 560px;
+  min-height: 2.48em;
+}
+.public-site .public-hero h1.public-hero-rotating-quote em {
+  font-size: inherit;
+  line-height: inherit;
+}
+@media (max-width: 600px) {
+  .public-site .public-hero h1.public-hero-rotating-quote {
+    font-size: clamp(22px, 6vw, 27px);
+    line-height: 1.28;
+    letter-spacing: -.55px;
+    min-height: 2.56em;
+    margin: 18px 0 14px;
+  }
+}
