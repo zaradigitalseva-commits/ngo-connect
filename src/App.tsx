@@ -271,20 +271,22 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
   const [installPromptEvent, setInstallPromptEvent] = useState<any>(null);
   const [appInstalled, setAppInstalled] = useState(false);
   useEffect(() => {
-    const installedKey = 'ngo-connect-app-installed';
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
-    let wasInstalled = false;
-    try { wasInstalled = window.localStorage.getItem(installedKey) === 'yes'; } catch (error) { /* storage may be unavailable */ }
-    setAppInstalled(isStandalone || wasInstalled);
+    const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
+    // Do not persist an "installed" flag: browsers keep localStorage after uninstall,
+    // which would incorrectly hide this button when the user returns to the website.
+    setAppInstalled(isStandalone());
     const onBeforeInstall = (event: Event) => { event.preventDefault(); setInstallPromptEvent(event); };
     const onInstalled = () => {
       setAppInstalled(true);
       setInstallPromptEvent(null);
-      try { window.localStorage.setItem(installedKey, 'yes'); } catch (error) { /* storage may be unavailable */ }
     };
+    const onDisplayModeChange = () => setAppInstalled(isStandalone());
+    const displayMode = window.matchMedia('(display-mode: standalone)');
+    displayMode.addEventListener?.('change', onDisplayModeChange);
     window.addEventListener('beforeinstallprompt', onBeforeInstall);
     window.addEventListener('appinstalled', onInstalled);
     return () => {
+      displayMode.removeEventListener?.('change', onDisplayModeChange);
       window.removeEventListener('beforeinstallprompt', onBeforeInstall);
       window.removeEventListener('appinstalled', onInstalled);
     };
@@ -297,7 +299,6 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
         if (choice?.outcome === 'accepted') {
           setInstallPromptEvent(null);
           setAppInstalled(true);
-          try { window.localStorage.setItem('ngo-connect-app-installed', 'yes'); } catch (error) { /* storage may be unavailable */ }
         }
       } catch (error) {
         window.alert(hi ? 'ऐप इंस्टॉल करने के लिए Chrome मेनू (⋮) खोलकर “Install app” चुनें। यदि विकल्प नहीं दिखता, पेज को रिफ्रेश करके दोबारा कोशिश करें।' : 'To install, open Chrome’s ⋮ menu and choose “Install app”. If unavailable, refresh the page and try again.');
