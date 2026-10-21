@@ -46,12 +46,12 @@ service cloud.firestore {
       allow create: if request.auth != null
         && request.auth.token.email_verified == true
         && request.resource.data.keys().hasOnly([
-          'name', 'contactName', 'email', 'phone', 'state', 'mission',
+          'name', 'contactName', 'email', 'phone', 'state', 'district', 'mission',
           'planId', 'subscriptionPlan', 'planPrice', 'planDurationDays',
           'paymentReference', 'status', 'paymentStatus', 'ownerUid', 'createdAt'
         ])
         && request.resource.data.keys().hasAll([
-          'name', 'contactName', 'email', 'phone', 'state', 'mission',
+          'name', 'contactName', 'email', 'phone', 'state', 'district', 'mission',
           'planId', 'subscriptionPlan', 'planPrice', 'planDurationDays',
           'paymentReference', 'status', 'paymentStatus', 'ownerUid', 'createdAt'
         ])
