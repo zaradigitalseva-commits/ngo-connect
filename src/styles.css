@@ -1971,3 +1971,22 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
     line-height: 1.05 !important;
   }
 }
+
+
+/* Animated rainbow LED border for the public announcement ticker */
+@keyframes ngoTickerBorderGlow {
+  0% { background-position: 0% 50%; filter: hue-rotate(0deg); }
+  100% { background-position: 300% 50%; filter: hue-rotate(360deg); }
+}
+.public-site section.public-ticker-box {
+  border: 2px solid transparent !important;
+  background:
+    linear-gradient(var(--ticker-box-bg, #ffffff), var(--ticker-box-bg, #ffffff)) padding-box,
+    linear-gradient(90deg, #00e5ff, #00ff88, #fff000, #ff4dd8, #7c4dff, #00e5ff) border-box !important;
+  background-size: 100% 100%, 300% 100% !important;
+  animation: ngoTickerBorderGlow 5s linear infinite !important;
+  box-shadow: 0 0 8px #00d9ff55, 0 0 16px #ff4dd833, inset 0 0 5px #ffffff88 !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .public-site section.public-ticker-box { animation: none !important; }
+}
