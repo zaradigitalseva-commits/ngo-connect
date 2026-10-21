@@ -1670,3 +1670,68 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
     font-size: 10px !important;
   }
 }
+
+
+/* Mobile header overflow fix: keep the brand on row one and give actions their own full-width row. */
+@media (max-width: 600px) {
+  .public-site:not(.ngo-directory-site) > .public-header {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto auto auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 12px 12px !important;
+    column-gap: 0 !important;
+    row-gap: 10px !important;
+    overflow: visible !important;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-brand {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    align-items: center !important;
+    justify-content: stretch !important;
+    gap: 7px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .language-button {
+    grid-column: 1 / -1 !important;
+    justify-self: end !important;
+    max-width: 100% !important;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .primary-button,
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .outline-button {
+    box-sizing: border-box !important;
+    flex: initial !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    max-height: 36px !important;
+    padding: 0 5px !important;
+    font-size: clamp(9px, 2.8vw, 11px) !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-nav {
+    grid-column: 1 !important;
+    grid-row: 3 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+}
