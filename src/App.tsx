@@ -270,7 +270,6 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
   const hi = language === 'hi';
   const [installPromptEvent, setInstallPromptEvent] = useState<any>(null);
   const [appInstalled, setAppInstalled] = useState(false);
-  const [installHelp, setInstallHelp] = useState(false);
   useEffect(() => {
     const installedKey = 'ngo-connect-app-installed';
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
@@ -281,7 +280,6 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
     const onInstalled = () => {
       setAppInstalled(true);
       setInstallPromptEvent(null);
-      setInstallHelp(false);
       try { window.localStorage.setItem(installedKey, 'yes'); } catch (error) { /* storage may be unavailable */ }
     };
     window.addEventListener('beforeinstallprompt', onBeforeInstall);
@@ -298,10 +296,9 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
       if (choice?.outcome === 'accepted') {
         setInstallPromptEvent(null);
         setAppInstalled(true);
-        setInstallHelp(false);
         try { window.localStorage.setItem('ngo-connect-app-installed', 'yes'); } catch (error) { /* storage may be unavailable */ }
       }
-    } else setInstallHelp(value => !value);
+    }
   };
   const [showCompassionQuote, setShowCompassionQuote] = useState(false);
   useEffect(() => {
@@ -367,7 +364,6 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
       {authError && <p className="public-auth-error">{authError}</p>}
     </main><footer className="public-footer"><span>© 2026 All NGO Connect</span></footer>
     {!appInstalled && <div className="app-install-float-wrap">
-      {installHelp && <div className="app-install-help">{hi ? 'Chrome में ऊपर ⋮ मेनू खोलें और “ऐप इंस्टॉल करें” या “होम स्क्रीन पर जोड़ें” चुनें।' : 'Open the Chrome ⋮ menu and choose “Install app” or “Add to Home screen”.'}</div>}
       <button type="button" className="app-install-float" onClick={handleInstallApp}><span className="app-install-icon">↓</span><span>{hi ? 'ऐप इंस्टॉल करें' : 'Install App'}</span></button>
     </div>}
   </div>;
