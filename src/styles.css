@@ -1990,3 +1990,25 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
 @media (prefers-reduced-motion: reduce) {
   .public-site section.public-ticker-box { animation: none !important; }
 }
+
+
+/* Compact ticker box height to closely fit the existing bold announcement text */
+.public-site section.public-ticker-box {
+  height: 36px !important;
+  min-height: 36px !important;
+  max-height: 36px !important;
+}
+.public-site section.public-ticker-box > .public-ticker-window,
+.public-site section.public-ticker-box .public-ticker-track,
+.public-site section.public-ticker-box .public-ticker-track > span {
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+}
+@media (max-width: 640px) {
+  .public-site section.public-ticker-box {
+    height: 28px !important;
+    min-height: 28px !important;
+    max-height: 28px !important;
+  }
+}
