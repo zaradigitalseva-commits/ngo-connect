@@ -1954,3 +1954,20 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
     font-size: 14px !important;
   }
 }
+
+
+/* Make the public scrolling announcement larger and bold */
+.public-site section.public-ticker-box .public-ticker-track > span > .ticker-text {
+  font-size: clamp(18px, 2vw, 24px) !important;
+  font-weight: 900 !important;
+  line-height: 1.05 !important;
+  letter-spacing: .15px !important;
+  -webkit-text-stroke: .25px currentColor;
+}
+@media (max-width: 640px) {
+  .public-site section.public-ticker-box .public-ticker-track > span > .ticker-text {
+    font-size: 16px !important;
+    font-weight: 900 !important;
+    line-height: 1.05 !important;
+  }
+}
