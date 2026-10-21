@@ -1611,3 +1611,20 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
     text-align: center !important;
   }
 }
+
+
+/* Slightly enlarge the two mobile header buttons so their one-line labels fit */
+@media (max-width: 600px) {
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions {
+    gap: 6px !important;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .outline-button,
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .primary-button {
+    min-height: 36px !important;
+    height: 36px !important;
+    padding: 5px 7px !important;
+    font-size: clamp(9px, 2.8vw, 12px) !important;
+    line-height: 1.05 !important;
+    white-space: nowrap !important;
+  }
+}
