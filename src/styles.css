@@ -1681,3 +1681,47 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
     overflow-wrap: normal !important;
   }
 }
+
+
+/* Mobile: Register and Logout share the exact two-button row; Logout keeps the 3D button finish. */
+@media (max-width: 600px) {
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    align-items: center !important;
+    justify-content: stretch !important;
+    gap: 5px !important;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .language-button {
+    grid-column: 1 / -1 !important;
+    justify-self: end !important;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .public-user {
+    display: contents !important;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .public-user > span {
+    display: none !important;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .outline-button,
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .primary-button,
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .public-user > button {
+    grid-column: auto !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    margin: 0 !important;
+    padding: 4px 5px !important;
+    border-radius: 8px !important;
+    font-size: clamp(9px, 2.5vw, 11px) !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    overflow-wrap: normal !important;
+    word-break: keep-all !important;
+    text-align: center !important;
+    box-shadow: 0 3px 0 rgba(20, 40, 80, .16), 0 5px 9px rgba(20, 40, 80, .12) !important;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .primary-button {
+    box-shadow: 0 3px 0 rgba(130, 0, 0, .22), 0 5px 9px rgba(220, 20, 20, .16) !important;
+  }
+}
