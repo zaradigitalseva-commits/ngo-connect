@@ -1841,3 +1841,56 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
     padding-right: 24px;
   }
 }
+
+
+/* Make ticker text and label exactly match the ticker box height */
+.public-site .public-ticker-box {
+  height: 54px !important;
+  min-height: 54px !important;
+  align-items: stretch !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+.public-site .public-ticker-box .public-ticker-label {
+  height: 100% !important;
+  min-height: 0 !important;
+  align-self: stretch !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  line-height: 1 !important;
+  box-sizing: border-box !important;
+}
+.public-site .public-ticker-box .public-ticker-window {
+  height: 100% !important;
+  min-height: 0 !important;
+  align-self: stretch !important;
+  display: flex !important;
+  align-items: center !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+.public-site .public-ticker-box .public-ticker-track {
+  align-items: center !important;
+  height: 100% !important;
+}
+.public-site .public-ticker-box .public-ticker-track > span {
+  height: 100% !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  line-height: 1.15 !important;
+  box-sizing: border-box !important;
+}
+@media (max-width: 640px) {
+  .public-site .public-ticker-box {
+    height: 48px !important;
+    min-height: 48px !important;
+  }
+  .public-site .public-ticker-box .public-ticker-track > span {
+    font-size: 12px !important;
+    line-height: 1.1 !important;
+  }
+}
