@@ -1916,3 +1916,50 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
     padding: 0 2px !important;
   }
 }
+
+
+/* Give Google Login the same footprint as Register, with a clear 3D raised-button look. */
+.public-site:not(.ngo-directory-site) > .public-header > .public-actions > .primary-button,
+.public-site:not(.ngo-directory-site) > .public-header > .public-actions > .outline-button {
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 100px !important;
+  width: 100px !important;
+  min-width: 100px !important;
+  max-width: 100px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  max-height: 30px !important;
+  padding: 0 3px !important;
+  font-size: 9px !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  border-radius: 8px !important;
+}
+.public-site:not(.ngo-directory-site) > .public-header > .public-actions > .outline-button {
+  color: #ffffff !important;
+  background: linear-gradient(180deg, #60a5fa 0%, #2563eb 55%, #1d4ed8 100%) !important;
+  border: 1px solid #1e40af !important;
+  box-shadow: 0 3px 0 #1e3a8a, 0 5px 8px rgba(30, 64, 175, 0.3), inset 0 1px 0 rgba(255,255,255,0.45) !important;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.25) !important;
+  transform: translateY(0) !important;
+}
+@media (max-width: 600px) {
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .primary-button,
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .outline-button {
+    flex: 0 0 88px !important;
+    width: 88px !important;
+    min-width: 88px !important;
+    max-width: 88px !important;
+    height: 27px !important;
+    min-height: 27px !important;
+    max-height: 27px !important;
+    font-size: 8px !important;
+    padding: 0 2px !important;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .outline-button {
+    box-shadow: 0 2px 0 #1e3a8a, 0 3px 6px rgba(30,64,175,0.28), inset 0 1px 0 rgba(255,255,255,0.4) !important;
+  }
+}
