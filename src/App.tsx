@@ -21,7 +21,7 @@ const nav = [
   { id: 'events' as const, icon: CalendarDays, key: 'events' as const }, { id: 'documents' as const, icon: FileText, key: 'documents' as const },
   { id: 'subscriptions' as const, icon: BadgeCheck, key: 'subscriptions' as const }
 ];
-type DashboardNgo = { id: string; name: string; type: string; city: string; status: string; ownerUid: string; people: number };
+type DashboardNgo = { id: string; name: string; type: string; city: string; status: string; ownerUid: string; people: number; imageData?: string; mission?: string; state?: string };
 type DashboardRecord = Record<string, any> & { id: string };
 type SubscriptionPlan = { id: string; name: string; price: number; durationDays: number; description: string; active: boolean };
 type DashboardSlide = { id: string; title: string; imageData: string; createdAt?: unknown };
@@ -83,6 +83,42 @@ type PublicHomeProps = {
   onLogout: () => void;
   authError: string;
 };
+function PublicNgoSite({ language, setLanguage, ngoId }: { language: Language; setLanguage: (language: Language) => void; ngoId: string }) {
+  const hi = language === 'hi';
+  const [ngo, setNgo] = useState<Record<string, any> | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let active = true;
+    getDoc(doc(db, 'ngos', ngoId)).then(snapshot => {
+      if (!active) return;
+      if (!snapshot.exists() || !['LIVE', 'ACTIVE', 'APPROVED'].includes(String(snapshot.data().status || '').toUpperCase())) { setFailed(true); return; }
+      setNgo({ id: snapshot.id, ...snapshot.data() });
+    }).catch(() => { if (active) setFailed(true); }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [ngoId]);
+  const name = String(ngo?.name || ngo?.ngoName || 'NGO');
+  const logo = String(ngo?.imageData || ngo?.registrationFormData?.imageData || '');
+  const location = [ngo?.city, ngo?.district, ngo?.state].filter((v, i, a) => typeof v === 'string' && v.trim() && a.indexOf(v) === i).join(', ');
+  const mission = String(ngo?.mission || ngo?.description || '');
+  return <div className="public-site ngo-directory-site" style={{ minHeight: '100vh', background: 'linear-gradient(145deg,#eef2ff 0%,#fdf2f8 48%,#ecfeff 100%)' }}>
+    <header className="public-header"><a className="public-brand" href="/" aria-label="All NGO Connect home"><span className="brand-mark"><Leaf size={23}/></span><span className="brand-name-stack"><span className="brand-name-banner"><span>All NGO</span><span>Connect</span></span><small>{hi ? 'मजबूत समुदाय। बेहतर बदलाव।' : 'Stronger communities. Better impact.'}</small></span></a><div className="public-actions"><button className="language-button" onClick={() => setLanguage(hi ? 'en' : 'hi')}>{hi ? 'English' : 'हिन्दी'}</button><a className="outline-button" href="/ngo-list">{hi ? 'सभी NGO' : 'All NGOs'}</a><a className="primary-button" href="/">{hi ? 'मुख्य पेज' : 'Home'} <ArrowUpRight size={17}/></a></div></header>
+    <main className="ngo-directory-main" style={{ maxWidth: 1050 }}><a className="directory-back-link" href="/ngo-list"><ArrowLeft size={17}/>{hi ? 'सभी NGO की सूची पर वापस जाएँ' : 'Back to all NGOs'}</a>
+      {loading ? <div className="ngo-directory-empty"><span className="directory-loader"/><p>{hi ? 'NGO की साइट खुल रही है…' : 'Opening NGO website…'}</p></div> : failed || !ngo ? <div className="ngo-directory-empty"><Building2 size={34}/><strong>{hi ? 'यह NGO साइट उपलब्ध नहीं है' : 'This NGO site is unavailable'}</strong><p>{hi ? 'संभव है NGO अभी सक्रिय न हो।' : 'This NGO may not be active yet.'}</p><a className="primary-button" href="/ngo-list">{hi ? 'NGO सूची देखें' : 'Browse NGOs'}</a></div> : <>
+        <section style={{ overflow: 'hidden', borderRadius: 28, background: 'linear-gradient(125deg,#4f46e5,#9333ea 52%,#ec4899)', color: '#fff', padding: 'clamp(24px,5vw,56px)', boxShadow: '0 24px 55px rgba(79,70,229,.28)', position: 'relative' }}>
+          <div style={{ position: 'absolute', width: 240, height: 240, borderRadius: '50%', background: 'rgba(255,255,255,.12)', right: -50, top: -80 }}/><div style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 24 }}>
+            {logo ? <img src={logo} alt={name + ' logo'} style={{ width: 'clamp(110px,20vw,180px)', height: 'clamp(110px,20vw,180px)', objectFit: 'contain', background: '#fff', borderRadius: 26, padding: 10, boxShadow: '0 12px 30px rgba(0,0,0,.2)' }}/> : <div style={{ width: 140, height: 140, display: 'grid', placeItems: 'center', borderRadius: 26, background: 'rgba(255,255,255,.2)', fontSize: 42, fontWeight: 900 }}>{name.slice(0,2).toUpperCase()}</div>}
+            <div style={{ flex: '1 1 280px' }}><span style={{ display: 'inline-flex', padding: '7px 12px', borderRadius: 999, background: 'rgba(255,255,255,.18)', fontWeight: 800, fontSize: 12, letterSpacing: 1 }}>✦ {hi ? 'सक्रिय सामाजिक संस्था' : 'ACTIVE ORGANIZATION'}</span><h1 style={{ fontSize: 'clamp(30px,5vw,52px)', lineHeight: 1.1, margin: '16px 0 10px', fontWeight: 900 }}>{name}</h1>{location && <p style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0, opacity: .95 }}><MapPin size={18}/>{location}</p>}{(ngo.type || ngo.category) && <p style={{ marginTop: 10, opacity: .9 }}>{String(ngo.type || ngo.category)}</p>}</div>
+          </div>
+        </section>
+        <section style={{ marginTop: 24, padding: 'clamp(22px,4vw,38px)', background: '#fff', borderRadius: 24, boxShadow: '0 14px 35px rgba(15,23,42,.08)', border: '1px solid rgba(99,102,241,.12)' }}><span className="public-kicker"><HeartHandshake size={15}/>{hi ? 'हमारे बारे में' : 'ABOUT US'}</span><h2 style={{ color: '#312e81', fontSize: 'clamp(24px,3vw,34px)', margin: '12px 0' }}>{hi ? 'हमारा उद्देश्य' : 'Our mission'}</h2><p style={{ fontSize: 17, lineHeight: 1.9, color: '#475569', whiteSpace: 'pre-wrap' }}>{mission || (hi ? 'यह संस्था समुदाय की सहायता और सामाजिक बदलाव के लिए काम करती है।' : 'This organization works to support its community and create positive social impact.')}</p></section>
+        <section style={{ marginTop: 22, padding: 24, textAlign: 'center', borderRadius: 24, background: 'linear-gradient(135deg,#fff,#f5f3ff)', border: '1px solid #ddd6fe' }}><h2 style={{ color: '#4338ca', marginTop: 0 }}>{hi ? 'बेहतर बदलाव के लिए साथ आएँ' : 'Join us for better impact'}</h2><p style={{ color: '#64748b' }}>{hi ? 'इस NGO की जानकारी अपने परिवार और समुदाय के साथ साझा करें।' : 'Share this organization with your family and community.'}</p><button className="primary-button" onClick={() => { void navigator.clipboard?.writeText(window.location.href).then(() => window.alert(hi ? 'NGO साइट का लिंक कॉपी हो गया।' : 'NGO website link copied.')).catch(() => window.prompt(hi ? 'इस लिंक को कॉपी करें:' : 'Copy this link:', window.location.href)); }}>{hi ? 'इस NGO साइट का लिंक साझा करें' : 'Share this NGO website'} <ArrowUpRight size={17}/></button></section>
+      </>}
+      <footer className="ngo-directory-footer">© 2026 All NGO Connect</footer>
+    </main>
+  </div>;
+}
+
 function PublicNgoList({ language, setLanguage }: { language: Language; setLanguage: (language: Language) => void }) {
   const hi = language === 'hi';
   const [ngos, setNgos] = useState<Array<{ id: string; name: string; category: string; location: string; mission: string; imageData: string }>>([]);
@@ -147,7 +183,7 @@ function PublicNgoList({ language, setLanguage }: { language: Language; setLangu
         {loading ? <div className="ngo-directory-empty"><span className="directory-loader"/><p>{hi ? 'सभी सक्रिय NGO की सूची लोड हो रही है…' : 'Loading approved NGOs…'}</p></div>
           : loadError ? <div className="ngo-directory-empty" role="alert"><Building2 size={32}/><p>{loadError}</p><button className="outline-button" onClick={() => window.location.reload()}>{hi ? 'फिर कोशिश करें' : 'Try again'}</button></div>
           : filtered.length === 0 ? <div className="ngo-directory-empty"><Search size={32}/><strong>{searchText ? (hi ? 'कोई NGO नहीं मिली' : 'No NGOs found') : (hi ? 'अभी कोई सक्रिय NGO सूचीबद्ध नहीं है' : 'No approved NGOs listed yet')}</strong><p>{searchText ? (hi ? 'दूसरा शब्द खोजें या खोज साफ़ करें।' : 'Try another keyword or clear your search.') : (hi ? 'भुगतान सत्यापन और मंज़ूरी के बाद सक्रिय NGO यहाँ दिखाई देंगी।' : 'Approved and active NGOs will appear here.')}</p>{searchText && <button className="outline-button" onClick={() => setSearchText('')}>{hi ? 'खोज साफ़ करें' : 'Clear search'}</button>}</div>
-          : <div className="ngo-directory-grid">{filtered.map((ngo, index) => <article className="ngo-directory-card" key={ngo.id}><div className="ngo-directory-card-top">{ngo.imageData ? <img className="ngo-directory-card-image" src={ngo.imageData} alt={ngo.name + ' NGO'} style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: '14px' }} /> : <span className={`ngo-directory-logo directory-tone-${index % 4}`}>{ngo.name.slice(0, 2).toUpperCase()}</span>}<span className="directory-approved"><i/> {hi ? 'सक्रिय' : 'Active'}</span></div><h2>{ngo.name}</h2>{ngo.category && <span className="ngo-directory-category">{ngo.category}</span>}{ngo.location && <p className="ngo-directory-location"><MapPin size={15}/>{ngo.location}</p>}{ngo.mission && <p className="ngo-directory-mission">{ngo.mission}</p>}</article>)}</div>}
+          : <div className="ngo-directory-grid">{filtered.map((ngo, index) => <article className="ngo-directory-card" key={ngo.id} role="link" tabIndex={0} aria-label={(hi ? 'NGO साइट खोलें: ' : 'Open NGO website: ') + ngo.name} onClick={() => { window.location.href = '/ngo/' + encodeURIComponent(ngo.id); }} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); window.location.href = '/ngo/' + encodeURIComponent(ngo.id); } }} style={{ cursor: 'pointer', transformStyle: 'preserve-3d', transition: 'transform .22s ease, box-shadow .22s ease', boxShadow: '0 12px 0 rgba(79,70,229,.10), 0 18px 30px rgba(79,70,229,.16)' }}><div className="ngo-directory-card-top">{ngo.imageData ? <img className="ngo-directory-card-image" src={ngo.imageData} alt={ngo.name + ' NGO'} style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: '14px' }} /> : <span className={`ngo-directory-logo directory-tone-${index % 4}`}>{ngo.name.slice(0, 2).toUpperCase()}</span>}<span className="directory-approved"><i/> {hi ? 'सक्रिय' : 'Active'}</span></div><h2>{ngo.name}</h2>{ngo.category && <span className="ngo-directory-category">{ngo.category}</span>}{ngo.location && <p className="ngo-directory-location"><MapPin size={15}/>{ngo.location}</p>}{ngo.mission && <p className="ngo-directory-mission">{ngo.mission}</p>}</article>)}</div>}
       </section>
       <footer className="ngo-directory-footer">© 2026 All NGO Connect · {hi ? 'बेहतर बदलाव के लिए साथ आएँ।' : 'Together for better impact.'}</footer>
     </main>
@@ -220,7 +256,7 @@ function PublicTickerBanner({ language }: { language: Language }) {
 
 function PublicHomeNgoCards({ language }: { language: Language }) {
   const hi = language === 'hi';
-  const [ngos, setNgos] = useState<Array<{ id: string; name: string; category: string; location: string; mission: string }>>([]);
+  const [ngos, setNgos] = useState<Array<{ id: string; name: string; category: string; location: string; mission: string; imageData: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
@@ -239,6 +275,8 @@ function PublicHomeNgoCards({ language }: { language: Language }) {
             category: String(data.type || data.category || ''),
             location: parts.filter((value, index) => parts.indexOf(value) === index).join(', ') || String(data.location || ''),
             mission: String(data.mission || data.description || ''),
+            imageData: String(data.imageData || data.registrationFormData?.imageData || ''),
+            imageData: String(data.imageData || data.registrationFormData?.imageData || ''),
           };
         }).sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })));
       })
@@ -256,8 +294,8 @@ function PublicHomeNgoCards({ language }: { language: Language }) {
     {loading ? <div className="public-home-ngo-empty"><span className="directory-loader"/><p>{hi ? 'NGO की सूची लोड हो रही है…' : 'Loading NGOs…'}</p></div>
       : loadError ? <div className="ngo-directory-empty"><Building2 size={28}/><p>{hi ? 'अभी NGO सूची लोड नहीं हो सकी।' : 'The NGO list could not be loaded right now.'}</p></div>
       : ngos.length === 0 ? <div className="ngo-directory-empty"><HeartHandshake size={30}/><strong>{hi ? 'अभी कोई सक्रिय NGO नहीं है' : 'No active NGOs yet'}</strong><p>{hi ? 'भुगतान सत्यापन और एडमिन की मंज़ूरी के बाद NGO के कार्ड यहाँ दिखाई देंगे।' : 'NGO cards will appear here after payment verification and admin approval.'}</p></div>
-      : <div className="public-home-ngo-grid">{ngos.map((ngo, index) => <article className={`public-home-ngo-card public-home-ngo-tone-${index % 4}`} key={ngo.id}>
-          <div className="public-home-ngo-card-top"><span className="public-home-ngo-monogram">{ngo.name.slice(0, 2).toUpperCase()}</span><span className="public-home-ngo-active"><i/> {hi ? 'सक्रिय' : 'Active'}</span></div>
+      : <div className="public-home-ngo-grid">{ngos.map((ngo, index) => <article className={`public-home-ngo-card public-home-ngo-tone-${index % 4}`} key={ngo.id} role="link" tabIndex={0} aria-label={(hi ? 'NGO साइट खोलें: ' : 'Open NGO website: ') + ngo.name} onClick={() => { window.location.href = '/ngo/' + encodeURIComponent(ngo.id); }} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); window.location.href = '/ngo/' + encodeURIComponent(ngo.id); } }} style={{ cursor: 'pointer', transformStyle: 'preserve-3d', transition: 'transform .22s ease, box-shadow .22s ease', boxShadow: '0 10px 0 rgba(79,70,229,.12), 0 18px 28px rgba(79,70,229,.18)' }}>
+          <div className="public-home-ngo-card-top">{ngo.imageData ? <img className="public-home-ngo-monogram" src={ngo.imageData} alt={ngo.name + ' logo'} style={{ width: 72, height: 72, objectFit: 'contain', background: '#fff', borderRadius: 18, padding: 6, boxSizing: 'border-box', boxShadow: '0 8px 18px rgba(15,23,42,.16)' }}/> : <span className="public-home-ngo-monogram">{ngo.name.slice(0, 2).toUpperCase()}</span>}<span className="public-home-ngo-active"><i/> {hi ? 'सक्रिय' : 'Active'}</span></div>
           <h3>{ngo.name}</h3>
           {ngo.category && <span className="public-home-ngo-category">{ngo.category}</span>}
           {ngo.location && <p className="public-home-ngo-location"><MapPin size={15}/>{ngo.location}</p>}
@@ -714,7 +752,7 @@ export default function App() {
           contactEmail: String(data.email || ''),
           contactPhone: String(data.phone || ''),
           imageData: String(data.imageData || ''),
-          registrationFormData: { name: String(data.name || ''), contactName: String(data.contactName || ''), email: String(data.email || ''), phone: String(data.phone || ''), state: String(data.state || ''), district: String(data.district || ''), mission: String(data.mission || ''), subscriptionPlan: String(data.subscriptionPlan || plan.name || ''), planPrice: Number(data.planPrice || 0), planDurationDays: Number(data.planDurationDays || 0), paymentReference: String(data.paymentReference || '') },
+          registrationFormData: { name: String(data.name || ''), contactName: String(data.contactName || ''), email: String(data.email || ''), phone: String(data.phone || ''), state: String(data.state || ''), district: String(data.district || ''), mission: String(data.mission || ''), imageData: String(data.imageData || ''), subscriptionPlan: String(data.subscriptionPlan || plan.name || ''), planPrice: Number(data.planPrice || 0), planDurationDays: Number(data.planDurationDays || 0), paymentReference: String(data.paymentReference || '') },
           status: 'LIVE',
           ownerUid: String(data.ownerUid || ''),
           registrationId: registration.id,
@@ -893,6 +931,8 @@ export default function App() {
     if (authUser) return <NgoWorkspacePortal authUser={authUser} language={language} />;
     return <main className="member-portal"><section className="member-portal-hero"><span>ALL NGO CONNECT</span><h1>{language === 'hi' ? 'NGO Admin लॉगिन' : 'NGO Admin sign in'}</h1><p>{language === 'hi' ? 'अपने NGO के owner Google खाते से लॉगिन करें।' : 'Sign in with the Google account that owns your NGO.'}</p><button className="primary-button" onClick={() => void loginAsSuperAdmin()} disabled={!firebaseConfigured}><Globe2 size={17}/> {language === 'hi' ? 'Google से लॉगिन करें' : 'Continue with Google'}</button>{authError && <p className="member-notice" role="alert">{authError}</p>}</section></main>;
   }
+  const publicNgoMatch = window.location.pathname.match(/^\/ngo\/([^/]+)\/?$/);
+  if (publicNgoMatch) return <PublicNgoSite language={language} setLanguage={setLanguage} ngoId={decodeURIComponent(publicNgoMatch[1])} />;
   if (window.location.pathname.startsWith('/ngo-list')) return <PublicNgoList language={language} setLanguage={setLanguage} />;
   if (window.location.pathname.startsWith('/members')) return <MemberIDPortal authUser={authUser} onLogin={loginAsSuperAdmin} language={language} />;
   if (window.location.pathname.startsWith('/ngo-admin')) {
