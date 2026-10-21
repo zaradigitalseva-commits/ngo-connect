@@ -1516,3 +1516,49 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
 .public-ticker-track {
   animation-duration: 8s !important;
 }
+
+/* Final yellow navigation strip: remove gaps and distribute buttons across the full available screen width */
+.public-site:not(.ngo-directory-site) > .public-header > .public-nav {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  justify-content: stretch !important;
+  align-items: stretch !important;
+  gap: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  padding: 6px 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box !important;
+}
+.public-site:not(.ngo-directory-site) > .public-header > .public-nav > .nav-3d {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding-left: 3px !important;
+  padding-right: 3px !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  text-align: center !important;
+  font-size: clamp(8px, 1vw, 12px) !important;
+  border-radius: 0 !important;
+}
+@media (max-width: 600px) {
+  .public-site:not(.ngo-directory-site) > .public-header > .public-nav {
+    gap: 0 !important;
+    padding: 5px 0 !important;
+  }
+  .public-site:not(.ngo-directory-site) > .public-header > .public-nav > .nav-3d {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    padding: 0 2px !important;
+    min-height: 32px !important;
+    font-size: clamp(7px, 2.1vw, 10px) !important;
+    line-height: 1.15 !important;
+    overflow-wrap: anywhere;
+  }
+}
+
