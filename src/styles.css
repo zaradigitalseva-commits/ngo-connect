@@ -2027,3 +2027,24 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
     font-size: 1.05em !important;
   }
 }
+
+
+/* Tighten vertical gaps around the announcement ticker and the box below it */
+.public-site section.public-ticker-box {
+  margin-bottom: 6px !important;
+}
+.public-site section.public-ticker-box + * {
+  margin-top: 6px !important;
+}
+.public-site section.public-ticker-box ~ main {
+  margin-top: 0 !important;
+}
+@media (max-width: 640px) {
+  .public-site section.public-ticker-box {
+    margin-top: 6px !important;
+    margin-bottom: 4px !important;
+  }
+  .public-site section.public-ticker-box + * {
+    margin-top: 4px !important;
+  }
+}
