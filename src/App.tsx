@@ -268,6 +268,28 @@ function PublicHomeNgoCards({ language }: { language: Language }) {
 
 function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authError }: PublicHomeProps) {
   const hi = language === 'hi';
+  const [installPromptEvent, setInstallPromptEvent] = useState<any>(null);
+  const [appInstalled, setAppInstalled] = useState(false);
+  const [installHelp, setInstallHelp] = useState(false);
+  useEffect(() => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
+    setAppInstalled(isStandalone);
+    const onBeforeInstall = (event: Event) => { event.preventDefault(); setInstallPromptEvent(event); };
+    const onInstalled = () => { setAppInstalled(true); setInstallPromptEvent(null); setInstallHelp(false); };
+    window.addEventListener('beforeinstallprompt', onBeforeInstall);
+    window.addEventListener('appinstalled', onInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBeforeInstall);
+      window.removeEventListener('appinstalled', onInstalled);
+    };
+  }, []);
+  const handleInstallApp = async () => {
+    if (installPromptEvent) {
+      await installPromptEvent.prompt();
+      const choice = await installPromptEvent.userChoice;
+      if (choice?.outcome === 'accepted') setInstallPromptEvent(null);
+    } else setInstallHelp(value => !value);
+  };
   const [showCompassionQuote, setShowCompassionQuote] = useState(false);
   useEffect(() => {
     const interval = window.setInterval(() => setShowCompassionQuote(current => !current), 4000);
@@ -331,6 +353,10 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
       {showPublicRegistration && <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget && !registrationBusy) setShowPublicRegistration(false); }}><section className="registration-modal" role="dialog" aria-modal="true" aria-labelledby="public-registration-title"><div className="modal-heading"><div><span className="modal-eyebrow">ALL NGO CONNECT</span><h2 id="public-registration-title">{hi ? 'NGO रजिस्ट्रेशन' : 'NGO registration'}</h2><p>{hi ? 'Google लॉगिन के बाद जानकारी भेजें। भुगतान सत्यापन और एडमिन मंज़ूरी तक NGO सक्रिय नहीं होगा।' : 'Sign in with Google and submit your details. Activation happens only after payment verification and admin approval.'}</p></div><button className="icon-button" onClick={() => setShowPublicRegistration(false)} aria-label={hi ? 'बंद करें' : 'Close'}><X size={20}/></button></div>{!authUser ? <div className="public-profile-gate"><p>{hi ? 'रजिस्ट्रेशन के लिए पहले Google से लॉगिन करें।' : 'Sign in with Google before registering.'}</p><button className="primary-button" onClick={onLogin} disabled={!firebaseConfigured}><Globe2 size={17}/>{hi ? 'Google से लॉगिन' : 'Sign in with Google'}</button></div> : <form onSubmit={submitPublicRegistration}><label>{hi ? 'NGO / संस्था का नाम' : 'NGO / organization name'} *<input required maxLength={120} value={publicForm.name} onChange={e => setPublicForm({...publicForm, name:e.target.value})}/></label><label>{hi ? 'संपर्क व्यक्ति' : 'Contact person'} *<input required maxLength={100} value={publicForm.contact} onChange={e => setPublicForm({...publicForm, contact:e.target.value})}/></label><label>{hi ? 'मोबाइल नंबर' : 'Phone number'} *<input required type="tel" maxLength={25} value={publicForm.phone} onChange={e => setPublicForm({...publicForm, phone:e.target.value})}/></label><label>{hi ? 'राज्य' : 'State'} *<select required value={publicForm.state} onChange={e => setPublicForm({...publicForm, state:e.target.value})}><option value="">{hi ? 'राज्य चुनें' : 'Select state'}</option>{INDIA_STATES_AND_UTS.map(s => <option key={s} value={s}>{s}</option>)}</select></label><label>{hi ? 'जिला' : 'District'} *<input required maxLength={100} value={publicForm.district} onChange={e => setPublicForm({...publicForm, district:e.target.value})} placeholder={hi ? 'जिले का नाम लिखें' : 'Enter district name'}/></label><label>{hi ? 'संस्था का उद्देश्य' : 'Mission / purpose'}<textarea rows={3} maxLength={1000} value={publicForm.mission} onChange={e => setPublicForm({...publicForm, mission:e.target.value})}/></label><label>{hi ? 'सब्सक्रिप्शन प्लान' : 'Subscription plan'}<select required value={publicForm.planId} onChange={e => setPublicForm({...publicForm, planId:e.target.value})}><option value="">{hi ? 'प्लान चुनें' : 'Choose a plan'}</option>{subscriptionPlans.map(plan => <option key={plan.id} value={plan.id}>{plan.name} — ₹{plan.price} / {plan.durationDays} {hi ? 'दिन' : 'days'}</option>)}</select>{subscriptionPlans.length === 0 && <small>{hi ? 'अभी कोई सक्रिय प्लान उपलब्ध नहीं है। एडमिन से संपर्क करें।' : 'No active plans are available. Contact the administrator.'}</small>}</label>{paymentQrImage && <div className="payment-qr-preview"><h3>{hi ? 'UPI से भुगतान करें' : 'Pay by UPI'}</h3><img src={paymentQrImage} alt={hi ? 'All NGO Connect UPI QR कोड' : 'All NGO Connect UPI QR code'} /><p>{hi ? 'QR स्कैन करके भुगतान करें, फिर नीचे UTR नंबर भरें।' : 'Scan this QR to pay, then enter the UTR below.'}</p></div>}<label>{hi ? 'भुगतान UTR / संदर्भ नंबर (यदि भुगतान कर दिया है)' : 'Payment UTR / reference (if already paid)'}<input maxLength={80} value={publicForm.paymentReference} onChange={e => setPublicForm({...publicForm, paymentReference:e.target.value})} placeholder="UTR / transaction reference"/></label><div className="form-note"><ShieldCheck size={17}/><span>{hi ? 'UTR भेजना भुगतान का प्रमाण नहीं है। एडमिन बैंक/UPI रिकॉर्ड से सत्यापन करेगा। भुगतान निर्देश एडमिन से प्राप्त करें।' : 'A UTR is not proof by itself. Admin will verify against UPI/bank records. Obtain payment instructions from the administrator.'}</span></div>{registrationMessage && <p role="status" className="public-auth-error">{registrationMessage}</p>}<div className="modal-actions"><button type="button" className="outline-button" disabled={registrationBusy} onClick={() => setShowPublicRegistration(false)}>{hi ? 'बंद करें' : 'Close'}</button><button type="submit" className="primary-button" disabled={registrationBusy || subscriptionPlans.length === 0 || !publicForm.planId}>{registrationBusy ? (hi ? 'सेव हो रहा है…' : 'Saving…') : (hi ? 'रजिस्ट्रेशन जमा करें' : 'Submit registration')}</button></div></form>}</section></div>}
       {authError && <p className="public-auth-error">{authError}</p>}
     </main><footer className="public-footer"><span>© 2026 All NGO Connect</span></footer>
+    {!appInstalled && <div className="app-install-float-wrap">
+      {installHelp && <div className="app-install-help">{hi ? 'Chrome में ऊपर ⋮ मेनू खोलें और “ऐप इंस्टॉल करें” या “होम स्क्रीन पर जोड़ें” चुनें।' : 'Open the Chrome ⋮ menu and choose “Install app” or “Add to Home screen”.'}</div>}
+      <button type="button" className="app-install-float" onClick={handleInstallApp}><span className="app-install-icon">↓</span><span>{hi ? 'ऐप इंस्टॉल करें' : 'Install App'}</span></button>
+    </div>}
   </div>;
 }
 
