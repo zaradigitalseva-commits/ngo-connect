@@ -270,7 +270,7 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
   const hi = language === 'hi';
   const [showCompassionQuote, setShowCompassionQuote] = useState(false);
   useEffect(() => {
-    const interval = window.setInterval(() => setShowCompassionQuote(current => !current), 1000);
+    const interval = window.setInterval(() => setShowCompassionQuote(current => !current), 4000);
     return () => window.clearInterval(interval);
   }, []);
   const [showPublicRegistration, setShowPublicRegistration] = useState(false);
