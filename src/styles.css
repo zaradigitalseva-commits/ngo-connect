@@ -1486,9 +1486,12 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
 }
 @media (max-width: 600px) {
   .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .outline-button {
-    min-height: 38px;
-    padding: 8px 11px;
-    font-size: 12px;
+    min-height: 32px;
+    height: 32px;
+    padding: 4px 9px;
+    font-size: 11px;
+    line-height: 1.1;
+    box-shadow: 0 2px 0 #a83b55, 0 4px 8px #e94f6b2b, inset 0 1px 0 #ffffff90;
   }
 }
 
@@ -1505,9 +1508,12 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
 }
 @media (max-width: 600px) {
   .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .primary-button {
-    min-height: 38px;
-    padding: 8px 11px;
-    font-size: 12px;
+    min-height: 32px;
+    height: 32px;
+    padding: 4px 9px;
+    font-size: 11px;
+    line-height: 1.1;
+    box-shadow: 0 2px 0 #0b5f54, 0 4px 8px #0e827425, inset 0 1px 0 #ffffff55;
   }
 }
 
