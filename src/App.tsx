@@ -88,8 +88,13 @@ function PublicNgoSite({ language, setLanguage, ngoId }: { language: Language; s
   const [ngo, setNgo] = useState<Record<string, any> | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [team, setTeam] = useState<Record<string, any>[]>([]);
   useEffect(() => {
     let active = true;
+    getDocs(firestoreQuery(collection(db, 'ngoMembers'), where('ngoId', '==', ngoId))).then(snapshot => {
+      if (!active) return;
+      setTeam(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).filter(person => String(person.status || 'ACTIVE').toUpperCase() === 'ACTIVE').sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))));
+    }).catch(() => { if (active) setTeam([]); });
     getDoc(doc(db, 'ngos', ngoId)).then(snapshot => {
       if (!active) return;
       if (!snapshot.exists() || !['LIVE', 'ACTIVE', 'APPROVED'].includes(String(snapshot.data().status || '').toUpperCase())) { setFailed(true); return; }
@@ -112,6 +117,19 @@ function PublicNgoSite({ language, setLanguage, ngoId }: { language: Language; s
           </div>
         </section>
         <section style={{ marginTop: 24, padding: 'clamp(22px,4vw,38px)', background: '#fff', borderRadius: 24, boxShadow: '0 14px 35px rgba(15,23,42,.08)', border: '1px solid rgba(99,102,241,.12)' }}><span className="public-kicker"><HeartHandshake size={15}/>{hi ? 'हमारे बारे में' : 'ABOUT US'}</span><h2 style={{ color: '#312e81', fontSize: 'clamp(24px,3vw,34px)', margin: '12px 0' }}>{hi ? 'हमारा उद्देश्य' : 'Our mission'}</h2><p style={{ fontSize: 17, lineHeight: 1.9, color: '#475569', whiteSpace: 'pre-wrap' }}>{mission || (hi ? 'यह संस्था समुदाय की सहायता और सामाजिक बदलाव के लिए काम करती है।' : 'This organization works to support its community and create positive social impact.')}</p></section>
+        <section style={{ marginTop: 22, padding: 'clamp(22px,4vw,34px)', background: '#fff', borderRadius: 24, boxShadow: '0 14px 35px rgba(15,23,42,.08)', border: '1px solid rgba(16,185,129,.18)' }}>
+          <span className="public-kicker"><Users size={15}/>{hi ? 'हमारी टीम' : 'OUR TEAM'}</span>
+          <h2 style={{ color: '#065f46', fontSize: 'clamp(24px,3vw,34px)', margin: '12px 0 8px' }}>{hi ? 'इस NGO में काम करने वाले लोग' : 'People working with this NGO'}</h2>
+          <p style={{ color: '#64748b', marginTop: 0 }}>{hi ? 'टीम के सदस्य, उनका पद और कार्यक्षेत्र।' : 'Meet the team, their roles and the areas they serve.'}</p>
+          {team.length ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,230px),1fr))', gap: 16, marginTop: 20 }}>
+            {team.map(person => <article key={person.id} style={{ borderRadius: 18, padding: 18, background: 'linear-gradient(145deg,#ecfdf5,#eff6ff)', border: '1px solid #bbf7d0', boxShadow: '0 8px 20px rgba(16,185,129,.09)' }}>
+              <div style={{ width: 54, height: 54, borderRadius: 17, display: 'grid', placeItems: 'center', color: '#fff', fontSize: 20, fontWeight: 900, background: 'linear-gradient(135deg,#059669,#4f46e5)', marginBottom: 12 }}>{String(person.name || 'T').trim().slice(0,1).toUpperCase()}</div>
+              <h3 style={{ margin: '0 0 6px', color: '#0f172a', fontSize: 19 }}>{String(person.name || (hi ? 'टीम सदस्य' : 'Team member'))}</h3>
+              <p style={{ margin: '0 0 7px', color: '#4338ca', fontWeight: 800 }}>{String(person.designation || person.position || (String(person.role || '').toUpperCase() === 'VOLUNTEER' ? (hi ? 'स्वयंसेवक' : 'Volunteer') : (hi ? 'सदस्य' : 'Member')))}</p>
+              {(person.location || person.workArea) && <p style={{ margin: 0, color: '#475569', display: 'flex', alignItems: 'flex-start', gap: 7 }}><MapPin size={16} style={{ flexShrink: 0, marginTop: 3 }}/>{String(person.location || person.workArea)}</p>}
+            </article>)}
+          </div> : <div style={{ marginTop: 16, borderRadius: 16, padding: 20, background: '#f8fafc', color: '#64748b', textAlign: 'center' }}>{hi ? 'NGO Admin ने अभी टीम की जानकारी नहीं जोड़ी है।' : 'The NGO admin has not added team information yet.'}</div>}
+        </section>
         <section style={{ marginTop: 22, padding: 24, textAlign: 'center', borderRadius: 24, background: 'linear-gradient(135deg,#fff,#f5f3ff)', border: '1px solid #ddd6fe' }}><h2 style={{ color: '#4338ca', marginTop: 0 }}>{hi ? 'बेहतर बदलाव के लिए साथ आएँ' : 'Join us for better impact'}</h2><p style={{ color: '#64748b' }}>{hi ? 'इस NGO की जानकारी अपने परिवार और समुदाय के साथ साझा करें।' : 'Share this organization with your family and community.'}</p><button className="primary-button" onClick={() => { void navigator.clipboard?.writeText(window.location.href).then(() => window.alert(hi ? 'NGO साइट का लिंक कॉपी हो गया।' : 'NGO website link copied.')).catch(() => window.prompt(hi ? 'इस लिंक को कॉपी करें:' : 'Copy this link:', window.location.href)); }}>{hi ? 'इस NGO साइट का लिंक साझा करें' : 'Share this NGO website'} <ArrowUpRight size={17}/></button></section>
       </>}
       <footer className="ngo-directory-footer">© 2026 All NGO Connect</footer>
