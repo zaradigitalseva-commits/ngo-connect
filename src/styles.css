@@ -1624,3 +1624,49 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
     font-size: 11px !important;
   }
 }
+
+
+/* Compact, consistent public header action buttons (override older size rules). */
+.public-site:not(.ngo-directory-site) > .public-header > .public-actions > .primary-button,
+.public-site:not(.ngo-directory-site) > .public-header > .public-actions > .outline-button {
+  box-sizing: border-box !important;
+  flex: 0 0 132px !important;
+  width: 132px !important;
+  min-width: 132px !important;
+  max-width: 132px !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  max-height: 34px !important;
+  padding: 0 7px !important;
+  font-size: 11px !important;
+  line-height: 1.1 !important;
+  border-radius: 8px !important;
+  white-space: nowrap !important;
+}
+@media (max-width: 900px) {
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .primary-button,
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .outline-button {
+    flex-basis: 128px !important;
+    width: 128px !important;
+    min-width: 128px !important;
+    max-width: 128px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    max-height: 34px !important;
+    font-size: 10.5px !important;
+  }
+}
+@media (max-width: 600px) {
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .primary-button,
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .outline-button {
+    flex: 0 0 124px !important;
+    width: 124px !important;
+    min-width: 124px !important;
+    max-width: 124px !important;
+    height: 33px !important;
+    min-height: 33px !important;
+    max-height: 33px !important;
+    padding: 0 5px !important;
+    font-size: 10px !important;
+  }
+}
