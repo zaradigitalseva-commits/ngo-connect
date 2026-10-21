@@ -1881,3 +1881,38 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
     margin-left: auto !important;
   }
 }
+
+
+/* Ensure Register and Google Login buttons have exactly the same dimensions. */
+.public-site:not(.ngo-directory-site) > .public-header > .public-actions > .primary-button,
+.public-site:not(.ngo-directory-site) > .public-header > .public-actions > .outline-button {
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 100px !important;
+  width: 100px !important;
+  min-width: 100px !important;
+  max-width: 100px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  max-height: 30px !important;
+  padding: 0 3px !important;
+  font-size: 9px !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+}
+@media (max-width: 600px) {
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .primary-button,
+  .public-site:not(.ngo-directory-site) > .public-header > .public-actions > .outline-button {
+    flex: 0 0 88px !important;
+    width: 88px !important;
+    min-width: 88px !important;
+    max-width: 88px !important;
+    height: 27px !important;
+    min-height: 27px !important;
+    max-height: 27px !important;
+    font-size: 8px !important;
+    padding: 0 2px !important;
+  }
+}
