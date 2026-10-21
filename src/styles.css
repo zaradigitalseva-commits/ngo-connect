@@ -1963,3 +1963,19 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
     box-shadow: 0 2px 0 #1e3a8a, 0 3px 6px rgba(30,64,175,0.28), inset 0 1px 0 rgba(255,255,255,0.4) !important;
   }
 }
+
+
+/* Clearly distinguish the two public header actions: green Register, blue 3D Google Login. */
+.public-site:not(.ngo-directory-site) > .public-header > .public-actions > .primary-button {
+  color: #fff !important;
+  background: linear-gradient(180deg, #34d399 0%, #059669 55%, #047857 100%) !important;
+  border: 1px solid #047857 !important;
+  box-shadow: 0 3px 0 #065f46, 0 5px 8px rgba(4, 120, 87, .28), inset 0 1px 0 rgba(255,255,255,.4) !important;
+  text-shadow: 0 1px 1px rgba(0,0,0,.2) !important;
+}
+.public-site:not(.ngo-directory-site) > .public-header > .public-actions > .outline-button {
+  color: #fff !important;
+  background: linear-gradient(180deg, #60a5fa 0%, #2563eb 55%, #1d4ed8 100%) !important;
+  border: 1px solid #1e40af !important;
+  box-shadow: 0 3px 0 #1e3a8a, 0 5px 8px rgba(30,64,175,.3), inset 0 1px 0 rgba(255,255,255,.45) !important;
+}
