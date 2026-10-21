@@ -351,23 +351,48 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
   };
   useEffect(() => {
     let active = true;
-    getDocs(firestoreQuery(collection(db, 'subscriptionPlans'), where('active', '==', true))).then(snapshot => {
-      if (!active) return;
-      const plans = snapshot.docs
-        .map(item => ({ id: item.id, name: String(item.data().name || ''), price: Number(item.data().price) || 0, durationDays: Number(item.data().durationDays) || 0, description: String(item.data().description || ''), active: item.data().active === true }))
-        .filter(plan => plan.active && plan.name && plan.price > 0 && plan.durationDays > 0);
-      setSubscriptionPlans(plans);
-      setPublicForm(current => ({ ...current, planId: plans.some(plan => plan.id === current.planId) ? current.planId : (plans[0]?.id || '') }));
-      if (plans.length === 0) setRegistrationMessage(hi ? 'अभी कोई सक्रिय प्लान नहीं मिला। एडमिन पैनल में प्लान सक्रिय करें और Firebase Rules प्रकाशित करें।' : 'No active plans found. Activate a plan in the admin panel and publish the Firebase rules.');
-    }).catch(error => {
-      if (!active) return;
-      setSubscriptionPlans([]);
-      setRegistrationMessage(error instanceof Error ? (hi ? 'प्लान लोड नहीं हुए: ' + error.message : 'Could not load plans: ' + error.message) : (hi ? 'प्लान लोड नहीं हुए। Firebase Rules जाँचें।' : 'Could not load plans. Check Firebase rules.'));
-    });
+    // Keep the public registration dropdown synced whenever the admin adds,
+    // edits, activates, or deactivates a plan.
+    const unsubscribePlans = onSnapshot(
+      firestoreQuery(collection(db, 'subscriptionPlans'), where('active', '==', true)),
+      snapshot => {
+        if (!active) return;
+        const plans = snapshot.docs
+          .map(item => {
+            const data = item.data();
+            return {
+              id: item.id,
+              name: String(data.name || data.planName || '').trim(),
+              price: Number(data.price ?? data.fee ?? data.amount) || 0,
+              durationDays: Number(data.durationDays ?? data.validityDays ?? data.duration) || 0,
+              description: String(data.description || ''),
+              active: data.active === true,
+            };
+          })
+          .filter(plan => plan.active && plan.name);
+        setSubscriptionPlans(plans);
+        setPublicForm(current => ({
+          ...current,
+          planId: plans.some(plan => plan.id === current.planId) ? current.planId : (plans[0]?.id || ''),
+        }));
+        if (plans.length === 0) {
+          setRegistrationMessage(hi ? 'अभी कोई सक्रिय प्लान नहीं मिला। एडमिन पैनल में प्लान सक्रिय करें।' : 'No active plans found. Activate a plan in the admin panel.');
+        } else {
+          setRegistrationMessage(current => current.startsWith('अभी कोई सक्रिय प्लान') || current.startsWith('No active plans') || current.startsWith('प्लान लोड नहीं हुए') || current.startsWith('Could not load plans') ? '' : current);
+        }
+      },
+      error => {
+        if (!active) return;
+        setSubscriptionPlans([]);
+        setRegistrationMessage(error instanceof Error
+          ? (hi ? 'प्लान लोड नहीं हुए: ' + error.message : 'Could not load plans: ' + error.message)
+          : (hi ? 'प्लान लोड नहीं हुए। Firebase Rules जाँचें।' : 'Could not load plans. Check Firebase rules.'));
+      }
+    );
     getDoc(doc(db, 'publicSettings', 'payment')).then(snapshot => {
       if (active && snapshot.exists() && typeof snapshot.data().qrImage === 'string') setPaymentQrImage(snapshot.data().qrImage as string);
     }).catch(() => { if (active) setPaymentQrImage(''); });
-    return () => { active = false; };
+    return () => { active = false; unsubscribePlans(); };
   }, [hi]);
   return <div className="public-site">
     <header className="public-header">
