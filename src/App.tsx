@@ -272,10 +272,18 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
   const [appInstalled, setAppInstalled] = useState(false);
   const [installHelp, setInstallHelp] = useState(false);
   useEffect(() => {
+    const installedKey = 'ngo-connect-app-installed';
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
-    setAppInstalled(isStandalone);
+    let wasInstalled = false;
+    try { wasInstalled = window.localStorage.getItem(installedKey) === 'yes'; } catch (error) { /* storage may be unavailable */ }
+    setAppInstalled(isStandalone || wasInstalled);
     const onBeforeInstall = (event: Event) => { event.preventDefault(); setInstallPromptEvent(event); };
-    const onInstalled = () => { setAppInstalled(true); setInstallPromptEvent(null); setInstallHelp(false); };
+    const onInstalled = () => {
+      setAppInstalled(true);
+      setInstallPromptEvent(null);
+      setInstallHelp(false);
+      try { window.localStorage.setItem(installedKey, 'yes'); } catch (error) { /* storage may be unavailable */ }
+    };
     window.addEventListener('beforeinstallprompt', onBeforeInstall);
     window.addEventListener('appinstalled', onInstalled);
     return () => {
