@@ -276,7 +276,6 @@ function PublicHomeNgoCards({ language }: { language: Language }) {
             location: parts.filter((value, index) => parts.indexOf(value) === index).join(', ') || String(data.location || ''),
             mission: String(data.mission || data.description || ''),
             imageData: String(data.imageData || data.registrationFormData?.imageData || ''),
-            imageData: String(data.imageData || data.registrationFormData?.imageData || ''),
           };
         }).sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })));
       })
