@@ -1760,3 +1760,16 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
 @media (prefers-reduced-motion: reduce) {
   .public-site .public-hero-copy > .public-kicker { animation: none; }
 }
+
+
+/* Gentle blinking glow for the highlighted hero headline */
+@keyframes ngoSmileBlink {
+  0%, 100% { opacity: 1; text-shadow: 0 0 0 transparent; }
+  50% { opacity: .62; text-shadow: 0 0 12px #12b9818c; }
+}
+.public-site .public-hero h1 em {
+  animation: ngoSmileBlink 1.25s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .public-site .public-hero h1 em { animation: none; }
+}
