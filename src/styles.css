@@ -2012,3 +2012,18 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
     max-height: 28px !important;
   }
 }
+
+
+/* Slightly enlarge the NGO Connect site name without changing header layout */
+.public-site .public-header .public-brand .brand-name-stack > strong,
+.public-site .public-header .public-brand .brand-name,
+.public-site .public-header .public-brand h1 {
+  font-size: 1.08em !important;
+}
+@media (max-width: 600px) {
+  .public-site .public-header .public-brand .brand-name-stack > strong,
+  .public-site .public-header .public-brand .brand-name,
+  .public-site .public-header .public-brand h1 {
+    font-size: 1.05em !important;
+  }
+}
