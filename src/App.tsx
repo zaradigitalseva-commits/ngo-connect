@@ -291,14 +291,25 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
   }, []);
   const handleInstallApp = async () => {
     if (installPromptEvent) {
-      await installPromptEvent.prompt();
-      const choice = await installPromptEvent.userChoice;
-      if (choice?.outcome === 'accepted') {
-        setInstallPromptEvent(null);
-        setAppInstalled(true);
-        try { window.localStorage.setItem('ngo-connect-app-installed', 'yes'); } catch (error) { /* storage may be unavailable */ }
+      try {
+        await installPromptEvent.prompt();
+        const choice = await installPromptEvent.userChoice;
+        if (choice?.outcome === 'accepted') {
+          setInstallPromptEvent(null);
+          setAppInstalled(true);
+          try { window.localStorage.setItem('ngo-connect-app-installed', 'yes'); } catch (error) { /* storage may be unavailable */ }
+        }
+      } catch (error) {
+        window.alert(hi ? 'ऐप इंस्टॉल करने के लिए Chrome मेनू (⋮) खोलकर “Install app” चुनें। यदि विकल्प नहीं दिखता, पेज को रिफ्रेश करके दोबारा कोशिश करें।' : 'To install, open Chrome’s ⋮ menu and choose “Install app”. If unavailable, refresh the page and try again.');
       }
+      return;
     }
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
+    if (isStandalone) {
+      setAppInstalled(true);
+      return;
+    }
+    window.alert(hi ? 'इंस्टॉल विकल्प तैयार हो रहा है। पेज को एक बार रिफ्रेश करें। फिर भी विकल्प न आए तो Chrome के ⋮ मेनू में “Install app” चुनें।' : 'The install option is still preparing. Refresh this page once. If it still does not appear, choose “Install app” from Chrome’s ⋮ menu.');
   };
   const [showCompassionQuote, setShowCompassionQuote] = useState(false);
   useEffect(() => {
