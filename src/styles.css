@@ -2048,3 +2048,53 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
     margin-top: 4px !important;
   }
 }
+
+
+/* Fixed floating install-app control on the public homepage */
+.app-install-float-wrap {
+  position: fixed;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(22px, env(safe-area-inset-bottom));
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 9px;
+  pointer-events: none;
+}
+.app-install-float,
+.app-install-help { pointer-events: auto; }
+.app-install-float {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 48px;
+  padding: 0 17px;
+  border: 1px solid rgba(255,255,255,.8);
+  border-radius: 999px;
+  color: #fff;
+  background: linear-gradient(135deg, #0f766e, #2563eb 55%, #7c3aed);
+  box-shadow: 0 8px 24px rgba(37, 99, 235, .32), inset 0 1px 0 rgba(255,255,255,.35);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.app-install-float:hover { transform: translateY(-2px); box-shadow: 0 11px 28px rgba(37,99,235,.4), inset 0 1px 0 rgba(255,255,255,.35); }
+.app-install-icon { display: inline-grid; place-items: center; width: 25px; height: 25px; border-radius: 50%; background: rgba(255,255,255,.2); font-size: 23px; line-height: 1; }
+.app-install-help {
+  width: min(290px, calc(100vw - 32px));
+  padding: 12px 14px;
+  border: 1px solid rgba(37,99,235,.24);
+  border-radius: 14px;
+  background: #fff;
+  color: #172033;
+  box-shadow: 0 8px 26px rgba(15,23,42,.2);
+  font-size: 13px;
+  line-height: 1.5;
+}
+@media (max-width: 640px) {
+  .app-install-float-wrap { right: 12px; bottom: max(16px, env(safe-area-inset-bottom)); }
+  .app-install-float { min-height: 44px; padding: 0 14px; font-size: 13px; }
+}
