@@ -930,7 +930,9 @@ export default function App() {
     // Platform administrators keep the platform dashboard and can still review all NGOs.
     if (!authUser || isSuperAdmin(authUser)) return;
     const path = window.location.pathname;
-    if (path === '/' || path === '/ngo-admin' || path === '/ngo-admin/') {
+    // Keep the legacy NGO Admin route available: it contains the membership application review screen.
+    // Only send owners from the homepage to their workspace; redirecting /ngo-admin hides its own page.
+    if (path === '/') {
       window.location.replace('/ngo-workspace');
     }
   }, [authUser]);
