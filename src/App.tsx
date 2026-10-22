@@ -95,12 +95,13 @@ function PublicNgoSite({ language, setLanguage, ngoId }: { language: Language; s
       if (!active) return;
       setTeam(snapshot.docs.map(item => ({ id: item.id, ...item.data() } as Record<string, any>)).filter(person => String(person.status || 'ACTIVE').toUpperCase() === 'ACTIVE').sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))));
     }, () => { if (active) setTeam([]); });
-    getDoc(doc(db, 'ngos', ngoId)).then(snapshot => {
+    const unsubscribeNgo = onSnapshot(doc(db, 'ngos', ngoId), snapshot => {
       if (!active) return;
-      if (!snapshot.exists() || !['LIVE', 'ACTIVE', 'APPROVED'].includes(String(snapshot.data().status || '').toUpperCase())) { setFailed(true); return; }
-      setNgo({ id: snapshot.id, ...snapshot.data() });
-    }).catch(() => { if (active) setFailed(true); }).finally(() => { if (active) setLoading(false); });
-    return () => { active = false; unsubscribeTeam(); };
+      if (!snapshot.exists() || !['LIVE', 'ACTIVE', 'APPROVED'].includes(String(snapshot.data().status || '').toUpperCase())) { setFailed(true); setNgo(null); }
+      else { setFailed(false); setNgo({ id: snapshot.id, ...snapshot.data() }); }
+      setLoading(false);
+    }, () => { if (active) { setFailed(true); setLoading(false); } });
+    return () => { active = false; unsubscribeTeam(); unsubscribeNgo(); };
   }, [ngoId]);
   const name = String(ngo?.name || ngo?.ngoName || 'NGO');
   const logo = String(ngo?.imageData || ngo?.registrationFormData?.imageData || '');
@@ -606,7 +607,7 @@ export default function App() {
   useEffect(() => {
     if (!authUser || !isSuperAdmin(authUser) || !firebaseConfigured) return;
     let active = true;
-    getDocs(collection(db, 'dashboardSlides')).then(snapshot => {
+    const unsubscribeSlides = onSnapshot(collection(db, 'dashboardSlides'), snapshot => {
       if (!active) return;
       const slides = snapshot.docs.map(item => ({ id: item.id, title: String(item.data().title || ''), imageData: String(item.data().imageData || ''), createdAt: item.data().createdAt } as DashboardSlide)).filter(item => item.imageData).sort((a, b) => {
         const at = a.createdAt && typeof (a.createdAt as { toMillis?: () => number }).toMillis === 'function' ? (a.createdAt as { toMillis: () => number }).toMillis() : 0;
@@ -614,13 +615,13 @@ export default function App() {
         return at - bt;
       });
       setDashboardSlides(slides);
-    }).catch(error => { if (active) setSlideMessage(error instanceof Error ? error.message : 'स्लाइड लोड नहीं हुए। Firestore Rules जाँचें।'); });
-    return () => { active = false; };
+    }, error => { if (active) setSlideMessage(error instanceof Error ? error.message : 'स्लाइड लोड नहीं हुए। Firestore Rules जाँचें।'); });
+    return () => { active = false; unsubscribeSlides(); };
   }, [authUser]);
   useEffect(() => {
     if (!authUser || !isSuperAdmin(authUser) || !firebaseConfigured) return;
     let active = true;
-    getDocs(collection(db, 'publicTickerMessages')).then(snapshot => {
+    const unsubscribeTicker = onSnapshot(collection(db, 'publicTickerMessages'), snapshot => {
       if (!active) return;
       const rows = snapshot.docs.map(item => ({ id: item.id, text: String(item.data().text || ''), color: String(item.data().color || 'rainbow'), createdAt: item.data().createdAt }));
       rows.sort((a, b) => {
@@ -629,8 +630,8 @@ export default function App() {
         return at - bt;
       });
       setTickerMessages(rows);
-    }).catch(() => { if (active) setTickerMessage('सूचना लोड नहीं हुई। Firestore Rules जाँचें।'); });
-    return () => { active = false; };
+    }, () => { if (active) setTickerMessage('सूचना लोड नहीं हुई। Firestore Rules जाँचें।') });
+    return () => { active = false; unsubscribeTicker(); };
   }, [authUser]);
   useEffect(() => {
     if (dashboardSlides.length < 2) return;
@@ -644,47 +645,34 @@ export default function App() {
       return;
     }
     let active = true;
-    const loadDashboard = async () => {
-      setDashboardLoading(true);
-      setDashboardError('');
-      try {
-        const [ngoSnap, memberSnap, transactionSnap, eventSnap, documentSnap] = await Promise.all([
-          getDocs(collection(db, 'ngos')),
-          getDocs(collection(db, 'ngoMembers')),
-          getDocs(collection(db, 'ngoTransactions')),
-          getDocs(collection(db, 'ngoEvents')),
-          getDocs(collection(db, 'ngoDocuments')),
-        ]);
-        if (!active) return;
-        const members = memberSnap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord));
-        const transactions = transactionSnap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord));
-        const events = eventSnap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord));
-        const documents = documentSnap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord));
-        const ngos = ngoSnap.docs.map(d => {
-          const data = d.data();
-          return {
-            id: d.id,
-            name: String(data.name || data.ngoName || 'NGO'),
-            type: String(data.type || data.category || data.mission || 'Social organization'),
-            city: String(data.city || data.district || data.location || data.state || '—'),
-            status: String(data.status || 'UNKNOWN'),
-            ownerUid: String(data.ownerUid || ''),
-            people: members.filter(m => m.ngoId === d.id).length,
-          };
-        });
-        setLiveNgos(ngos);
-        setLiveMembers(members);
-        setLiveTransactions(transactions);
-        setLiveEvents(events);
-        setLiveDocuments(documents);
-      } catch (error) {
-        if (active) setDashboardError(error instanceof Error ? error.message : 'Firebase डेटा लोड नहीं हुआ। Firestore Rules और कनेक्शन जाँचें।');
-      } finally {
-        if (active) setDashboardLoading(false);
-      }
+    setDashboardLoading(true);
+    setDashboardError('');
+    const updateNgos = (ngoDocs: any[], members: DashboardRecord[]) => ngoDocs.map(d => {
+      const data = d.data();
+      return { id: d.id, name: String(data.name || data.ngoName || 'NGO'), type: String(data.type || data.category || data.mission || 'Social organization'), city: String(data.city || data.district || data.location || data.state || '—'), status: String(data.status || 'UNKNOWN'), ownerUid: String(data.ownerUid || ''), people: members.filter(m => m.ngoId === d.id).length };
+    });
+    let ngoDocs: any[] = [];
+    let members: DashboardRecord[] = [];
+    let transactions: DashboardRecord[] = [];
+    let events: DashboardRecord[] = [];
+    let documents: DashboardRecord[] = [];
+    const refresh = () => {
+      if (!active) return;
+      setLiveNgos(updateNgos(ngoDocs, members));
+      setLiveMembers(members);
+      setLiveTransactions(transactions);
+      setLiveEvents(events);
+      setLiveDocuments(documents);
+      setDashboardLoading(false);
     };
-    void loadDashboard();
-    return () => { active = false; };
+    const unsubscribers = [
+      onSnapshot(collection(db, 'ngos'), snap => { ngoDocs = snap.docs; refresh(); }, error => { if (active) setDashboardError(error.message); }),
+      onSnapshot(collection(db, 'ngoMembers'), snap => { members = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord)); refresh(); }, error => { if (active) setDashboardError(error.message); }),
+      onSnapshot(collection(db, 'ngoTransactions'), snap => { transactions = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord)); refresh(); }, error => { if (active) setDashboardError(error.message); }),
+      onSnapshot(collection(db, 'ngoEvents'), snap => { events = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord)); refresh(); }, error => { if (active) setDashboardError(error.message); }),
+      onSnapshot(collection(db, 'ngoDocuments'), snap => { documents = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord)); refresh(); }, error => { if (active) setDashboardError(error.message); }),
+    ];
+    return () => { active = false; unsubscribers.forEach(unsubscribe => unsubscribe()); };
   }, [authUser]);
   const savePaymentQr = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
