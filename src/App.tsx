@@ -91,16 +91,16 @@ function PublicNgoSite({ language, setLanguage, ngoId }: { language: Language; s
   const [team, setTeam] = useState<Record<string, any>[]>([]);
   useEffect(() => {
     let active = true;
-    getDocs(firestoreQuery(collection(db, 'ngoMembers'), where('ngoId', '==', ngoId))).then(snapshot => {
+    const unsubscribeTeam = onSnapshot(firestoreQuery(collection(db, 'ngoMembers'), where('ngoId', '==', ngoId)), snapshot => {
       if (!active) return;
       setTeam(snapshot.docs.map(item => ({ id: item.id, ...item.data() } as Record<string, any>)).filter(person => String(person.status || 'ACTIVE').toUpperCase() === 'ACTIVE').sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))));
-    }).catch(() => { if (active) setTeam([]); });
+    }, () => { if (active) setTeam([]); });
     getDoc(doc(db, 'ngos', ngoId)).then(snapshot => {
       if (!active) return;
       if (!snapshot.exists() || !['LIVE', 'ACTIVE', 'APPROVED'].includes(String(snapshot.data().status || '').toUpperCase())) { setFailed(true); return; }
       setNgo({ id: snapshot.id, ...snapshot.data() });
     }).catch(() => { if (active) setFailed(true); }).finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+    return () => { active = false; unsubscribeTeam(); };
   }, [ngoId]);
   const name = String(ngo?.name || ngo?.ngoName || 'NGO');
   const logo = String(ngo?.imageData || ngo?.registrationFormData?.imageData || '');
@@ -151,26 +151,12 @@ function PublicNgoList({ language, setLanguage }: { language: Language; setLangu
       setLoadError(hi ? 'NGO सूची लोड करने के लिए Firebase सेटअप आवश्यक है।' : 'Firebase setup is required to load the NGO directory.');
       return () => { active = false; };
     }
-    getDocs(firestoreQuery(collection(db, 'ngos'), where('status', 'in', ['LIVE', 'ACTIVE', 'APPROVED'])))
-      .then(snapshot => {
-        if (!active) return;
-        const records = snapshot.docs.map(item => {
-          const data = item.data();
-          const locationParts = [data.city, data.district, data.state].filter(value => typeof value === 'string' && value.trim()).map(String);
-          return {
-            id: item.id,
-            name: String(data.name || data.ngoName || 'NGO'),
-            category: String(data.type || data.category || ''),
-            location: locationParts.filter((value, index) => locationParts.indexOf(value) === index).join(', ') || String(data.location || ''),
-            mission: String(data.mission || data.description || ''),
-            imageData: String(data.imageData || data.registrationFormData?.imageData || ''),
-          };
-        }).sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
-        setNgos(records);
-      })
-      .catch(() => { if (active) setLoadError(hi ? 'NGO सूची लोड नहीं हुई। Firebase Rules और इंटरनेट कनेक्शन जाँचें।' : 'Could not load NGOs. Check Firestore rules and your internet connection.'); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+    const unsubscribeNgos = onSnapshot(firestoreQuery(collection(db, 'ngos'), where('status', 'in', ['LIVE', 'ACTIVE', 'APPROVED'])), snapshot => {
+      if (!active) return;
+      const records = snapshot.docs.map(item => { const data = item.data(); const locationParts = [data.city, data.district, data.state].filter(value => typeof value === 'string' && value.trim()).map(String); return { id: item.id, name: String(data.name || data.ngoName || 'NGO'), category: String(data.type || data.category || ''), location: locationParts.filter((value, index) => locationParts.indexOf(value) === index).join(', ') || String(data.location || ''), mission: String(data.mission || data.description || ''), imageData: String(data.imageData || data.registrationFormData?.imageData || '') }; }).sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
+      setNgos(records); setLoading(false); setLoadError('');
+    }, () => { if (active) { setLoadError(hi ? 'NGO सूची लोड नहीं हुई। Firebase Rules और इंटरनेट कनेक्शन जाँचें।' : 'Could not load NGOs. Check Firestore rules and your internet connection.'); setLoading(false); } });
+    return () => { active = false; unsubscribeNgos(); };
   }, [hi]);
 
   const filtered = ngos.filter(ngo => [ngo.name, ngo.category, ngo.location, ngo.mission].join(' ').toLocaleLowerCase().includes(searchText.trim().toLocaleLowerCase()));
@@ -214,16 +200,12 @@ function PublicDashboardSlider({ language }: { language: Language }) {
   const [activeIndex, setActiveIndex] = useState(0);
   useEffect(() => {
     let active = true;
-    getDocs(collection(db, 'dashboardSlides')).then(snapshot => {
+    const unsubscribeSlides = onSnapshot(collection(db, 'dashboardSlides'), snapshot => {
       if (!active) return;
-      const records = snapshot.docs.map(item => {
-        const data = item.data();
-        return { id: item.id, title: String(data.title || ''), imageData: String(data.imageData || '') };
-      }).filter(item => item.imageData);
-      setSlides(records);
-      setActiveIndex(0);
-    }).catch(() => { if (active) setSlides([]); });
-    return () => { active = false; };
+      const records = snapshot.docs.map(item => { const data = item.data(); return { id: item.id, title: String(data.title || ''), imageData: String(data.imageData || '') }; }).filter(item => item.imageData);
+      setSlides(records); setActiveIndex(0);
+    }, () => { if (active) setSlides([]); });
+    return () => { active = false; unsubscribeSlides(); };
   }, []);
   useEffect(() => {
     if (slides.length < 2) return;
@@ -281,25 +263,12 @@ function PublicHomeNgoCards({ language }: { language: Language }) {
   useEffect(() => {
     let active = true;
     if (!firebaseConfigured) { setLoading(false); setLoadError(true); return () => { active = false; }; }
-    getDocs(firestoreQuery(collection(db, 'ngos'), where('status', 'in', ['LIVE', 'ACTIVE', 'APPROVED'])))
-      .then(snapshot => {
-        if (!active) return;
-        setNgos(snapshot.docs.map(item => {
-          const data = item.data();
-          const parts = [data.city, data.district, data.state].filter(value => typeof value === 'string' && value.trim()).map(String);
-          return {
-            id: item.id,
-            name: String(data.name || data.ngoName || 'NGO'),
-            category: String(data.type || data.category || ''),
-            location: parts.filter((value, index) => parts.indexOf(value) === index).join(', ') || String(data.location || ''),
-            mission: String(data.mission || data.description || ''),
-            imageData: String(data.imageData || data.registrationFormData?.imageData || ''),
-          };
-        }).sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })));
-      })
-      .catch(() => { if (active) setLoadError(true); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+    const unsubscribeNgos = onSnapshot(firestoreQuery(collection(db, 'ngos'), where('status', 'in', ['LIVE', 'ACTIVE', 'APPROVED'])), snapshot => {
+      if (!active) return;
+      setNgos(snapshot.docs.map(item => { const data = item.data(); const parts = [data.city, data.district, data.state].filter(value => typeof value === 'string' && value.trim()).map(String); return { id: item.id, name: String(data.name || data.ngoName || 'NGO'), category: String(data.type || data.category || ''), location: parts.filter((value, index) => parts.indexOf(value) === index).join(', ') || String(data.location || ''), mission: String(data.mission || data.description || ''), imageData: String(data.imageData || data.registrationFormData?.imageData || '') }; }).sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })));
+      setLoading(false); setLoadError(false);
+    }, () => { if (active) { setLoadError(true); setLoading(false); } });
+    return () => { active = false; unsubscribeNgos(); };
   }, []);
 
   return <section className="public-home-ngo-directory" aria-labelledby="home-ngo-heading">
@@ -374,7 +343,17 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
     return () => window.clearInterval(interval);
   }, []);
   const [showPublicRegistration, setShowPublicRegistration] = useState(false);
-  useEffect(() => { if (new URLSearchParams(window.location.search).get('register') === '1') setShowPublicRegistration(true); }, []);
+  const [registrationAlreadySubmitted, setRegistrationAlreadySubmitted] = useState(false);
+  useEffect(() => {
+    if (!authUser || !firebaseConfigured) { setRegistrationAlreadySubmitted(false); return; }
+    const unsubscribeRegistration = onSnapshot(firestoreQuery(collection(db, 'ngoRegistrations'), where('ownerUid', '==', authUser.uid)), snapshot => {
+      const submitted = !snapshot.empty;
+      setRegistrationAlreadySubmitted(submitted);
+      if (submitted) setShowPublicRegistration(false);
+    }, () => setRegistrationAlreadySubmitted(false));
+    return unsubscribeRegistration;
+  }, [authUser]);
+  useEffect(() => { if (new URLSearchParams(window.location.search).get('register') === '1' && !registrationAlreadySubmitted) setShowPublicRegistration(true); }, [registrationAlreadySubmitted]);
   const [registrationBusy, setRegistrationBusy] = useState(false);
   const [registrationMessage, setRegistrationMessage] = useState('');
   const [paymentQrImage, setPaymentQrImage] = useState('');
@@ -401,6 +380,10 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
       });
       setRegistrationMessage(hi ? 'रजिस्ट्रेशन जमा हो गया। भुगतान/UTR की जाँच और एडमिन की मंज़ूरी के बाद ही NGO सक्रिय होगा।' : 'Registration submitted. The NGO will activate only after payment verification and admin approval.');
       setPublicForm({ name: '', contact: '', phone: '', state: '', district: '', mission: '', planId: subscriptionPlans.find(p => p.active)?.id || '', paymentReference: '', imageData: '' });
+      setShowPublicRegistration(false);
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.delete('register');
+      window.history.replaceState({}, '', nextUrl.pathname + nextUrl.search + nextUrl.hash);
     } catch (error) {
       setRegistrationMessage(error instanceof Error ? error.message : (hi ? 'रजिस्ट्रेशन सेव नहीं हुआ। Firebase नियम जाँचें।' : 'Could not save registration. Check Firebase rules.'));
     } finally { setRegistrationBusy(false); }
@@ -454,7 +437,7 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
     <header className="public-header">
       <a className="public-brand" href="/" aria-label="All NGO Connect home"><span className="brand-mark"><Leaf size={23}/></span><span className="brand-name-stack"><span className="brand-name-banner"><span>All NGO</span><span>Connect</span></span><small>{hi ? 'मजबूत समुदाय। बेहतर बदलाव।' : 'Stronger communities. Better impact.'}</small></span></a>
       <nav className="public-nav"><a className="nav-3d nav-3d-green" href="/ngo-list">{hi ? "NGO सूची" : "NGO List"}</a><a className="nav-3d nav-3d-blue" href="/about">{hi ? 'हमारे बारे में' : 'About'}</a><a className="nav-3d nav-3d-orange" href="/features">{hi ? 'सुविधाएँ' : 'Features'}</a><a className="nav-3d nav-3d-purple" href="/contact">{hi ? 'संपर्क' : 'Contact'}</a><a className="nav-3d nav-3d-pink" href="/privacy-policy">{hi ? 'प्राइवेसी पॉलिसी' : 'Privacy Policy'}</a></nav>
-      <div className="public-actions"><button className="language-button" onClick={() => setLanguage(hi ? 'en' : 'hi')}>{hi ? 'English' : 'हिन्दी'}</button><button className="outline-button" onClick={() => { setRegistrationMessage(''); setShowPublicRegistration(true); }}>Register</button>{authUser ? <div className="public-user"><button className="outline-button" onClick={onLogout}>{hi ? 'लॉगआउट' : 'Sign out'}</button></div> : <button className="primary-button" onClick={onLogin} disabled={!firebaseConfigured}><Globe2 size={17}/>Login</button>}</div>
+      <div className="public-actions"><button className="language-button" onClick={() => setLanguage(hi ? 'en' : 'hi')}>{hi ? 'English' : 'हिन्दी'}</button>{!registrationAlreadySubmitted && <button className="outline-button" onClick={() => { setRegistrationMessage(''); setShowPublicRegistration(true); }}>Register</button>}{authUser ? <div className="public-user"><button className="outline-button" onClick={onLogout}>{hi ? 'लॉगआउट' : 'Sign out'}</button></div> : <button className="primary-button" onClick={onLogin} disabled={!firebaseConfigured}><Globe2 size={17}/>Login</button>}</div>
     </header>
     <PublicTickerBanner language={language} />
     <main>
@@ -462,7 +445,7 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
       <PublicHomeNgoCards language={language} />
       <PublicDashboardSlider language={language} />
       <section className="public-features" id="features"><div className="public-section-heading"><span>{hi ? 'एक ही जगह सब कुछ' : 'EVERYTHING IN ONE PLACE'}</span><h2>{hi ? 'समाज सेवा को आसान और व्यवस्थित बनाएँ' : 'Make community work simpler and organized'}</h2></div><div className="public-feature-grid"><article><div className="public-feature-icon"><HeartHandshake size={24}/></div><h3>{hi ? 'NGO प्रोफ़ाइल' : 'NGO profiles'}</h3><p>{hi ? 'संस्था की पहचान, उद्देश्य और सार्वजनिक जानकारी दिखाने के लिए।' : 'Share an organization’s mission and public information.'}</p></article><article><div className="public-feature-icon"><Users size={24}/></div><h3>{hi ? 'सदस्य और स्वयंसेवक' : 'Members & volunteers'}</h3><p>{hi ? 'टीम और स्वयंसेवकों के काम को व्यवस्थित करने की सुविधा।' : 'Organize teams and volunteer activity.'}</p></article><article><div className="public-feature-icon"><HandCoins size={24}/></div><h3>{hi ? 'दान और खर्च' : 'Donations & expenses'}</h3><p>{hi ? 'दान और खर्च का रिकॉर्ड रखने के लिए नियोजित सुविधा।' : 'Planned tools to keep donation and expense records.'}</p></article><article><div className="public-feature-icon"><CalendarDays size={24}/></div><h3>{hi ? 'कार्यक्रम और रिपोर्ट' : 'Events & reports'}</h3><p>{hi ? 'कार्यक्रम, दस्तावेज़, प्रमाणपत्र और रिपोर्ट के लिए।' : 'Tools for events, documents, certificates and reports.'}</p></article></div></section>
-      <section className="public-cta" id="contact"><div><span>ALL NGO CONNECT</span><h2>{hi ? 'बेहतर बदलाव के लिए साथ आएँ।' : 'Come together for a better impact.'}</h2><button className="primary-button" onClick={() => { setRegistrationMessage(''); setShowPublicRegistration(true); }}>{hi ? 'अपना NGO रजिस्टर करें' : 'Register your NGO'} <ArrowUpRight size={17}/></button></div></section>
+      <section className="public-cta" id="contact"><div><span>ALL NGO CONNECT</span><h2>{hi ? 'बेहतर बदलाव के लिए साथ आएँ।' : 'Come together for a better impact.'}</h2>{!registrationAlreadySubmitted && <button className="primary-button" onClick={() => { setRegistrationMessage(''); setShowPublicRegistration(true); }}>{hi ? 'अपना NGO रजिस्टर करें' : 'Register your NGO'} <ArrowUpRight size={17}/></button>}</div></section>
       {showPublicRegistration && <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget && !registrationBusy) setShowPublicRegistration(false); }}><section className="registration-modal" role="dialog" aria-modal="true" aria-labelledby="public-registration-title"><div className="modal-heading"><div><span className="modal-eyebrow">ALL NGO CONNECT</span><h2 id="public-registration-title">{hi ? 'NGO रजिस्ट्रेशन' : 'NGO registration'}</h2><p>{hi ? 'Google लॉगिन के बाद जानकारी भेजें। भुगतान सत्यापन और एडमिन मंज़ूरी तक NGO सक्रिय नहीं होगा।' : 'Sign in with Google and submit your details. Activation happens only after payment verification and admin approval.'}</p></div><button className="icon-button" onClick={() => setShowPublicRegistration(false)} aria-label={hi ? 'बंद करें' : 'Close'}><X size={20}/></button></div>{!authUser ? <div className="public-profile-gate"><p>{hi ? 'रजिस्ट्रेशन के लिए पहले Google से लॉगिन करें।' : 'Sign in with Google before registering.'}</p><button className="primary-button" onClick={onLogin} disabled={!firebaseConfigured}><Globe2 size={17}/>{hi ? 'Google से लॉगिन' : 'Sign in with Google'}</button></div> : <form onSubmit={submitPublicRegistration}><label>{hi ? 'NGO / संस्था का नाम' : 'NGO / organization name'} *<input required maxLength={120} value={publicForm.name} onChange={e => setPublicForm({...publicForm, name:e.target.value})}/></label><div className="ngo-image-upload-field" style={{ border: '2px dashed #7c3aed', borderRadius: 12, padding: 14, margin: '10px 0', background: 'rgba(124,58,237,0.06)' }}><label style={{ display: 'block', fontWeight: 700 }}>{hi ? '📷 NGO का लोगो अपलोड करें (वैकल्पिक)' : '📷 Upload NGO logo (optional)'}<input type="file" accept="image/png,image/jpeg,image/webp" aria-label={hi ? 'NGO का लोगो चुनें' : 'Choose NGO logo'} onChange={async e => { const file = e.currentTarget.files?.[0]; if (!file) return; try { const imageData = await compressDashboardImage(file, 180000); setPublicForm(current => ({ ...current, imageData })); } catch (error) { setRegistrationMessage(error instanceof Error ? error.message : (hi ? 'लोगो अपलोड नहीं हुआ।' : 'Could not upload logo.')); } }} style={{ display: 'block', width: '100%', boxSizing: 'border-box', marginTop: 10, padding: 12, border: '1px solid #c4b5fd', borderRadius: 8, background: '#fff', color: '#111827' }} /><small style={{ display: 'block', marginTop: 8 }}>{hi ? 'मोबाइल या कंप्यूटर से JPG, PNG या WebP लोगो चुनें।' : 'Choose a JPG, PNG or WebP logo from your phone or computer.'}</small>{publicForm.imageData && <img src={publicForm.imageData} alt={hi ? 'NGO लोगो का पूर्वावलोकन' : 'NGO logo preview'} style={{ display: 'block', width: 120, height: 120, objectFit: 'contain', background: '#fff', borderRadius: 12, padding: 8, marginTop: 10, boxShadow: '0 4px 14px rgba(0,0,0,.12)' }} />}</label></div><label>{hi ? 'संपर्क व्यक्ति' : 'Contact person'} *<input required maxLength={100} value={publicForm.contact} onChange={e => setPublicForm({...publicForm, contact:e.target.value})}/></label><label>{hi ? 'मोबाइल नंबर' : 'Phone number'} *<input required type="tel" maxLength={25} value={publicForm.phone} onChange={e => setPublicForm({...publicForm, phone:e.target.value})}/></label><label>{hi ? 'राज्य' : 'State'} *<select required value={publicForm.state} onChange={e => setPublicForm({...publicForm, state:e.target.value})}><option value="">{hi ? 'राज्य चुनें' : 'Select state'}</option>{INDIA_STATES_AND_UTS.map(s => <option key={s} value={s}>{s}</option>)}</select></label><label>{hi ? 'जिला' : 'District'} *<input required maxLength={100} value={publicForm.district} onChange={e => setPublicForm({...publicForm, district:e.target.value})} placeholder={hi ? 'जिले का नाम लिखें' : 'Enter district name'}/></label><label>{hi ? 'संस्था का उद्देश्य' : 'Mission / purpose'}<textarea rows={3} maxLength={1000} value={publicForm.mission} onChange={e => setPublicForm({...publicForm, mission:e.target.value})}/></label><label>{hi ? 'सब्सक्रिप्शन प्लान' : 'Subscription plan'}<select required value={publicForm.planId} onChange={e => setPublicForm({...publicForm, planId:e.target.value})}><option value="">{hi ? 'प्लान चुनें' : 'Choose a plan'}</option>{subscriptionPlans.filter(plan => plan.active).map(plan => <option key={plan.id} value={plan.id}>{plan.name} — ₹{plan.price} / {plan.durationDays} {hi ? 'दिन' : 'days'}</option>)}</select>{subscriptionPlans.length === 0 && <small>{hi ? 'अभी कोई सक्रिय प्लान उपलब्ध नहीं है। एडमिन से संपर्क करें।' : 'No active plans are available. Contact the administrator.'}</small>}</label>{paymentQrImage && <div className="payment-qr-preview"><h3>{hi ? 'UPI से भुगतान करें' : 'Pay by UPI'}</h3><img src={paymentQrImage} alt={hi ? 'All NGO Connect UPI QR कोड' : 'All NGO Connect UPI QR code'} /><p>{hi ? 'QR स्कैन करके भुगतान करें, फिर नीचे UTR नंबर भरें।' : 'Scan this QR to pay, then enter the UTR below.'}</p></div>}<label>{hi ? 'भुगतान UTR / संदर्भ नंबर (यदि भुगतान कर दिया है)' : 'Payment UTR / reference (if already paid)'}<input maxLength={80} value={publicForm.paymentReference} onChange={e => setPublicForm({...publicForm, paymentReference:e.target.value})} placeholder="UTR / transaction reference"/></label><div className="form-note"><ShieldCheck size={17}/><span>{hi ? 'UTR भेजना भुगतान का प्रमाण नहीं है। एडमिन बैंक/UPI रिकॉर्ड से सत्यापन करेगा। भुगतान निर्देश एडमिन से प्राप्त करें।' : 'A UTR is not proof by itself. Admin will verify against UPI/bank records. Obtain payment instructions from the administrator.'}</span></div>{registrationMessage && <p role="status" className="public-auth-error">{registrationMessage}</p>}<div className="modal-actions"><button type="button" className="outline-button" disabled={registrationBusy} onClick={() => setShowPublicRegistration(false)}>{hi ? 'बंद करें' : 'Close'}</button><button type="submit" className="primary-button" disabled={registrationBusy || subscriptionPlans.length === 0 || !publicForm.planId}>{registrationBusy ? (hi ? 'सेव हो रहा है…' : 'Saving…') : (hi ? 'रजिस्ट्रेशन जमा करें' : 'Submit registration')}</button></div></form>}</section></div>}
       {authError && <p className="public-auth-error">{authError}</p>}
     </main><footer className="public-footer"><span>© 2026 All NGO Connect</span></footer>
