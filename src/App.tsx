@@ -83,7 +83,7 @@ type PublicHomeProps = {
   onLogout: () => void;
   authError: string;
 };
-function PublicNgoSite({ language, setLanguage, ngoId }: { language: Language; setLanguage: (language: Language) => void; ngoId: string }) {
+function PublicNgoSite({ language, setLanguage, ngoId, authUser, onLogin }: { language: Language; setLanguage: (language: Language) => void; ngoId: string; authUser: User | null; onLogin: () => void }) {
   const hi = language === 'hi';
   const [ngo, setNgo] = useState<Record<string, any> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -117,32 +117,37 @@ function PublicNgoSite({ language, setLanguage, ngoId }: { language: Language; s
   const [memberBusy, setMemberBusy] = useState(false);
   const [memberMessage, setMemberMessage] = useState('');
   const [memberPhoto, setMemberPhoto] = useState('');
-  const [memberForm, setMemberForm] = useState({ name: '', address: '', aadhaar: '' });
+  const [memberForm, setMemberForm] = useState({ name: '', fatherName: '', phone: '', address: '' });
   const submitMemberRequest = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!authUser) { setMemberMessage(hi ? 'आवेदन देने के लिए पहले Google से लॉगिन करें।' : 'Please sign in with Google before applying.'); onLogin(); return; }
     if (!firebaseConfigured) { setMemberMessage(hi ? 'Firebase सेटअप उपलब्ध नहीं है।' : 'Firebase is not configured.'); return; }
     if (!memberPhoto) { setMemberMessage(hi ? 'कृपया अपनी फोटो चुनें।' : 'Please choose your photo.'); return; }
-    const aadhaar = memberForm.aadhaar.replace(/\D/g, '');
-    if (!/^\d{12}$/.test(aadhaar)) { setMemberMessage(hi ? 'आधार नंबर 12 अंकों का होना चाहिए।' : 'Aadhaar number must contain 12 digits.'); return; }
     const adminWhatsApp = String(ngo?.adminWhatsApp || '').replace(/\D/g, '');
+    const fee = Number(ngo?.memberFee || 0);
     if (!/^\d{10,15}$/.test(adminWhatsApp)) { setMemberMessage(hi ? 'इस NGO Admin ने सही WhatsApp नंबर सेट नहीं किया है।' : 'This NGO admin has not configured a valid WhatsApp number.'); return; }
+    if (!Number.isFinite(fee) || fee < 1) { setMemberMessage(hi ? 'इस NGO ने सदस्यता फीस सेट नहीं की है।' : 'This NGO has not set a membership fee.'); return; }
     setMemberBusy(true); setMemberMessage('');
     try {
-      const ref = await addDoc(collection(db, 'ngoMembershipRequests'), {
-        ngoId, ngoName: name, name: memberForm.name.trim(), address: memberForm.address.trim(),
-        aadhaarNumber: aadhaar, photoData: memberPhoto, status: 'PENDING', createdAt: serverTimestamp()
+      const ref = await addDoc(collection(db, 'memberApplications'), {
+        ngoId, ngoName: name, applicantUid: authUser.uid, applicantEmail: authUser.email || '',
+        name: memberForm.name.trim(), fatherName: memberForm.fatherName.trim(),
+        phone: memberForm.phone.trim(), address: memberForm.address.trim(), photoData: memberPhoto,
+        feeAmount: fee, status: 'PENDING_PAYMENT', createdAt: serverTimestamp()
       });
-      const whatsapp = adminWhatsApp;
-      const message = (hi ? 'नया सदस्य आवेदन प्राप्त हुआ।\nNGO: ' : 'New membership request received.\nNGO: ') + name +
+      const message = (hi ? 'नया सदस्य आवेदन आया है।\nNGO: ' : 'New membership application received.\nNGO: ') + name +
         '\n' + (hi ? 'नाम: ' : 'Name: ') + memberForm.name.trim() +
+        '\n' + (hi ? 'पिता/अभिभावक: ' : 'Father/guardian: ') + memberForm.fatherName.trim() +
+        '\n' + (hi ? 'मोबाइल: ' : 'Mobile: ') + memberForm.phone.trim() +
         '\n' + (hi ? 'पता: ' : 'Address: ') + memberForm.address.trim() +
-        '\n' + (hi ? 'आवेदन नंबर: ' : 'Request ID: ') + ref.id +
-        '\n' + (hi ? 'आधार नंबर सुरक्षा के लिए WhatsApp पर नहीं भेजा गया। कृपया All NGO Connect Admin में आवेदन देखें।' : 'Aadhaar was not sent over WhatsApp for privacy. Please review the request in All NGO Connect admin.');
-      setMemberMessage(hi ? 'आवेदन Firebase में सेव हो गया है। WhatsApp खुल रहा है।' : 'Request saved to Firebase. Opening WhatsApp.');
-      window.open('https://wa.me/' + whatsapp + '?text=' + encodeURIComponent(message), '_blank', 'noopener,noreferrer');
-      setMemberForm({ name: '', address: '', aadhaar: '' }); setMemberPhoto('');
+        '\n' + (hi ? 'सदस्यता फीस: ₹' : 'Membership fee: ₹') + fee +
+        '\n' + (hi ? 'आवेदन नंबर: ' : 'Application ID: ') + ref.id +
+        '\n' + (hi ? 'भुगतान प्राप्त होने पर NGO Admin पोर्टल में फीस जाँचकर Approve करें।' : 'After receiving payment, verify the fee and approve in the NGO Admin portal.');
+      setMemberMessage(hi ? 'आवेदन जमा हो गया। WhatsApp खुलेगा; संदेश भेजने के लिए WhatsApp में Send दबाएँ। फीस मिलने के बाद NGO Admin मंज़ूर करेगा।' : 'Application submitted. WhatsApp will open; press Send in WhatsApp to deliver the message. The NGO admin will approve after receiving the fee.');
+      window.open('https://wa.me/' + adminWhatsApp + '?text=' + encodeURIComponent(message), '_blank', 'noopener,noreferrer');
+      setMemberForm({ name: '', fatherName: '', phone: '', address: '' }); setMemberPhoto('');
     } catch (error) {
-      setMemberMessage(error instanceof Error ? error.message : (hi ? 'आवेदन सेव नहीं हुआ। Firebase Rules जाँचें।' : 'Could not save the request. Check Firebase rules.'));
+      setMemberMessage(error instanceof Error ? error.message : (hi ? 'आवेदन सेव नहीं हुआ। Firebase Rules जाँचें।' : 'Could not save the application. Check Firebase rules.'));
     } finally { setMemberBusy(false); }
   };
   return <div className="public-site ngo-directory-site" style={{ minHeight: '100vh', background: 'linear-gradient(145deg,#eef2ff 0%,#fdf2f8 48%,#ecfeff 100%)' }}>
@@ -155,7 +160,7 @@ function PublicNgoSite({ language, setLanguage, ngoId }: { language: Language; s
             <div style={{ flex: '1 1 280px' }}><span style={{ display: 'inline-flex', padding: '7px 12px', borderRadius: 999, background: '#d1fae5', color: '#047857', fontWeight: 800, fontSize: 12, letterSpacing: 1 }}>✦ {hi ? 'सक्रिय सामाजिक संस्था' : 'ACTIVE ORGANIZATION'}</span><h1 style={{ fontSize: 'clamp(30px,5vw,52px)', lineHeight: 1.1, margin: '16px 0 10px', fontWeight: 900 }}>{name}</h1>{location && <p style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0, opacity: .95 }}><MapPin size={18}/>{location}</p>}{(ngo.type || ngo.category) && <p style={{ marginTop: 10, opacity: .9 }}>{String(ngo.type || ngo.category)}</p>}<button type="button" className="ngo-join-3d-button" onClick={() => { setMemberMessage(''); setMemberModalOpen(true); }}><Users size={19}/>{hi ? 'सदस्य बनें' : 'Become a Member'} <ArrowUpRight size={17}/></button></div>
           </div>
         </section>
-        {memberModalOpen && <div className="modal-backdrop ngo-member-modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget && !memberBusy) setMemberModalOpen(false); }}><section className="registration-modal ngo-member-modal" role="dialog" aria-modal="true" aria-labelledby="ngo-member-form-title"><div className="modal-heading"><div><span className="modal-eyebrow">{name}</span><h2 id="ngo-member-form-title">{hi ? 'सदस्य बनने का फॉर्म' : 'Membership form'}</h2><p>{hi ? 'जानकारी भरें और आवेदन जमा करें।' : 'Enter your details and submit your membership request.'}</p></div><button className="icon-button" type="button" onClick={() => setMemberModalOpen(false)} aria-label={hi ? 'बंद करें' : 'Close'}><X size={20}/></button></div><form onSubmit={submitMemberRequest}><label>{hi ? 'पूरा नाम' : 'Full name'} *<input required maxLength={100} autoComplete="name" value={memberForm.name} onChange={e => setMemberForm({...memberForm,name:e.target.value})}/></label><label>{hi ? 'पूरा पता' : 'Full address'} *<textarea required maxLength={400} rows={3} value={memberForm.address} onChange={e => setMemberForm({...memberForm,address:e.target.value})}/></label><label>{hi ? 'आधार नंबर (12 अंक)' : 'Aadhaar number (12 digits)'} *<input required inputMode="numeric" autoComplete="off" maxLength={12} minLength={12} value={memberForm.aadhaar} onChange={e => setMemberForm({...memberForm,aadhaar:e.target.value.replace(/\D/g,'').slice(0,12)})}/></label><label>{hi ? 'अपनी फोटो चुनें (JPG/PNG/WebP, अधिकतम 5 MB)' : 'Your photo (JPG/PNG/WebP, max 5 MB)'} *<input required type="file" accept="image/jpeg,image/png,image/webp" onChange={async e => { const file=e.currentTarget.files?.[0]; if(!file) return; if(file.size>5*1024*1024){setMemberMessage(hi?'फोटो 5 MB से कम होनी चाहिए।':'Photo must be under 5 MB.');e.currentTarget.value='';return;} try { const data=await compressDashboardImage(file,180000); setMemberPhoto(data); setMemberMessage(''); } catch(err){setMemberMessage(err instanceof Error?err.message:(hi?'फोटो पढ़ी नहीं गई।':'Could not read photo.'));} }}/></label>{memberPhoto && <img src={memberPhoto} alt={hi?'फोटो प्रीव्यू':'Photo preview'} style={{ width:100,height:100,objectFit:'cover',borderRadius:16,border:'2px solid #a7f3d0' }}/>}<p className="ngo-aadhaar-privacy">{hi ? 'गोपनीयता: आधार नंबर Firebase में निजी आवेदन रिकॉर्ड के रूप में सेव होगा। WhatsApp संदेश में आधार नंबर नहीं भेजा जाएगा।' : 'Privacy: your Aadhaar number is saved in the private Firebase request record and is not included in the WhatsApp message.'}</p>{memberMessage && <p className="member-notice" role="status">{memberMessage}</p>}<button className="primary-button" type="submit" disabled={memberBusy || !firebaseConfigured}>{memberBusy ? (hi?'सेव हो रहा है…':'Saving…') : (hi?'आवेदन जमा करें':'Submit membership request')}</button></form></section></div>}
+        {memberModalOpen && <div className="modal-backdrop ngo-member-modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget && !memberBusy) setMemberModalOpen(false); }}><section className="registration-modal ngo-member-modal" role="dialog" aria-modal="true" aria-labelledby="ngo-member-form-title"><div className="modal-heading"><div><span className="modal-eyebrow">{name}</span><h2 id="ngo-member-form-title">{hi ? 'सदस्य बनने का फॉर्म' : 'Membership form'}</h2><p>{hi ? 'जानकारी भरें और आवेदन जमा करें।' : 'Enter your details and submit your membership request.'}</p></div><button className="icon-button" type="button" onClick={() => setMemberModalOpen(false)} aria-label={hi ? 'बंद करें' : 'Close'}><X size={20}/></button></div><form onSubmit={submitMemberRequest}><label>{hi ? 'पूरा नाम' : 'Full name'} *<input required maxLength={100} autoComplete="name" value={memberForm.name} onChange={e => setMemberForm({...memberForm,name:e.target.value})}/></label><label>{hi ? 'पिता / अभिभावक का नाम' : 'Father / guardian name'} *<input required maxLength={100} value={memberForm.fatherName} onChange={e => setMemberForm({...memberForm,fatherName:e.target.value})}/></label><label>{hi ? 'मोबाइल नंबर' : 'Mobile number'} *<input required type="tel" minLength={7} maxLength={20} autoComplete="tel" value={memberForm.phone} onChange={e => setMemberForm({...memberForm,phone:e.target.value})}/></label><label>{hi ? 'पूरा पता' : 'Full address'} *<textarea required maxLength={300} rows={3} value={memberForm.address} onChange={e => setMemberForm({...memberForm,address:e.target.value})}/></label><label>{hi ? 'अपनी फोटो चुनें (JPG/PNG/WebP, अधिकतम 5 MB)' : 'Your photo (JPG/PNG/WebP, max 5 MB)'} *<input required type="file" accept="image/jpeg,image/png,image/webp" onChange={async e => { const file=e.currentTarget.files?.[0]; if(!file) return; if(file.size>5*1024*1024){setMemberMessage(hi?'फोटो 5 MB से कम होनी चाहिए।':'Photo must be under 5 MB.');e.currentTarget.value='';return;} try { const data=await compressDashboardImage(file,180000); setMemberPhoto(data); setMemberMessage(''); } catch(err){setMemberMessage(err instanceof Error?err.message:(hi?'फोटो पढ़ी नहीं गई।':'Could not read photo.'));} }}/></label>{memberPhoto && <img src={memberPhoto} alt={hi?'फोटो प्रीव्यू':'Photo preview'} style={{ width:100,height:100,objectFit:'cover',borderRadius:16,border:'2px solid #a7f3d0' }}/>}<p className="ngo-aadhaar-privacy">{hi ? 'आवेदन निजी रहेगा। NGO Admin WhatsApp पर जानकारी देखकर भुगतान लेगा और फिर सदस्य ID मंज़ूर करेगा।' : 'Your application stays private. The NGO admin will review it, collect payment over WhatsApp, and approve your member ID.'}</p>{memberMessage && <p className="member-notice" role="status">{memberMessage}</p>}<button className="primary-button" type="submit" disabled={memberBusy || !firebaseConfigured}>{memberBusy ? (hi?'सेव हो रहा है…':'Saving…') : (hi?'आवेदन जमा करें और WhatsApp खोलें':'Submit application & open WhatsApp')}</button>{!authUser && <p>{hi ? 'आवेदन देने के लिए Google लॉगिन आवश्यक है।' : 'Google sign-in is required to apply.'}</p>}</form></section></div>}
         <section style={{ marginTop: 24, padding: 'clamp(22px,4vw,38px)', background: '#fff', borderRadius: 24, boxShadow: '0 14px 35px rgba(15,23,42,.08)', border: '1px solid rgba(99,102,241,.12)' }}><span className="public-kicker"><HeartHandshake size={15}/>{hi ? 'हमारे बारे में' : 'ABOUT US'}</span><h2 style={{ color: '#312e81', fontSize: 'clamp(24px,3vw,34px)', margin: '12px 0' }}>{hi ? 'हमारा उद्देश्य' : 'Our mission'}</h2><p style={{ fontSize: 17, lineHeight: 1.9, color: '#475569', whiteSpace: 'pre-wrap' }}>{mission || (hi ? 'यह संस्था समुदाय की सहायता और सामाजिक बदलाव के लिए काम करती है।' : 'This organization works to support its community and create positive social impact.')}</p></section>
         <section style={{ marginTop: 22, padding: 'clamp(22px,4vw,34px)', background: '#fff', borderRadius: 24, boxShadow: '0 14px 35px rgba(15,23,42,.08)', border: '1px solid rgba(16,185,129,.18)' }}>
           <span className="public-kicker"><Users size={15}/>{hi ? 'हमारी टीम' : 'OUR TEAM'}</span>
@@ -1060,7 +1065,7 @@ export default function App() {
     return <main className="member-portal"><section className="member-portal-hero"><span>ALL NGO CONNECT</span><h1>{language === 'hi' ? 'NGO Admin लॉगिन' : 'NGO Admin sign in'}</h1><p>{language === 'hi' ? 'अपने NGO के owner Google खाते से लॉगिन करें।' : 'Sign in with the Google account that owns your NGO.'}</p><button className="primary-button" onClick={() => void loginAsSuperAdmin()} disabled={!firebaseConfigured}><Globe2 size={17}/> {language === 'hi' ? 'Google से लॉगिन करें' : 'Continue with Google'}</button>{authError && <p className="member-notice" role="alert">{authError}</p>}</section></main>;
   }
   const publicNgoMatch = window.location.pathname.match(/^\/ngo\/([^/]+)\/?$/);
-  if (publicNgoMatch) return <PublicNgoSite language={language} setLanguage={setLanguage} ngoId={decodeURIComponent(publicNgoMatch[1])} />;
+  if (publicNgoMatch) return <PublicNgoSite language={language} setLanguage={setLanguage} ngoId={decodeURIComponent(publicNgoMatch[1])} authUser={authUser} onLogin={() => void handleLogin()} />;
   if (window.location.pathname.startsWith('/ngo-list')) return <PublicNgoList language={language} setLanguage={setLanguage} />;
   if (window.location.pathname.startsWith('/members')) return <MemberIDPortal authUser={authUser} onLogin={loginAsSuperAdmin} language={language} />;
   if (window.location.pathname.startsWith('/ngo-admin')) {
