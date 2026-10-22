@@ -174,6 +174,7 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
           ngoId: a.ngoId,
           name: a.name,
           phone: a.phone,
+          photoData: a.photoData || '',
           email: a.applicantEmail || '',
           role: 'MEMBER',
           designation: 'सदस्य',
@@ -216,6 +217,7 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
             ngoId: a.ngoId,
             name: a.name,
             phone: a.phone,
+            photoData: a.photoData || '',
             email: a.applicantEmail || '',
             role: 'MEMBER',
             designation: 'सदस्य',
@@ -244,7 +246,7 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
     setBusy(true); setMessage('');
     try {
       await setDoc(doc(db, 'ngoMembers', 'member-app-' + a.id), {
-        ngoId: a.ngoId, name: a.name, phone: a.phone, email: a.applicantEmail || '',
+        ngoId: a.ngoId, name: a.name, phone: a.phone, photoData: a.photoData || '', email: a.applicantEmail || '',
         role: 'MEMBER', designation: 'सदस्य', location: a.address || '',
         status: 'ACTIVE', approvalStatus: 'APPROVED', createdBy: authUser.uid,
         source: 'memberApplication', applicationId: a.id, memberId: a.memberId,
