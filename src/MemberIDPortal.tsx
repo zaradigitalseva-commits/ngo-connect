@@ -13,7 +13,7 @@ type ModerationRecord = { id: string; collection: string; ngoId: string; title: 
 type Application = {
   id: string; ngoId: string; ngoName: string; applicantUid: string; name: string;
   fatherName: string; phone: string; address: string; photoData: string;
-  feeAmount: number; status: string; memberId?: string; rejectionReason?: string;
+  feeAmount: number; status: string; memberId?: string; rejectionReason?: string; applicantEmail?: string;
 };
 const SUPER_ADMIN_EMAILS = ['ngogrant454@gmail.com', 'zaradigitalseva@gmail.com'];
 const isPlatformAdmin = (user: User) => Boolean(user.emailVerified && user.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase()));
