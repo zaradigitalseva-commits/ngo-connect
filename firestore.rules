@@ -103,16 +103,7 @@ service cloud.firestore {
     }
 
 
-    // Public membership requests: create-only for an active NGO; private to that NGO owner and Super Admin.
-    match /ngoMembershipRequests/{requestId} {
-      allow create: if request.resource.data.keys().hasOnly(['ngoId','ngoName','name','address','aadhaarNumber','photoData','status','createdAt'])
-        && request.resource.data.keys().hasAll(['ngoId','ngoName','name','address','aadhaarNumber','photoData','status','createdAt'])
-        && request.resource.data.ngoId is string
-        && get(/databases/$(database)/documents/ngos/$(request.resource.data.ngoId)).data.status in ['LIVE','ACTIVE','APPROVED']
-        && request.resource.data.ngoName == get(/databases/$(database)/documents/ngos/$(request.resource.data.ngoId)).data.name
-        && request.resource.data.name is string && request.resource.data.name.size() > 1 && request.resource.data.name.size() <= 100
-        && request.resource.data.address is string && request.resource.data.address.size() > 2 && request.resource.data.address.size() <= 400
-        && request.resource.data.aadhaarNumber is string && request.resource.data.aadhaarNumber.matches('^[0-9]{12}
+    // Legacy Aadhaar-based membership request endpoint is retired; new applications use memberApplications.
     match /memberApplications/{applicationId} {
       allow create: if request.auth != null
         && request.resource.data.keys().hasOnly([
@@ -129,7 +120,7 @@ service cloud.firestore {
         && request.resource.data.applicantEmail.size() <= 160
         && request.resource.data.applicantUid == request.auth.uid
         && request.resource.data.ngoId is string
-        && request.resource.data.ngoName == get(/databases/$(database)/documents/ngos/$(request.resource.data.ngoId)).data.name
+        && request.resource.data.ngoName == get(/databases/$(database)/documents/ngos/$(request.resource.data.ngoId)).data.get('name', get(/databases/$(database)/documents/ngos/$(request.resource.data.ngoId)).data.get('ngoName', ''))
         && get(/databases/$(database)/documents/ngos/$(request.resource.data.ngoId)).data.status in ['LIVE', 'ACTIVE', 'APPROVED']
         && get(/databases/$(database)/documents/ngos/$(request.resource.data.ngoId)).data.memberFee == request.resource.data.feeAmount
         && get(/databases/$(database)/documents/ngos/$(request.resource.data.ngoId)).data.adminWhatsApp is string
