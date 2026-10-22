@@ -2405,3 +2405,20 @@ input, select, textarea, button {
   position: relative;
   z-index: 1;
 }
+.ngo-join-3d-button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+  margin-top: 18px; padding: 13px 22px; border: 1px solid rgba(255,255,255,.7);
+  border-radius: 14px; color: #fff; font-weight: 900; font-size: 15px;
+  background: linear-gradient(180deg,#10b981 0%,#047857 100%);
+  box-shadow: 0 6px 0 #065f46, 0 12px 22px rgba(6,95,70,.3), inset 0 1px 0 rgba(255,255,255,.35);
+  cursor: pointer; transition: transform .15s ease, box-shadow .15s ease;
+}
+.ngo-join-3d-button:hover { transform: translateY(-2px); box-shadow: 0 8px 0 #065f46,0 15px 25px rgba(6,95,70,.32),inset 0 1px 0 rgba(255,255,255,.35); }
+.ngo-join-3d-button:active { transform: translateY(3px); box-shadow: 0 3px 0 #065f46,0 6px 12px rgba(6,95,70,.25); }
+.ngo-aadhaar-privacy { padding: 10px 12px; border-radius: 10px; background: #fff7ed; color: #9a3412; font-size: 12px; line-height: 1.6; }
+.ngo-member-modal-backdrop { z-index: 1000; }
+.ngo-member-modal { max-height: 90vh; overflow-y: auto; }
+.ngo-member-modal form { display: grid; gap: 14px; }
+.ngo-member-modal form label { display: grid; gap: 6px; font-weight: 700; color: #334155; }
+.ngo-member-modal form input, .ngo-member-modal form textarea { width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 10px; padding: 11px 12px; font: inherit; background: #fff; color: #0f172a; }
+@media (max-width: 640px) { .ngo-join-3d-button { width: 100%; max-width: 320px; } }
