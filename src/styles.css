@@ -2351,3 +2351,24 @@ input, select, textarea, button {
   content: none !important;
   display: none !important;
 }
+
+
+/* Nature-photo background across the top header of every public NGO site */
+.public-site .public-header,
+.public-site:not(.ngo-directory-site) > .public-header {
+  background-color: #f0fdfa !important;
+  background-image:
+    linear-gradient(90deg, rgba(255,255,255,.92) 0%, rgba(255,255,255,.76) 48%, rgba(255,255,255,.48) 100%),
+    url("https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=2000&q=85") !important;
+  background-position: center, center 48% !important;
+  background-size: cover, cover !important;
+  background-repeat: no-repeat !important;
+  border-bottom: 1px solid rgba(13,148,136,.2) !important;
+  box-shadow: 0 4px 18px rgba(15, 80, 70, .09) !important;
+}
+@media (max-width: 640px) {
+  .public-site .public-header,
+  .public-site:not(.ngo-directory-site) > .public-header {
+    background-position: center, center !important;
+  }
+}
