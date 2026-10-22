@@ -76,9 +76,10 @@ service cloud.firestore {
         && request.resource.data.planId.size() > 0
         && exists(/databases/$(database)/documents/subscriptionPlans/$(request.resource.data.planId))
         && get(/databases/$(database)/documents/subscriptionPlans/$(request.resource.data.planId)).data.active == true
-        && request.resource.data.subscriptionPlan == get(/databases/$(database)/documents/subscriptionPlans/$(request.resource.data.planId)).data.name
-        && request.resource.data.planPrice == get(/databases/$(database)/documents/subscriptionPlans/$(request.resource.data.planId)).data.price
-        && request.resource.data.planDurationDays == get(/databases/$(database)/documents/subscriptionPlans/$(request.resource.data.planId)).data.durationDays
+        // Accept legacy plan field names that the registration UI already supports.
+        && request.resource.data.subscriptionPlan == get(/databases/$(database)/documents/subscriptionPlans/$(request.resource.data.planId)).data.get('name', get(/databases/$(database)/documents/subscriptionPlans/$(request.resource.data.planId)).data.get('planName', ''))
+        && request.resource.data.planPrice == get(/databases/$(database)/documents/subscriptionPlans/$(request.resource.data.planId)).data.get('price', get(/databases/$(database)/documents/subscriptionPlans/$(request.resource.data.planId)).data.get('fee', get(/databases/$(database)/documents/subscriptionPlans/$(request.resource.data.planId)).data.get('amount', 0)))
+        && request.resource.data.planDurationDays == get(/databases/$(database)/documents/subscriptionPlans/$(request.resource.data.planId)).data.get('durationDays', get(/databases/$(database)/documents/subscriptionPlans/$(request.resource.data.planId)).data.get('validityDays', get(/databases/$(database)/documents/subscriptionPlans/$(request.resource.data.planId)).data.get('duration', 0)))
         && request.resource.data.planPrice is number && request.resource.data.planPrice > 0
         && request.resource.data.planDurationDays is int && request.resource.data.planDurationDays >= 1
         && request.resource.data.paymentReference is string
