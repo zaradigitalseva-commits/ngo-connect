@@ -110,14 +110,13 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
       else await addDoc(collection(db, activeModule.collection), { ...mutable, createdBy: authUser.uid, createdAt: serverTimestamp() });
       setMessage(hi ? 'रिकॉर्ड सफलतापूर्वक सेव हुआ।' : 'Record saved successfully.');
       setForm(blank(kind)); setEditingId('');
-      await loadRows(ngoId, kind);
     } catch (e) { setMessage(e instanceof Error ? e.message : (hi ? 'सेव नहीं हुआ। Firestore Rules जाँचें।' : 'Save failed. Check Firestore rules.')); }
     finally { setBusy(false); }
   };
   const remove = async (row: RecordRow) => {
     if (!window.confirm(hi ? 'क्या आप यह रिकॉर्ड हमेशा के लिए हटाना चाहते हैं?' : 'Delete this record permanently?')) return;
     setBusy(true); setMessage('');
-    try { await deleteDoc(doc(db, activeModule.collection, row.id)); await loadRows(ngoId, kind); setMessage(hi ? 'रिकॉर्ड हटा दिया गया।' : 'Record deleted.'); }
+    try { await deleteDoc(doc(db, activeModule.collection, row.id)); setMessage(hi ? 'रिकॉर्ड हटा दिया गया।' : 'Record deleted.'); }
     catch (e) { setMessage(e instanceof Error ? e.message : 'Delete failed.'); }
     finally { setBusy(false); }
   };
