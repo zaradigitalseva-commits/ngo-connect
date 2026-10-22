@@ -357,6 +357,7 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
   useEffect(() => { if (new URLSearchParams(window.location.search).get('register') === '1' && !registrationAlreadySubmitted) setShowPublicRegistration(true); }, [registrationAlreadySubmitted]);
   const [registrationBusy, setRegistrationBusy] = useState(false);
   const [registrationMessage, setRegistrationMessage] = useState('');
+  const [registrationSuccessMessage, setRegistrationSuccessMessage] = useState('');
   const [paymentQrImage, setPaymentQrImage] = useState('');
   const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
   const [publicForm, setPublicForm] = useState({ name: '', contact: '', phone: '', state: '', district: '', mission: '', planId: '', paymentReference: '', imageData: '' });
@@ -379,7 +380,9 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
         paymentStatus: publicForm.paymentReference.trim() ? 'SUBMITTED_FOR_REVIEW' : 'NOT_SUBMITTED',
         ownerUid: authUser.uid, createdAt: serverTimestamp(),
       });
-      setRegistrationMessage(hi ? 'रजिस्ट्रेशन जमा हो गया। भुगतान/UTR की जाँच और एडमिन की मंज़ूरी के बाद ही NGO सक्रिय होगा।' : 'Registration submitted. The NGO will activate only after payment verification and admin approval.');
+      const successMessage = hi ? 'रजिस्ट्रेशन जमा हो गया। भुगतान/UTR की जाँच और एडमिन की मंज़ूरी के बाद ही NGO सक्रिय होगा।' : 'Registration submitted. The NGO will activate only after payment verification and admin approval.';
+      setRegistrationMessage(successMessage);
+      setRegistrationSuccessMessage(successMessage);
       setPublicForm({ name: '', contact: '', phone: '', state: '', district: '', mission: '', planId: subscriptionPlans.find(p => p.active)?.id || '', paymentReference: '', imageData: '' });
       setShowPublicRegistration(false);
       const nextUrl = new URL(window.location.href);
@@ -429,12 +432,14 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
           : (hi ? 'प्लान लोड नहीं हुए। Firebase Rules जाँचें।' : 'Could not load plans. Check Firebase rules.'));
       }
     );
-    getDoc(doc(db, 'publicSettings', 'payment')).then(snapshot => {
+    const unsubscribePayment = onSnapshot(doc(db, 'publicSettings', 'payment'), snapshot => {
       if (active && snapshot.exists() && typeof snapshot.data().qrImage === 'string') setPaymentQrImage(snapshot.data().qrImage as string);
-    }).catch(() => { if (active) setPaymentQrImage(''); });
-    return () => { active = false; unsubscribePlans(); };
+      else if (active) setPaymentQrImage('');
+    }, () => { if (active) setPaymentQrImage(''); });
+    return () => { active = false; unsubscribePlans(); unsubscribePayment(); };
   }, [hi]);
   return <div className="public-site">
+    {registrationSuccessMessage && !showPublicRegistration && <div role="status" className="public-auth-error" style={{ maxWidth: 900, margin: '12px auto', padding: '12px 18px' }}>{registrationSuccessMessage}</div>}
     <header className="public-header">
       <a className="public-brand" href="/" aria-label="All NGO Connect home"><span className="brand-mark"><Leaf size={23}/></span><span className="brand-name-stack"><span className="brand-name-banner"><span>All NGO</span><span>Connect</span></span><small>{hi ? 'मजबूत समुदाय। बेहतर बदलाव।' : 'Stronger communities. Better impact.'}</small></span></a>
       <nav className="public-nav"><a className="nav-3d nav-3d-green" href="/ngo-list">{hi ? "NGO सूची" : "NGO List"}</a><a className="nav-3d nav-3d-blue" href="/about">{hi ? 'हमारे बारे में' : 'About'}</a><a className="nav-3d nav-3d-orange" href="/features">{hi ? 'सुविधाएँ' : 'Features'}</a><a className="nav-3d nav-3d-purple" href="/contact">{hi ? 'संपर्क' : 'Contact'}</a><a className="nav-3d nav-3d-pink" href="/privacy-policy">{hi ? 'प्राइवेसी पॉलिसी' : 'Privacy Policy'}</a></nav>
