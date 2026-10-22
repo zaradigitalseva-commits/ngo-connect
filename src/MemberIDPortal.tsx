@@ -168,6 +168,25 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
           memberId, name: a.name, ngoId: a.ngoId, ngoName: a.ngoName,
           applicationId: a.id, status: 'APPROVED', approvedAt: serverTimestamp()
         });
+        // Keep the approved application and public NGO team record in one atomic batch.
+        // Use the application ID as the record ID so retrying approval cannot create duplicates.
+        batch.set(doc(db, 'ngoMembers', 'member-app-' + a.id), {
+          ngoId: a.ngoId,
+          name: a.name,
+          phone: a.phone,
+          email: a.applicantEmail || '',
+          role: 'MEMBER',
+          designation: 'सदस्य',
+          location: a.address || '',
+          status: 'ACTIVE',
+          approvalStatus: 'APPROVED',
+          createdBy: authUser.uid,
+          source: 'memberApplication',
+          applicationId: a.id,
+          memberId,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }, { merge: true });
       }
       batch.update(doc(db, 'memberApplications', a.id), {
         status,
