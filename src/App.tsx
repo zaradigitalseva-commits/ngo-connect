@@ -144,7 +144,7 @@ function PublicNgoSite({ language, setLanguage, ngoId, authUser, onLogin }: { la
         '\n' + (hi ? 'आवेदन नंबर: ' : 'Application ID: ') + ref.id +
         '\n' + (hi ? 'भुगतान प्राप्त होने पर NGO Admin पोर्टल में फीस जाँचकर Approve करें।' : 'After receiving payment, verify the fee and approve in the NGO Admin portal.');
       setMemberMessage(hi ? 'आवेदन जमा हो गया। WhatsApp खुलेगा; संदेश भेजने के लिए WhatsApp में Send दबाएँ। फीस मिलने के बाद NGO Admin मंज़ूर करेगा।' : 'Application submitted. WhatsApp will open; press Send in WhatsApp to deliver the message. The NGO admin will approve after receiving the fee.');
-      window.open('https://wa.me/' + adminWhatsApp + '?text=' + encodeURIComponent(message), '_blank', 'noopener,noreferrer');
+      window.location.href = 'https://wa.me/' + adminWhatsApp + '?text=' + encodeURIComponent(message);
       setMemberForm({ name: '', fatherName: '', phone: '', address: '' }); setMemberPhoto('');
     } catch (error) {
       setMemberMessage(error instanceof Error ? error.message : (hi ? 'आवेदन सेव नहीं हुआ। Firebase Rules जाँचें।' : 'Could not save the application. Check Firebase rules.'));
@@ -1065,7 +1065,7 @@ export default function App() {
     return <main className="member-portal"><section className="member-portal-hero"><span>ALL NGO CONNECT</span><h1>{language === 'hi' ? 'NGO Admin लॉगिन' : 'NGO Admin sign in'}</h1><p>{language === 'hi' ? 'अपने NGO के owner Google खाते से लॉगिन करें।' : 'Sign in with the Google account that owns your NGO.'}</p><button className="primary-button" onClick={() => void loginAsSuperAdmin()} disabled={!firebaseConfigured}><Globe2 size={17}/> {language === 'hi' ? 'Google से लॉगिन करें' : 'Continue with Google'}</button>{authError && <p className="member-notice" role="alert">{authError}</p>}</section></main>;
   }
   const publicNgoMatch = window.location.pathname.match(/^\/ngo\/([^/]+)\/?$/);
-  if (publicNgoMatch) return <PublicNgoSite language={language} setLanguage={setLanguage} ngoId={decodeURIComponent(publicNgoMatch[1])} authUser={authUser} onLogin={() => void handleLogin()} />;
+  if (publicNgoMatch) return <PublicNgoSite language={language} setLanguage={setLanguage} ngoId={decodeURIComponent(publicNgoMatch[1])} authUser={authUser} onLogin={loginAsSuperAdmin} />;
   if (window.location.pathname.startsWith('/ngo-list')) return <PublicNgoList language={language} setLanguage={setLanguage} />;
   if (window.location.pathname.startsWith('/members')) return <MemberIDPortal authUser={authUser} onLogin={loginAsSuperAdmin} language={language} />;
   if (window.location.pathname.startsWith('/ngo-admin')) {
