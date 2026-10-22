@@ -212,7 +212,15 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
         const teamRef = doc(db, 'ngoMembers', 'member-app-' + a.id);
         try {
           const existing = await getDoc(teamRef);
-          if (cancelled || existing.exists()) continue;
+          if (cancelled) continue;
+          if (existing.exists()) {
+            const current = existing.data();
+            // Older public-team records may exist without the applicant's photo.
+            if (!current.photoData && a.photoData) {
+              await setDoc(teamRef, { photoData: a.photoData, updatedAt: serverTimestamp() }, { merge: true });
+            }
+            continue;
+          }
           await setDoc(teamRef, {
             ngoId: a.ngoId,
             name: a.name,
@@ -245,13 +253,18 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
     if (a.status !== 'APPROVED' || !a.memberId) return;
     setBusy(true); setMessage('');
     try {
-      await setDoc(doc(db, 'ngoMembers', 'member-app-' + a.id), {
-        ngoId: a.ngoId, name: a.name, phone: a.phone, photoData: a.photoData || '', email: a.applicantEmail || '',
+      const teamRef = doc(db, 'ngoMembers', 'member-app-' + a.id);
+      const existing = await getDoc(teamRef);
+      const payload: Record<string, any> = {
+        ngoId: a.ngoId, name: a.name, phone: a.phone, email: a.applicantEmail || '',
         role: 'MEMBER', designation: 'सदस्य', location: a.address || '',
         status: 'ACTIVE', approvalStatus: 'APPROVED', createdBy: authUser.uid,
         source: 'memberApplication', applicationId: a.id, memberId: a.memberId,
-        createdAt: serverTimestamp(), updatedAt: serverTimestamp()
-      }, { merge: true });
+        updatedAt: serverTimestamp()
+      };
+      if (a.photoData) payload.photoData = a.photoData;
+      if (!existing.exists()) payload.createdAt = serverTimestamp();
+      await setDoc(teamRef, payload, { merge: true });
       setMessage(hi ? 'सदस्य को NGO की सार्वजनिक टीम में जोड़ दिया गया। अब सार्वजनिक NGO पेज रीफ़्रेश करें।' : 'Member added to the public NGO team. Refresh the public NGO page.');
     } catch (e) { setMessage(e instanceof Error ? e.message : 'टीम में जोड़ नहीं सके। Firestore Rules जाँचें।'); }
     finally { setBusy(false); }
