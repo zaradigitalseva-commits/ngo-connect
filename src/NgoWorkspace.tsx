@@ -152,6 +152,30 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
     catch (e) { setMessage(e instanceof Error ? e.message : 'Delete failed.'); }
     finally { setBusy(false); }
   };
+  const reviewMemberApplication = async (app: MembershipApplication, action: 'REJECT' | 'DELETE') => {
+    const prompt = action === 'DELETE'
+      ? (hi ? 'क्या यह सदस्य आवेदन हमेशा के लिए हटाना है?' : 'Permanently delete this application?')
+      : (hi ? 'क्या आप इस सदस्य आवेदन को अस्वीकार करना चाहते हैं?' : 'Reject this membership application?');
+    if (!window.confirm(prompt)) return;
+    setBusy(true); setMessage('');
+    try {
+      if (action === 'DELETE') {
+        await deleteDoc(doc(db, 'memberApplications', app.id));
+        setMemberApplications(current => current.filter(item => item.id !== app.id));
+        setMessage(hi ? 'सदस्य आवेदन हटा दिया गया।' : 'Membership application deleted.');
+      } else {
+        await updateDoc(doc(db, 'memberApplications', app.id), {
+          status: 'REJECTED',
+          rejectionReason: hi ? 'NGO Admin ने आवेदन अस्वीकार किया।' : 'Rejected by NGO admin.',
+          reviewedBy: authUser.uid,
+          reviewedAt: serverTimestamp()
+        });
+        setMemberApplications(current => current.map(item => item.id === app.id ? { ...item, status: 'REJECTED', rejectionReason: hi ? 'NGO Admin ने आवेदन अस्वीकार किया।' : 'Rejected by NGO admin.' } : item));
+        setMessage(hi ? 'सदस्य आवेदन अस्वीकार किया गया।' : 'Membership application rejected.');
+      }
+    } catch (e) { setMessage(e instanceof Error ? e.message : (hi ? 'कार्रवाई पूरी नहीं हुई। Firestore Rules जाँचें।' : 'Action failed. Check Firestore rules.')); }
+    finally { setBusy(false); }
+  };
   const money = (value: unknown) => Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
   return <main className="member-portal ngo-workspace">
     <header className="member-portal-header"><a className="member-brand" href="/">All NGO Connect</a><div><a className="outline-button" href="/ngo-admin">{hi ? 'Member ID / Admin' : 'Member ID / Admin'}</a><button className="outline-button" onClick={() => auth && void signOut(auth)}>{hi ? 'लॉगआउट' : 'Sign out'}</button></div></header>
@@ -164,17 +188,20 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
           <h2 style={{margin:0}}>{hi ? "यूज़र के सदस्य आवेदन" : "Membership applications from users"} · {memberApplications.length}</h2>
           <a className="primary-button" href="/ngo-admin">{hi ? "आवेदन जाँचें / मंज़ूर करें" : "Review / approve applications"}</a>
         </div>
-        {memberApplications.length === 0 ? <p>{hi ? "अभी इस NGO के लिए कोई आवेदन नहीं आया है। नया आवेदन आने पर यहाँ दिखेगा।" : "No applications have arrived for this NGO yet. New applications will appear here."}</p> : memberApplications.map(app => <article className="ngo-workspace-record" key={app.id} style={{alignItems:"flex-start",gap:14}}>
-          {app.photoData && <img src={app.photoData} alt={app.name} style={{width:88,height:104,objectFit:"cover",borderRadius:10,border:"1px solid #d1d5db",flexShrink:0}}/>}
-          <div className="ngo-workspace-record-main" style={{minWidth:0,flex:1,gap:7}}><strong style={{fontSize:18}}>{app.name}</strong>
-            <span>{hi ? "पिता / अभिभावक का नाम: " : "Father / guardian: "}{app.fatherName}</span>
-            <span>{hi ? "मोबाइल नंबर: " : "Mobile: "}{app.phone}</span>
-            {app.applicantEmail && <span>{hi ? "ईमेल: " : "Email: "}{app.applicantEmail}</span>}
-            <span style={{whiteSpace:"normal",overflowWrap:"anywhere"}}>{hi ? "पूरा पता: " : "Full address: "}{app.address}</span>
-            <span>{hi ? "आवेदन नंबर: " : "Application ref: "}{app.id}</span>
-            <small style={{display:"inline-flex",alignSelf:"flex-start",marginTop:6,padding:"5px 9px",borderRadius:999,background:app.status === "APPROVED" ? "#dcfce7" : app.status === "REJECTED" ? "#fee2e2" : "#fef3c7",color:app.status === "APPROVED" ? "#166534" : app.status === "REJECTED" ? "#991b1b" : "#92400e",fontWeight:800}}>{app.status} · ₹{app.feeAmount}</small>
-            {app.memberId && <span>{hi ? "Member ID: " : "Member ID: "}{app.memberId}</span>}
+        {memberApplications.length === 0 ? <p>{hi ? "अभी इस NGO के लिए कोई आवेदन नहीं आया है। नया आवेदन आने पर यहाँ दिखेगा।" : "No applications have arrived for this NGO yet. New applications will appear here."}</p> : memberApplications.map(app => <article className="ngo-workspace-record" key={app.id} style={{alignItems:"center",gap:10,padding:10,maxWidth:760,marginTop:10,borderRadius:12}}>
+          {app.photoData && <img src={app.photoData} alt={app.name} style={{width:54,height:62,objectFit:"cover",borderRadius:8,border:"1px solid #d1d5db",flexShrink:0}}/>}
+          <div className="ngo-workspace-record-main" style={{minWidth:0,flex:1,gap:3,fontSize:12,lineHeight:1.35}}><strong style={{fontSize:14}}>{app.name}</strong>
+            <span>{hi ? "पिता/अभिभावक: " : "Father/guardian: "}{app.fatherName} · {app.phone}</span>
+            {app.applicantEmail && <span style={{overflowWrap:"anywhere"}}>{app.applicantEmail}</span>}
+            <span style={{whiteSpace:"normal",overflowWrap:"anywhere"}}>{hi ? "पता: " : "Address: "}{app.address}</span>
+            <small style={{overflowWrap:"anywhere"}}>{hi ? "आवेदन: " : "Ref: "}{app.id}</small>
+            <small style={{display:"inline-flex",alignSelf:"flex-start",marginTop:3,padding:"3px 7px",borderRadius:999,background:app.status === "APPROVED" ? "#dcfce7" : app.status === "REJECTED" ? "#fee2e2" : "#fef3c7",color:app.status === "APPROVED" ? "#166534" : app.status === "REJECTED" ? "#991b1b" : "#92400e",fontWeight:800}}>{app.status} · ₹{app.feeAmount}</small>
+            {app.memberId && <span>Member ID: {app.memberId}</span>}
             {app.rejectionReason && <span>{hi ? "कारण: " : "Reason: "}{app.rejectionReason}</span>}
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:5}}>
+              {app.status === "PENDING_PAYMENT" && <button className="outline-button" type="button" disabled={busy} onClick={() => void reviewMemberApplication(app,'REJECT')} style={{padding:"5px 9px",fontSize:12,color:"#b91c1c",borderColor:"#fecaca"}}>{hi ? "Reject" : "Reject"}</button>}
+              <button className="outline-button" type="button" disabled={busy} onClick={() => void reviewMemberApplication(app,'DELETE')} style={{padding:"5px 9px",fontSize:12,color:"#b91c1c",borderColor:"#fecaca"}}><Trash2 size={13}/>{hi ? "डिलीट" : "Delete"}</button>
+            </div>
           </div></article>)}
       </section>
       <section className="ngo-workspace-summary"><article><span>{hi ? 'कुल रिकॉर्ड' : 'Total records'}</span><strong>{rows.length}</strong></article>{kind === 'finance' && <><article><span>{hi ? 'कुल दान' : 'Total donations'}</span><strong>₹{money(rows.filter(r => r.type === 'DONATION').reduce((s,r) => s + Number(r.amount || 0),0))}</strong></article><article><span>{hi ? 'कुल खर्च' : 'Total expenses'}</span><strong>₹{money(rows.filter(r => r.type === 'EXPENSE').reduce((s,r) => s + Number(r.amount || 0),0))}</strong></article></>}</section>
