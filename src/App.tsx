@@ -344,15 +344,42 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
     return () => window.clearInterval(interval);
   }, []);
   const [showPublicRegistration, setShowPublicRegistration] = useState(false);
-  const [registrationAlreadySubmitted, setRegistrationAlreadySubmitted] = useState(false);
+  const [hasPendingRegistration, setHasPendingRegistration] = useState(false);
+  const [hasOwnedNgo, setHasOwnedNgo] = useState(false);
+  const registrationAlreadySubmitted = hasPendingRegistration || hasOwnedNgo;
   useEffect(() => {
-    if (!authUser || !firebaseConfigured) { setRegistrationAlreadySubmitted(false); return; }
-    const unsubscribeRegistration = onSnapshot(firestoreQuery(collection(db, 'ngoRegistrations'), where('ownerUid', '==', authUser.uid)), snapshot => {
-      const submitted = !snapshot.empty;
-      setRegistrationAlreadySubmitted(submitted);
-      if (submitted) setShowPublicRegistration(false);
-    }, () => setRegistrationAlreadySubmitted(false));
-    return unsubscribeRegistration;
+    if (!authUser || !firebaseConfigured) {
+      setHasPendingRegistration(false);
+      setHasOwnedNgo(false);
+      return;
+    }
+    // A deleted NGO must not be blocked by its old ACTIVE registration record.
+    // Pending applications block duplicates; an existing NGO also blocks duplicates.
+    const unsubscribeRegistration = onSnapshot(
+      firestoreQuery(collection(db, 'ngoRegistrations'), where('ownerUid', '==', authUser.uid)),
+      snapshot => {
+        const pending = snapshot.docs.some(item => {
+          const status = String(item.data().status || '').toUpperCase();
+          return ['PENDING_PAYMENT', 'PENDING', 'SUBMITTED_FOR_REVIEW'].includes(status);
+        });
+        setHasPendingRegistration(pending);
+        if (pending) setShowPublicRegistration(false);
+      },
+      () => setHasPendingRegistration(false)
+    );
+    const unsubscribeOwnedNgos = onSnapshot(
+      firestoreQuery(collection(db, 'ngos'), where('ownerUid', '==', authUser.uid)),
+      snapshot => {
+        const exists = !snapshot.empty;
+        setHasOwnedNgo(exists);
+        if (exists) setShowPublicRegistration(false);
+      },
+      () => setHasOwnedNgo(false)
+    );
+    return () => {
+      unsubscribeRegistration();
+      unsubscribeOwnedNgos();
+    };
   }, [authUser]);
   useEffect(() => { if (new URLSearchParams(window.location.search).get('register') === '1' && !registrationAlreadySubmitted) setShowPublicRegistration(true); }, [registrationAlreadySubmitted]);
   const [registrationBusy, setRegistrationBusy] = useState(false);
