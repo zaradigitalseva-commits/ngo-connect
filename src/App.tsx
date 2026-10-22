@@ -916,10 +916,12 @@ export default function App() {
     return unsubscribe;
   }, []);
   useEffect(() => {
-    // After an NGO account signs in from the public home page, open its workspace.
-    // Platform administrators keep the main platform dashboard.
+    // NGO owners should land in their main management dashboard after login,
+    // regardless of whether they started from the homepage or the older admin URL.
+    // Platform administrators keep the platform dashboard and can still review all NGOs.
     if (!authUser || isSuperAdmin(authUser)) return;
-    if (window.location.pathname === '/') {
+    const path = window.location.pathname;
+    if (path === '/' || path === '/ngo-admin' || path === '/ngo-admin/') {
       window.location.replace('/ngo-workspace');
     }
   }, [authUser]);
