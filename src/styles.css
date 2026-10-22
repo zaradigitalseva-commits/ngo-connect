@@ -2372,3 +2372,20 @@ input, select, textarea, button {
     background-position: center, center !important;
   }
 }
+
+
+/* Final shared logo-strip background: apply to every public NGO header while keeping each NGO's own logo/name untouched */
+.public-site header.public-header,
+.public-site .public-header {
+  background: linear-gradient(90deg, rgba(255,255,255,.88) 0%, rgba(255,255,255,.68) 55%, rgba(255,255,255,.50) 100%), url("https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=2000&q=85") center 48% / cover no-repeat !important;
+  background-color: #e8f5ed !important;
+  border-bottom: 1px solid rgba(13,148,136,.24) !important;
+  box-shadow: 0 4px 18px rgba(15,80,70,.09) !important;
+}
+@media (max-width: 640px) {
+  .public-site header.public-header,
+  .public-site .public-header {
+    background-position: center center !important;
+    background-size: cover !important;
+  }
+}
