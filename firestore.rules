@@ -213,8 +213,8 @@ service cloud.firestore {
         && request.resource.data.updatedAt == request.time);
       allow update: if isSuperAdmin() || (ownsNgo(resource.data.ngoId)
         && request.resource.data.ngoId == resource.data.ngoId
-        && request.resource.data.createdBy == resource.data.createdBy
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','phone','email','role','status','designation','location','approvalStatus','updatedAt'])
+        && (!resource.data.keys().hasAny(['createdBy']) || request.resource.data.createdBy == resource.data.createdBy)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','phone','email','role','status','designation','location','approvalStatus','source','applicationId','memberId','createdAt','updatedAt'])
         && request.resource.data.approvalStatus in ['PENDING', 'APPROVED']
         && request.resource.data.updatedAt == request.time);
       allow delete: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
