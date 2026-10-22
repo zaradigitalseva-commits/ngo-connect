@@ -3,7 +3,7 @@ import type { User } from 'firebase/auth';
 import { signOut } from 'firebase/auth';
 import { auth, db } from './firebase';
 import {
-  addDoc, collection, doc, getDoc, getDocs, query, serverTimestamp,
+  addDoc, collection, doc, getDoc, onSnapshot, query, serverTimestamp,
   updateDoc, where, writeBatch
 } from 'firebase/firestore';
 
@@ -30,19 +30,17 @@ export function MemberIDPortal({ authUser, onLogin, language }: { authUser: User
   const [form, setForm] = useState({ ngoId: '', name: '', fatherName: '', phone: '', address: '' });
   const selectedNgo = ngos.find(n => n.id === form.ngoId);
   useEffect(() => {
-    let active = true;
-    getDocs(query(collection(db, 'ngos'), where('status', 'in', ['LIVE', 'ACTIVE', 'APPROVED'])))
-      .then(s => { if (active) setNgos(s.docs.map(d => { const x = d.data(); return { id: d.id, name: String(x.name || x.ngoName || 'NGO'), status: String(x.status || ''), memberFee: Number(x.memberFee || 0), adminWhatsApp: String(x.adminWhatsApp || ''), ownerUid: String(x.ownerUid || ''), logoUrl: String(x.logoUrl || '') }; })); })
-      .catch(e => { if (active) setMessage(e instanceof Error ? e.message : 'NGO list load failed.'); });
-    return () => { active = false; };
+    const unsubscribe = onSnapshot(query(collection(db, 'ngos'), where('status', 'in', ['LIVE', 'ACTIVE', 'APPROVED'])), snapshot => {
+      setNgos(snapshot.docs.map(d => { const x = d.data(); return { id: d.id, name: String(x.name || x.ngoName || 'NGO'), status: String(x.status || ''), memberFee: Number(x.memberFee || 0), adminWhatsApp: String(x.adminWhatsApp || ''), ownerUid: String(x.ownerUid || ''), logoUrl: String(x.logoUrl || '') }; }));
+    }, e => setMessage(e instanceof Error ? e.message : 'NGO list load failed.'));
+    return unsubscribe;
   }, []);
   useEffect(() => {
     if (!authUser) { setApps([]); return; }
-    let active = true;
-    getDocs(query(collection(db, 'memberApplications'), where('applicantUid', '==', authUser.uid)))
-      .then(s => { if (active) setApps(s.docs.map(d => ({ id: d.id, ...d.data() } as Application))); })
-      .catch(e => { if (active) setMessage(e instanceof Error ? e.message : 'Applications could not be loaded.'); });
-    return () => { active = false; };
+    const unsubscribe = onSnapshot(query(collection(db, 'memberApplications'), where('applicantUid', '==', authUser.uid)), snapshot => {
+      setApps(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Application)));
+    }, e => setMessage(e instanceof Error ? e.message : 'Applications could not be loaded.'));
+    return unsubscribe;
   }, [authUser]);
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -106,19 +104,27 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
   const [whatsapp, setWhatsapp] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
-  const load = async () => {
-    // Super Admin can review all NGOs; ordinary NGO admins only see NGOs they own.
-    const ns = isPlatformAdmin(authUser)
-      ? await getDocs(collection(db, 'ngos'))
-      : await getDocs(query(collection(db, 'ngos'), where('ownerUid', '==', authUser.uid)));
-    const rows = ns.docs.map(d => { const x = d.data(); return { id: d.id, name: String(x.name || x.ngoName || 'NGO'), status: String(x.status || ''), memberFee: Number(x.memberFee || 0), adminWhatsApp: String(x.adminWhatsApp || ''), ownerUid: String(x.ownerUid || ''), logoUrl: String(x.logoUrl || '') }; });
-    setNgos(rows); if (!selectedId && rows[0]) setSelectedId(rows[0].id);
-    const all = await Promise.all(rows.map(n => getDocs(query(collection(db, 'memberApplications'), where('ngoId', '==', n.id)))));
-    setApplications(all.flatMap(s => s.docs.map(d => ({ id: d.id, ...d.data() } as Application))));
-    const selected = rows.find(n => n.id === (selectedId || rows[0]?.id));
-    if (selected) { setFee(String(selected.memberFee || 100)); setWhatsapp(selected.adminWhatsApp || ''); }
-  };
-  useEffect(() => { void load().catch(e => setMessage(e instanceof Error ? e.message : 'Could not load NGO admin data.')); }, [authUser.uid]);
+  useEffect(() => {
+    const ngoQuery = isPlatformAdmin(authUser)
+      ? collection(db, 'ngos')
+      : query(collection(db, 'ngos'), where('ownerUid', '==', authUser.uid));
+    const unsubscribeNgos = onSnapshot(ngoQuery, snapshot => {
+      const rows = snapshot.docs.map(d => { const x = d.data(); return { id: d.id, name: String(x.name || x.ngoName || 'NGO'), status: String(x.status || ''), memberFee: Number(x.memberFee || 0), adminWhatsApp: String(x.adminWhatsApp || ''), ownerUid: String(x.ownerUid || ''), logoUrl: String(x.logoUrl || '') }; });
+      setNgos(rows);
+      setSelectedId(current => current && rows.some(n => n.id === current) ? current : rows[0]?.id || '');
+    }, e => setMessage(e instanceof Error ? e.message : 'Could not load NGO admin data.'));
+    return unsubscribeNgos;
+  }, [authUser.uid]);
+  useEffect(() => {
+    if (!ngos.length) { setApplications([]); return; }
+    const unsubs = ngos.map(ngo => onSnapshot(query(collection(db, 'memberApplications'), where('ngoId', '==', ngo.id)), snapshot => {
+      setApplications(current => {
+        const others = current.filter(app => app.ngoId !== ngo.id);
+        return [...others, ...snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Application))];
+      });
+    }, e => setMessage(e instanceof Error ? e.message : 'Could not load applications.')));
+    return () => unsubs.forEach(unsubscribe => unsubscribe());
+  }, [ngos.map(n => n.id).join('|')]);
   useEffect(() => { const n = ngos.find(x => x.id === selectedId); if (n) { setFee(String(n.memberFee || 100)); setWhatsapp(n.adminWhatsApp || ''); } }, [selectedId, ngos]);
   const currentNgo = ngos.find(n => n.id === selectedId);
   const saveProfile = async (e: FormEvent<HTMLFormElement>) => {
