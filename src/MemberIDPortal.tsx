@@ -199,6 +199,46 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
     } catch (e) { setMessage(e instanceof Error ? e.message : 'Review failed. Check Firestore rules.'); }
     finally { setBusy(false); }
   };
+  // Repair older approved applications that predate public-team syncing.
+  // This runs in the NGO admin session, so Firestore ownership rules remain enforced.
+  useEffect(() => {
+    if (!authUser || !applications.length) return;
+    let cancelled = false;
+    const syncMissingPublicTeamRecords = async () => {
+      const approved = applications.filter(a => a.status === 'APPROVED' && a.memberId);
+      for (const a of approved) {
+        if (cancelled) return;
+        const teamRef = doc(db, 'ngoMembers', 'member-app-' + a.id);
+        try {
+          const existing = await getDoc(teamRef);
+          if (cancelled || existing.exists()) continue;
+          await setDoc(teamRef, {
+            ngoId: a.ngoId,
+            name: a.name,
+            phone: a.phone,
+            email: a.applicantEmail || '',
+            role: 'MEMBER',
+            designation: 'सदस्य',
+            location: a.address || '',
+            status: 'ACTIVE',
+            approvalStatus: 'APPROVED',
+            createdBy: authUser.uid,
+            source: 'memberApplication',
+            applicationId: a.id,
+            memberId: a.memberId,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          });
+        } catch (error) {
+          // Keep the portal usable; the manual sync button below reports write errors.
+          console.error('Could not sync approved application to public NGO team:', a.id, error);
+        }
+      }
+    };
+    void syncMissingPublicTeamRecords();
+    return () => { cancelled = true; };
+  }, [applications, authUser]);
+
   const addApprovedApplicationToTeam = async (a: Application) => {
     if (a.status !== 'APPROVED' || !a.memberId) return;
     setBusy(true); setMessage('');
