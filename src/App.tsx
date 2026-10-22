@@ -89,19 +89,25 @@ function PublicNgoSite({ language, setLanguage, ngoId }: { language: Language; s
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [team, setTeam] = useState<Record<string, any>[]>([]);
+  const [publicEvents, setPublicEvents] = useState<Record<string, any>[]>([]);
+  const [publicDocuments, setPublicDocuments] = useState<Record<string, any>[]>([]);
+  const [publicFinance, setPublicFinance] = useState<Record<string, any>[]>([]);
   useEffect(() => {
     let active = true;
-    const unsubscribeTeam = onSnapshot(firestoreQuery(collection(db, 'ngoMembers'), where('ngoId', '==', ngoId)), snapshot => {
+    const unsubscribeTeam = onSnapshot(firestoreQuery(collection(db, 'ngoMembers'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => {
       if (!active) return;
-      setTeam(snapshot.docs.map(item => ({ id: item.id, ...item.data() } as Record<string, any>)).filter(person => String(person.status || 'ACTIVE').toUpperCase() === 'ACTIVE' && String(person.approvalStatus || 'APPROVED').toUpperCase() === 'APPROVED').sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))));
+      setTeam(snapshot.docs.map(item => ({ id: item.id, ...item.data() } as Record<string, any>)).filter(person => String(person.status || 'ACTIVE').toUpperCase() === 'ACTIVE').sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))));
     }, () => { if (active) setTeam([]); });
+    const unsubscribeEvents = onSnapshot(firestoreQuery(collection(db, 'ngoEvents'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => setPublicEvents(snapshot.docs.map(d => ({id:d.id,...d.data()})).sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')))), () => setPublicEvents([]));
+    const unsubscribeDocuments = onSnapshot(firestoreQuery(collection(db, 'ngoDocuments'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => setPublicDocuments(snapshot.docs.map(d => ({id:d.id,...d.data()}))), () => setPublicDocuments([]));
+    const unsubscribeFinance = onSnapshot(firestoreQuery(collection(db, 'ngoTransactions'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => setPublicFinance(snapshot.docs.map(d => ({id:d.id,...d.data()})).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')))), () => setPublicFinance([]));
     const unsubscribeNgo = onSnapshot(doc(db, 'ngos', ngoId), snapshot => {
       if (!active) return;
       if (!snapshot.exists() || !['LIVE', 'ACTIVE', 'APPROVED'].includes(String(snapshot.data().status || '').toUpperCase())) { setFailed(true); setNgo(null); }
       else { setFailed(false); setNgo({ id: snapshot.id, ...snapshot.data() }); }
       setLoading(false);
     }, () => { if (active) { setFailed(true); setLoading(false); } });
-    return () => { active = false; unsubscribeTeam(); unsubscribeNgo(); };
+    return () => { active = false; unsubscribeTeam(); unsubscribeEvents(); unsubscribeDocuments(); unsubscribeFinance(); unsubscribeNgo(); };
   }, [ngoId]);
   const name = String(ngo?.name || ngo?.ngoName || 'NGO');
   const logo = String(ngo?.imageData || ngo?.registrationFormData?.imageData || '');
@@ -130,6 +136,18 @@ function PublicNgoSite({ language, setLanguage, ngoId }: { language: Language; s
               {(person.location || person.workArea) && <p style={{ margin: 0, color: '#475569', display: 'flex', alignItems: 'flex-start', gap: 7 }}><MapPin size={16} style={{ flexShrink: 0, marginTop: 3 }}/>{String(person.location || person.workArea)}</p>}
             </article>)}
           </div> : <div style={{ marginTop: 16, borderRadius: 16, padding: 20, background: '#f8fafc', color: '#64748b', textAlign: 'center' }}>{hi ? 'NGO Admin ने अभी टीम की जानकारी नहीं जोड़ी है।' : 'The NGO admin has not added team information yet.'}</div>}
+        </section>
+        <section style={{ marginTop: 22, padding: 'clamp(22px,4vw,34px)', background: '#fff', borderRadius: 24, boxShadow: '0 14px 35px rgba(15,23,42,.08)', border: '1px solid #dbeafe' }}>
+          <span className="public-kicker"><CalendarDays size={15}/>{hi ? 'कार्यक्रम और इवेंट' : 'EVENTS & ACTIVITIES'}</span><h2 style={{color:'#1d4ed8',fontSize:'clamp(24px,3vw,32px)',margin:'12px 0'}}> {hi ? 'हमारे कार्यक्रम' : 'Our events'}</h2>
+          {publicEvents.length ? <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,230px),1fr))',gap:14}}>{publicEvents.map(item=><article key={item.id} style={{padding:16,borderRadius:16,background:'#eff6ff',border:'1px solid #bfdbfe'}}><h3 style={{margin:'0 0 8px'}}>{String(item.title||'')}</h3><p style={{margin:'0 0 6px',color:'#475569'}}>{String(item.date||'')} {item.location ? ' · '+String(item.location):''}</p><p style={{margin:0,color:'#64748b',whiteSpace:'pre-wrap'}}>{String(item.description||'')}</p></article>)}</div> : <p style={{color:'#64748b'}}>{hi ? 'अभी कोई मंज़ूर कार्यक्रम नहीं है।' : 'No approved events yet.'}</p>}
+        </section>
+        <section style={{ marginTop: 22, padding: 'clamp(22px,4vw,34px)', background: '#fff', borderRadius: 24, boxShadow: '0 14px 35px rgba(15,23,42,.08)', border: '1px solid #ddd6fe' }}>
+          <span className="public-kicker"><FileText size={15}/>{hi ? 'रिपोर्ट और दस्तावेज़' : 'REPORTS & DOCUMENTS'}</span><h2 style={{color:'#4338ca',fontSize:'clamp(24px,3vw,32px)',margin:'12px 0'}}>{hi ? 'हमारी रिपोर्ट' : 'Our reports'}</h2>
+          {publicDocuments.length ? <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,230px),1fr))',gap:14}}>{publicDocuments.map(item=><article key={item.id} style={{padding:16,borderRadius:16,background:'#f5f3ff',border:'1px solid #ddd6fe'}}><h3 style={{margin:'0 0 8px'}}>{String(item.title||'')}</h3><p style={{color:'#64748b'}}>{String(item.type||'REPORT')} {item.notes ? ' · '+String(item.notes):''}</p>{String(item.url||'').startsWith('https://') && <a href={String(item.url)} target="_blank" rel="noreferrer">{hi ? 'दस्तावेज़ खोलें' : 'Open document'} ↗</a>}</article>)}</div> : <p style={{color:'#64748b'}}>{hi ? 'अभी कोई मंज़ूर रिपोर्ट नहीं है।' : 'No approved reports yet.'}</p>}
+        </section>
+        <section style={{ marginTop: 22, padding: 'clamp(22px,4vw,34px)', background: '#fff', borderRadius: 24, boxShadow: '0 14px 35px rgba(15,23,42,.08)', border: '1px solid #bbf7d0' }}>
+          <span className="public-kicker"><HeartHandshake size={15}/>{hi ? 'मंज़ूर दान और खर्च' : 'APPROVED DONATIONS & EXPENSES'}</span><h2 style={{color:'#047857',fontSize:'clamp(24px,3vw,32px)',margin:'12px 0'}}>{hi ? 'वित्तीय पारदर्शिता' : 'Financial transparency'}</h2>
+          {publicFinance.length ? <div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse',fontSize:14}}><thead><tr><th style={{textAlign:'left',padding:10}}>{hi?'प्रकार':'Type'}</th><th style={{textAlign:'left',padding:10}}>{hi?'श्रेणी':'Category'}</th><th style={{textAlign:'left',padding:10}}>{hi?'तारीख':'Date'}</th><th style={{textAlign:'right',padding:10}}>{hi?'राशि':'Amount'}</th></tr></thead><tbody>{publicFinance.map(item=><tr key={item.id} style={{borderTop:'1px solid #e2e8f0'}}><td style={{padding:10}}>{String(item.type)==='DONATION'?(hi?'दान':'Donation'):(hi?'खर्च':'Expense')}</td><td style={{padding:10}}>{String(item.category||'')}</td><td style={{padding:10}}>{String(item.date||'')}</td><td style={{padding:10,textAlign:'right',fontWeight:800}}>₹{Number(item.amount||0).toLocaleString('en-IN')}</td></tr>)}</tbody></table></div> : <p style={{color:'#64748b'}}>{hi ? 'अभी कोई मंज़ूर वित्तीय रिकॉर्ड नहीं है।' : 'No approved financial records yet.'}</p>}
         </section>
         <section style={{ marginTop: 22, padding: 24, textAlign: 'center', borderRadius: 24, background: 'linear-gradient(135deg,#fff,#f5f3ff)', border: '1px solid #ddd6fe' }}><h2 style={{ color: '#4338ca', marginTop: 0 }}>{hi ? 'बेहतर बदलाव के लिए साथ आएँ' : 'Join us for better impact'}</h2><p style={{ color: '#64748b' }}>{hi ? 'इस NGO की जानकारी अपने परिवार और समुदाय के साथ साझा करें।' : 'Share this organization with your family and community.'}</p><button className="primary-button" onClick={() => { void navigator.clipboard?.writeText(window.location.href).then(() => window.alert(hi ? 'NGO साइट का लिंक कॉपी हो गया।' : 'NGO website link copied.')).catch(() => window.prompt(hi ? 'इस लिंक को कॉपी करें:' : 'Copy this link:', window.location.href)); }}>{hi ? 'इस NGO साइट का लिंक साझा करें' : 'Share this NGO website'} <ArrowUpRight size={17}/></button></section>
       </>}
