@@ -51,7 +51,7 @@ service cloud.firestore {
           'paymentReference', 'status', 'paymentStatus', 'ownerUid', 'createdAt'
         ])
         && request.resource.data.keys().hasAll([
-          'name', 'contactName', 'email', 'phone', 'state', 'district', 'mission',
+          'name', 'contactName', 'email', 'phone', 'state', 'district', 'mission', 'imageData',
           'planId', 'subscriptionPlan', 'planPrice', 'planDurationDays',
           'paymentReference', 'status', 'paymentStatus', 'ownerUid', 'createdAt'
         ])
