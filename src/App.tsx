@@ -592,16 +592,16 @@ export default function App() {
   useEffect(() => {
     if (!authUser || !isSuperAdmin(authUser) || section !== 'subscriptions') return;
     let active = true;
-    getDoc(doc(db, 'publicSettings', 'payment')).then(snapshot => {
+    const unsubscribeQr = onSnapshot(doc(db, 'publicSettings', 'payment'), snapshot => {
       if (active && snapshot.exists() && typeof snapshot.data().qrImage === 'string') setAdminQrImage(snapshot.data().qrImage as string);
-    }).catch(() => { if (active) setQrSaveMessage('QR सेटिंग लोड नहीं हुई। Firestore Rules प्रकाशित हैं या नहीं जाँचें।'); });
-    getDocs(collection(db, 'subscriptionPlans')).then(snapshot => {
+    }, () => { if (active) setQrSaveMessage('QR सेटिंग लोड नहीं हुई। Firestore Rules प्रकाशित हैं या नहीं जाँचें।'); });
+    const unsubscribePlans = onSnapshot(collection(db, 'subscriptionPlans'), snapshot => {
       if (active) setSubscriptionPlans(snapshot.docs.map(item => ({ id: item.id, name: String(item.data().name || ''), price: Number(item.data().price) || 0, durationDays: Number(item.data().durationDays) || 0, description: String(item.data().description || ''), active: item.data().active === true })));
-    }).catch(() => { if (active) setPlanMessage('सब्सक्रिप्शन प्लान लोड नहीं हुए। Firestore Rules जाँचें।'); });
-    getDocs(collection(db, 'ngoRegistrations')).then(snapshot => {
+    }, () => { if (active) setPlanMessage('सब्सक्रिप्शन प्लान लोड नहीं हुए। Firestore Rules जाँचें।'); });
+    const unsubscribeRegistrations = onSnapshot(collection(db, 'ngoRegistrations'), snapshot => {
       if (active) setPendingRegistrations(snapshot.docs.map(item => ({ id: item.id, ...item.data() })));
-    }).catch(() => { if (active) setRegistrationLoadError('रजिस्ट्रेशन लोड नहीं हुए। Firestore rules प्रकाशित हैं या नहीं, जाँचें।'); });
-    return () => { active = false; };
+    }, () => { if (active) setRegistrationLoadError('रजिस्ट्रेशन लोड नहीं हुए। Firestore rules प्रकाशित हैं या नहीं, जाँचें।'); });
+    return () => { active = false; unsubscribeQr(); unsubscribePlans(); unsubscribeRegistrations(); };
   }, [authUser, section]);
   useEffect(() => {
     if (!authUser || !isSuperAdmin(authUser) || !firebaseConfigured) return;
