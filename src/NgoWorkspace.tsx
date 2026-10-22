@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import type { User } from 'firebase/auth';
 import { signOut } from 'firebase/auth';
-import { addDoc, collection, deleteDoc, doc, getDocs, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDocs, onSnapshot, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
 import { CalendarDays, FileText, Pencil, Plus, Trash2, Users, Wallet } from 'lucide-react';
 import { auth, db } from './firebase';
 
@@ -73,24 +73,25 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
     ];
   }, [kind, hi]);
 
-  const loadNgos = async () => {
-    // Each signed-in account can access only NGOs explicitly linked to its own UID.
-    // Cross-NGO administration stays in the platform dashboard.
-    const snap = await getDocs(query(collection(db, 'ngos'), where('ownerUid', '==', authUser.uid)));
-    const list = snap.docs
-      .map(d => ({ id: d.id, name: String(d.data().name || d.data().ngoName || 'NGO'), status: String(d.data().status || '').toUpperCase() }))
-      .filter(n => ['LIVE', 'ACTIVE', 'APPROVED'].includes(n.status));
-    setNgos(list);
-    setNgoId(current => list.some(n => n.id === current) ? current : list[0]?.id || '');
-    setLoading(false);
-  };
-  const loadRows = async (id: string, currentKind: Kind) => {
-    if (!id) { setRows([]); return; }
-    const snap = await getDocs(query(collection(db, modules.find(m => m.id === currentKind)!.collection), where('ngoId', '==', id)));
-    setRows(snap.docs.map(d => ({ id: d.id, ...d.data() } as RecordRow)).sort((a, b) => safe(b.date || b.createdAt).localeCompare(safe(a.date || a.createdAt))));
-  };
-  useEffect(() => { void loadNgos().catch(e => { setMessage(e instanceof Error ? e.message : 'NGO load failed'); setLoading(false); }); }, [authUser.uid]);
-  useEffect(() => { setForm(blank(kind)); setEditingId(''); if (ngoId) void loadRows(ngoId, kind).catch(e => setMessage(e instanceof Error ? e.message : 'Records could not be loaded.')); else setRows([]); }, [ngoId, kind]);
+  useEffect(() => {
+    // Each signed-in account sees only NGOs linked to its own UID.
+    const unsubscribe = onSnapshot(query(collection(db, 'ngos'), where('ownerUid', '==', authUser.uid)), snap => {
+      const list = snap.docs.map(d => ({ id: d.id, name: String(d.data().name || d.data().ngoName || 'NGO'), status: String(d.data().status || '').toUpperCase() })).filter(n => ['LIVE', 'ACTIVE', 'APPROVED'].includes(n.status));
+      setNgos(list);
+      setNgoId(current => list.some(n => n.id === current) ? current : list[0]?.id || '');
+      setLoading(false);
+    }, e => { setMessage(e instanceof Error ? e.message : 'NGO load failed'); setLoading(false); });
+    return unsubscribe;
+  }, [authUser.uid]);
+  useEffect(() => {
+    setForm(blank(kind)); setEditingId('');
+    if (!ngoId) { setRows([]); return; }
+    const module = modules.find(m => m.id === kind)!;
+    const unsubscribe = onSnapshot(query(collection(db, module.collection), where('ngoId', '==', ngoId)), snap => {
+      setRows(snap.docs.map(d => ({ id: d.id, ...d.data() } as RecordRow)).sort((a, b) => safe(b.date || b.createdAt).localeCompare(safe(a.date || a.createdAt))));
+    }, e => setMessage(e instanceof Error ? e.message : 'Records could not be loaded.'));
+    return unsubscribe;
+  }, [ngoId, kind]);
   const startEdit = (row: RecordRow) => {
     const next: Record<string, string> = blank(kind);
     Object.keys(next).forEach(key => { next[key] = safe(row[key]); });
