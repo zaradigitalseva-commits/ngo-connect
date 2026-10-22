@@ -197,78 +197,88 @@ service cloud.firestore {
     }
 
     match /ngoMembers/{recordId} {
-      allow read: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
+      allow read: if isSuperAdmin() || ownsNgo(resource.data.ngoId) || resource.data.approvalStatus == 'APPROVED';
       allow create: if isSuperAdmin() || (ownsNgo(request.resource.data.ngoId)
         && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.keys().hasOnly(['ngoId','createdBy','createdAt','updatedAt','name','phone','email','role','status'])
-        && request.resource.data.keys().hasAll(['ngoId','createdBy','createdAt','updatedAt','name','phone','email','role','status'])
+        && request.resource.data.keys().hasOnly(['ngoId','createdBy','createdAt','updatedAt','name','phone','email','role','status','designation','location','approvalStatus'])
+        && request.resource.data.keys().hasAll(['ngoId','createdBy','createdAt','updatedAt','name','phone','email','role','status','designation','location','approvalStatus'])
         && request.resource.data.name is string && request.resource.data.name.size() > 1 && request.resource.data.name.size() <= 120
         && request.resource.data.phone is string && request.resource.data.phone.size() >= 7 && request.resource.data.phone.size() <= 25
         && request.resource.data.email is string && request.resource.data.email.size() <= 160
-        && request.resource.data.role in ['MEMBER','VOLUNTEER']
-        && request.resource.data.status in ['ACTIVE','INACTIVE']
-        && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time);
-      allow update: if isSuperAdmin() || (ownsNgo(resource.data.ngoId)
-        && request.resource.data.ngoId == resource.data.ngoId
+        && request.resource.data.role in ['MEMBER','VOLUNTEER'] && request.resource.data.status in ['ACTIVE','INACTIVE']
+        && request.resource.data.designation is string && request.resource.data.designation.size() <= 160
+        && request.resource.data.location is string && request.resource.data.location.size() <= 300
+        && request.resource.data.approvalStatus == 'PENDING' && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time);
+      allow update: if isSuperAdmin() || (ownsNgo(resource.data.ngoId) && request.resource.data.ngoId == resource.data.ngoId
         && request.resource.data.createdBy == resource.data.createdBy
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','phone','email','role','status','updatedAt'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','phone','email','role','status','designation','location','approvalStatus','updatedAt'])
         && request.resource.data.name is string && request.resource.data.name.size() > 1 && request.resource.data.name.size() <= 120
         && request.resource.data.phone is string && request.resource.data.phone.size() >= 7 && request.resource.data.phone.size() <= 25
         && request.resource.data.email is string && request.resource.data.email.size() <= 160
-        && request.resource.data.role in ['MEMBER','VOLUNTEER']
-        && request.resource.data.status in ['ACTIVE','INACTIVE']
-        && request.resource.data.updatedAt == request.time);
+        && request.resource.data.role in ['MEMBER','VOLUNTEER'] && request.resource.data.status in ['ACTIVE','INACTIVE']
+        && request.resource.data.designation is string && request.resource.data.designation.size() <= 160
+        && request.resource.data.location is string && request.resource.data.location.size() <= 300
+        && request.resource.data.approvalStatus == 'PENDING' && request.resource.data.updatedAt == request.time);
       allow delete: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
     }
 
     match /ngoTransactions/{recordId} {
-      allow read: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
-      allow create: if isSuperAdmin() || (ownsNgo(request.resource.data.ngoId)
-        && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.keys().hasOnly(['ngoId','createdBy','createdAt','updatedAt','type','amount','category','donor','date','note'])
-        && request.resource.data.keys().hasAll(['ngoId','createdBy','createdAt','updatedAt','type','amount','category','donor','date','note'])
-        && request.resource.data.type in ['DONATION','EXPENSE']
-        && request.resource.data.amount is number && request.resource.data.amount > 0 && request.resource.data.amount <= 1000000000
+      allow read: if isSuperAdmin() || ownsNgo(resource.data.ngoId) || resource.data.approvalStatus == 'APPROVED';
+      allow create: if isSuperAdmin() || (ownsNgo(request.resource.data.ngoId) && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.keys().hasOnly(['ngoId','createdBy','createdAt','updatedAt','type','amount','category','donor','date','note','approvalStatus'])
+        && request.resource.data.keys().hasAll(['ngoId','createdBy','createdAt','updatedAt','type','amount','category','donor','date','note','approvalStatus'])
+        && request.resource.data.type in ['DONATION','EXPENSE'] && request.resource.data.amount is number && request.resource.data.amount > 0 && request.resource.data.amount <= 1000000000
         && request.resource.data.category is string && request.resource.data.category.size() > 0 && request.resource.data.category.size() <= 120
-        && request.resource.data.donor is string && request.resource.data.donor.size() <= 160
-        && request.resource.data.date is string && request.resource.data.date.size() == 10
-        && request.resource.data.note is string && request.resource.data.note.size() <= 2000
+        && request.resource.data.donor is string && request.resource.data.donor.size() <= 160 && request.resource.data.date is string && request.resource.data.date.size() == 10
+        && request.resource.data.note is string && request.resource.data.note.size() <= 2000 && request.resource.data.approvalStatus == 'PENDING'
         && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time);
-      allow update: if isSuperAdmin() || (ownsNgo(resource.data.ngoId)
-        && request.resource.data.ngoId == resource.data.ngoId
+      allow update: if isSuperAdmin() || (ownsNgo(resource.data.ngoId) && request.resource.data.ngoId == resource.data.ngoId
         && request.resource.data.createdBy == resource.data.createdBy
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['type','amount','category','donor','date','note','updatedAt'])
-        && request.resource.data.type in ['DONATION','EXPENSE']
-        && request.resource.data.amount is number && request.resource.data.amount > 0 && request.resource.data.amount <= 1000000000
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['type','amount','category','donor','date','note','approvalStatus','updatedAt'])
+        && request.resource.data.type in ['DONATION','EXPENSE'] && request.resource.data.amount is number && request.resource.data.amount > 0 && request.resource.data.amount <= 1000000000
         && request.resource.data.category is string && request.resource.data.category.size() > 0 && request.resource.data.category.size() <= 120
-        && request.resource.data.donor is string && request.resource.data.donor.size() <= 160
-        && request.resource.data.date is string && request.resource.data.date.size() == 10
-        && request.resource.data.note is string && request.resource.data.note.size() <= 2000
+        && request.resource.data.donor is string && request.resource.data.donor.size() <= 160 && request.resource.data.date is string && request.resource.data.date.size() == 10
+        && request.resource.data.note is string && request.resource.data.note.size() <= 2000 && request.resource.data.approvalStatus == 'PENDING'
         && request.resource.data.updatedAt == request.time);
       allow delete: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
     }
 
     match /ngoEvents/{recordId} {
-      allow read: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
-      allow create: if isSuperAdmin() || (ownsNgo(request.resource.data.ngoId)
-        && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.keys().hasOnly(['ngoId','createdBy','createdAt','updatedAt','title','date','location','description','status'])
-        && request.resource.data.keys().hasAll(['ngoId','createdBy','createdAt','updatedAt','title','date','location','description','status'])
+      allow read: if isSuperAdmin() || ownsNgo(resource.data.ngoId) || resource.data.approvalStatus == 'APPROVED';
+      allow create: if isSuperAdmin() || (ownsNgo(request.resource.data.ngoId) && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.keys().hasOnly(['ngoId','createdBy','createdAt','updatedAt','title','date','location','description','status','approvalStatus'])
+        && request.resource.data.keys().hasAll(['ngoId','createdBy','createdAt','updatedAt','title','date','location','description','status','approvalStatus'])
         && request.resource.data.title is string && request.resource.data.title.size() > 1 && request.resource.data.title.size() <= 160
-        && request.resource.data.date is string && request.resource.data.date.size() == 10
-        && request.resource.data.location is string && request.resource.data.location.size() <= 300
-        && request.resource.data.description is string && request.resource.data.description.size() <= 2000
-        && request.resource.data.status in ['PLANNED','COMPLETED','CANCELLED']
-        && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time);
-      allow update: if isSuperAdmin() || (ownsNgo(resource.data.ngoId)
-        && request.resource.data.ngoId == resource.data.ngoId
+        && request.resource.data.date is string && request.resource.data.date.size() == 10 && request.resource.data.location is string && request.resource.data.location.size() <= 300
+        && request.resource.data.description is string && request.resource.data.description.size() <= 2000 && request.resource.data.status in ['PLANNED','COMPLETED','CANCELLED']
+        && request.resource.data.approvalStatus == 'PENDING' && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time);
+      allow update: if isSuperAdmin() || (ownsNgo(resource.data.ngoId) && request.resource.data.ngoId == resource.data.ngoId
         && request.resource.data.createdBy == resource.data.createdBy
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title','date','location','description','status','updatedAt'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title','date','location','description','status','approvalStatus','updatedAt'])
         && request.resource.data.title is string && request.resource.data.title.size() > 1 && request.resource.data.title.size() <= 160
-        && request.resource.data.date is string && request.resource.data.date.size() == 10
-        && request.resource.data.location is string && request.resource.data.location.size() <= 300
-        && request.resource.data.description is string && request.resource.data.description.size() <= 2000
-        && request.resource.data.status in ['PLANNED','COMPLETED','CANCELLED']
+        && request.resource.data.date is string && request.resource.data.date.size() == 10 && request.resource.data.location is string && request.resource.data.location.size() <= 300
+        && request.resource.data.description is string && request.resource.data.description.size() <= 2000 && request.resource.data.status in ['PLANNED','COMPLETED','CANCELLED']
+        && request.resource.data.approvalStatus == 'PENDING' && request.resource.data.updatedAt == request.time);
+      allow delete: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
+    }
+
+    match /ngoDocuments/{recordId} {
+      allow read: if isSuperAdmin() || ownsNgo(resource.data.ngoId) || resource.data.approvalStatus == 'APPROVED';
+      allow create: if isSuperAdmin() || (ownsNgo(request.resource.data.ngoId) && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.keys().hasOnly(['ngoId','createdBy','createdAt','updatedAt','title','type','url','notes','approvalStatus'])
+        && request.resource.data.keys().hasAll(['ngoId','createdBy','createdAt','updatedAt','title','type','url','notes','approvalStatus'])
+        && request.resource.data.title is string && request.resource.data.title.size() > 1 && request.resource.data.title.size() <= 160
+        && request.resource.data.type in ['REPORT','CERTIFICATE','OTHER'] && request.resource.data.url is string && request.resource.data.url.size() <= 500
+        && (request.resource.data.url == '' || request.resource.data.url.matches('https://.*'))
+        && request.resource.data.notes is string && request.resource.data.notes.size() <= 2000 && request.resource.data.approvalStatus == 'PENDING'
+        && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time);
+      allow update: if isSuperAdmin() || (ownsNgo(resource.data.ngoId) && request.resource.data.ngoId == resource.data.ngoId
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title','type','url','notes','approvalStatus','updatedAt'])
+        && request.resource.data.title is string && request.resource.data.title.size() > 1 && request.resource.data.title.size() <= 160
+        && request.resource.data.type in ['REPORT','CERTIFICATE','OTHER'] && request.resource.data.url is string && request.resource.data.url.size() <= 500
+        && (request.resource.data.url == '' || request.resource.data.url.matches('https://.*'))
+        && request.resource.data.notes is string && request.resource.data.notes.size() <= 2000 && request.resource.data.approvalStatus == 'PENDING'
         && request.resource.data.updatedAt == request.time);
       allow delete: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
     }
