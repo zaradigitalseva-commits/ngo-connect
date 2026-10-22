@@ -2248,3 +2248,92 @@ input, select, textarea, button {
     height: auto;
   }
 }
+
+
+/* Refined NGO public-page brand/header: clean white glass bar with a premium logo lockup */
+.public-site .public-header {
+  min-height: 76px !important;
+  padding: 12px clamp(14px, 4.8vw, 64px) !important;
+  gap: 14px !important;
+  background: rgba(255,255,255,.97) !important;
+  border-bottom: 1px solid #e8eaf6 !important;
+  box-shadow: 0 4px 18px rgba(36, 45, 90, .06) !important;
+}
+.public-site .public-brand {
+  gap: 12px !important;
+  min-width: 0;
+  color: #172554 !important;
+  text-decoration: none !important;
+}
+.public-site .public-brand > span:first-child {
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px;
+  display: grid !important;
+  place-items: center;
+  border-radius: 15px !important;
+  background: linear-gradient(145deg, #8b5cf6, #4f46e5 58%, #2563eb) !important;
+  color: #fff !important;
+  box-shadow: 0 5px 0 rgba(79,70,229,.16), 0 8px 18px rgba(79,70,229,.2) !important;
+}
+.public-site .public-brand > span:last-child {
+  min-width: 0;
+  line-height: 1.12;
+}
+.public-site .public-brand > span:last-child > span {
+  color: #263b7a !important;
+  font-size: clamp(17px, 2vw, 23px) !important;
+  font-weight: 900 !important;
+  letter-spacing: -.7px !important;
+  text-shadow: none !important;
+  overflow-wrap: anywhere;
+}
+.public-site .public-brand small {
+  margin-top: 4px !important;
+  color: #77819b !important;
+  font-size: 11px !important;
+  font-weight: 650 !important;
+}
+.public-site .public-actions {
+  gap: 9px !important;
+  flex-shrink: 0;
+}
+.public-site .public-actions a,
+.public-site .public-actions button {
+  border-radius: 12px !important;
+}
+@media (max-width: 640px) {
+  .public-site .public-header {
+    min-height: 64px !important;
+    padding: 9px 12px !important;
+    gap: 8px !important;
+  }
+  .public-site .public-brand {
+    gap: 8px !important;
+    white-space: normal !important;
+  }
+  .public-site .public-brand > span:first-child {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px;
+    border-radius: 12px !important;
+  }
+  .public-site .public-brand > span:last-child > span {
+    font-size: clamp(14px, 4vw, 18px) !important;
+    letter-spacing: -.4px !important;
+  }
+  .public-site .public-brand small {
+    font-size: 9px !important;
+    line-height: 1.2;
+  }
+  .public-site .public-actions {
+    gap: 5px !important;
+  }
+  .public-site .public-actions a,
+  .public-site .public-actions button {
+    min-height: 34px !important;
+    padding: 6px 9px !important;
+    font-size: 10px !important;
+    white-space: nowrap;
+  }
+}
