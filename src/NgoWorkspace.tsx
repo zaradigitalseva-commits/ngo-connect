@@ -11,7 +11,7 @@ const isPlatformAdmin = (user: User) => Boolean(user.emailVerified && user.email
 type Kind = 'members' | 'finance' | 'events' | 'documents';
 type Ngo = { id: string; name: string; status: string; memberFee: number; adminWhatsApp: string };
 type RecordRow = { id: string; [key: string]: unknown };
-type MembershipApplication = { id: string; ngoId: string; ngoName: string; name: string; fatherName: string; phone: string; address: string; feeAmount: number; status: string; createdAt?: unknown };
+type MembershipApplication = { id: string; ngoId: string; ngoName: string; applicantEmail?: string; name: string; fatherName: string; phone: string; address: string; photoData?: string; feeAmount: number; status: string; memberId?: string; rejectionReason?: string; createdAt?: unknown };
 const modules: { id: Kind; hi: string; en: string; collection: string }[] = [
   { id: 'members', hi: 'सदस्य / स्वयंसेवक', en: 'Members / Volunteers', collection: 'ngoMembers' },
   { id: 'finance', hi: 'दान / खर्च', en: 'Donations / Expenses', collection: 'ngoTransactions' },
@@ -164,10 +164,17 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
           <h2 style={{margin:0}}>{hi ? "यूज़र के सदस्य आवेदन" : "Membership applications from users"} · {memberApplications.length}</h2>
           <a className="primary-button" href="/ngo-admin">{hi ? "आवेदन जाँचें / मंज़ूर करें" : "Review / approve applications"}</a>
         </div>
-        {memberApplications.length === 0 ? <p>{hi ? "अभी इस NGO के लिए कोई आवेदन नहीं आया है। नया आवेदन आने पर यहाँ दिखेगा।" : "No applications have arrived for this NGO yet. New applications will appear here."}</p> : memberApplications.map(app => <article className="ngo-workspace-record" key={app.id}>
-          <div className="ngo-workspace-record-main"><strong>{app.name}</strong>
-            <span>{hi ? "पिता/अभिभावक: " : "Father/guardian: "}{app.fatherName} · {app.phone}</span><span>{app.address}</span>
-            <small style={{display:"inline-flex",marginTop:6,padding:"4px 8px",borderRadius:999,background:app.status === "APPROVED" ? "#dcfce7" : app.status === "REJECTED" ? "#fee2e2" : "#fef3c7",color:app.status === "APPROVED" ? "#166534" : app.status === "REJECTED" ? "#991b1b" : "#92400e",fontWeight:800}}>{app.status} · ₹{app.feeAmount}</small>
+        {memberApplications.length === 0 ? <p>{hi ? "अभी इस NGO के लिए कोई आवेदन नहीं आया है। नया आवेदन आने पर यहाँ दिखेगा।" : "No applications have arrived for this NGO yet. New applications will appear here."}</p> : memberApplications.map(app => <article className="ngo-workspace-record" key={app.id} style={{alignItems:"flex-start",gap:14}}>
+          {app.photoData && <img src={app.photoData} alt={app.name} style={{width:88,height:104,objectFit:"cover",borderRadius:10,border:"1px solid #d1d5db",flexShrink:0}}/>}
+          <div className="ngo-workspace-record-main" style={{minWidth:0,flex:1,gap:7}}><strong style={{fontSize:18}}>{app.name}</strong>
+            <span>{hi ? "पिता / अभिभावक का नाम: " : "Father / guardian: "}{app.fatherName}</span>
+            <span>{hi ? "मोबाइल नंबर: " : "Mobile: "}{app.phone}</span>
+            {app.applicantEmail && <span>{hi ? "ईमेल: " : "Email: "}{app.applicantEmail}</span>}
+            <span style={{whiteSpace:"normal",overflowWrap:"anywhere"}}>{hi ? "पूरा पता: " : "Full address: "}{app.address}</span>
+            <span>{hi ? "आवेदन नंबर: " : "Application ref: "}{app.id}</span>
+            <small style={{display:"inline-flex",alignSelf:"flex-start",marginTop:6,padding:"5px 9px",borderRadius:999,background:app.status === "APPROVED" ? "#dcfce7" : app.status === "REJECTED" ? "#fee2e2" : "#fef3c7",color:app.status === "APPROVED" ? "#166534" : app.status === "REJECTED" ? "#991b1b" : "#92400e",fontWeight:800}}>{app.status} · ₹{app.feeAmount}</small>
+            {app.memberId && <span>{hi ? "Member ID: " : "Member ID: "}{app.memberId}</span>}
+            {app.rejectionReason && <span>{hi ? "कारण: " : "Reason: "}{app.rejectionReason}</span>}
           </div></article>)}
       </section>
       <section className="ngo-workspace-summary"><article><span>{hi ? 'कुल रिकॉर्ड' : 'Total records'}</span><strong>{rows.length}</strong></article>{kind === 'finance' && <><article><span>{hi ? 'कुल दान' : 'Total donations'}</span><strong>₹{money(rows.filter(r => r.type === 'DONATION').reduce((s,r) => s + Number(r.amount || 0),0))}</strong></article><article><span>{hi ? 'कुल खर्च' : 'Total expenses'}</span><strong>₹{money(rows.filter(r => r.type === 'EXPENSE').reduce((s,r) => s + Number(r.amount || 0),0))}</strong></article></>}</section>
