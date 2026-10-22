@@ -82,7 +82,8 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
 
   useEffect(() => {
     // Each signed-in account sees only NGOs linked to its own UID.
-    const unsubscribe = onSnapshot(query(collection(db, 'ngos'), where('ownerUid', '==', authUser.uid)), snap => {
+    const ngoSource = platformAdminView ? collection(db, 'ngos') : query(collection(db, 'ngos'), where('ownerUid', '==', authUser.uid));
+    const unsubscribe = onSnapshot(ngoSource, snap => {
       const list = snap.docs.map(d => ({ id: d.id, name: String(d.data().name || d.data().ngoName || 'NGO'), status: String(d.data().status || '').toUpperCase(), memberFee: Number(d.data().memberFee || 100), adminWhatsApp: String(d.data().adminWhatsApp || '') })).filter(n => ['LIVE', 'ACTIVE', 'APPROVED'].includes(n.status));
       setNgos(list);
       setNgoId(current => list.some(n => n.id === current) ? current : list[0]?.id || '');
