@@ -2389,3 +2389,16 @@ input, select, textarea, button {
     background-size: cover !important;
   }
 }
+
+
+/* Apply the shared nature photo to the actual NGO-specific logo/name banner (not the All NGO Connect navigation bar). */
+.public-site .public-ngo-profile-banner {
+  background:
+    linear-gradient(90deg, rgba(255,255,255,.90) 0%, rgba(255,255,255,.78) 58%, rgba(255,255,255,.60) 100%),
+    url("https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=2000&q=85") center 48% / cover no-repeat !important;
+  background-color: #e8f5ed !important;
+}
+.public-site .public-ngo-profile-banner > div[style*="display: flex"] {
+  position: relative;
+  z-index: 1;
+}
