@@ -915,6 +915,14 @@ export default function App() {
     });
     return unsubscribe;
   }, []);
+  useEffect(() => {
+    // After an NGO account signs in from the public home page, open its workspace.
+    // Platform administrators keep the main platform dashboard.
+    if (!authUser || isSuperAdmin(authUser)) return;
+    if (window.location.pathname === '/') {
+      window.location.replace('/ngo-workspace');
+    }
+  }, [authUser]);
   const loginAsSuperAdmin = async () => {
     if (!auth) return;
     setAuthError('');
