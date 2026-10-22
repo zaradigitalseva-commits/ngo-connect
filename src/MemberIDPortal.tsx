@@ -48,6 +48,10 @@ export function MemberIDPortal({ authUser, onLogin, language }: { authUser: User
     if (!authUser) { onLogin(); return; }
     if (!selectedNgo) { setMessage(hi ? 'पहले NGO चुनें।' : 'Choose an NGO first.'); return; }
     if (!selectedNgo.adminWhatsApp || cleanWhatsApp(selectedNgo.adminWhatsApp).length < 10) { setMessage(hi ? 'इस NGO ने Admin WhatsApp नंबर सेट नहीं किया है।' : 'This NGO has not configured its admin WhatsApp number.'); return; }
+    const applicantPhone = cleanWhatsApp(form.phone).replace(/^91(?=\d{10}$)/, '');
+    const adminPhone = cleanWhatsApp(selectedNgo.adminWhatsApp).replace(/^91(?=\d{10}$)/, '');
+    if (applicantPhone.length < 10 || applicantPhone.length > 15) { setMessage(hi ? 'अपना सही मोबाइल नंबर डालें।' : 'Enter your own valid mobile number.'); return; }
+    if (applicantPhone === adminPhone) { setMessage(hi ? 'यह NGO Admin का नंबर है। कृपया सदस्य का अपना मोबाइल नंबर डालें।' : 'This is the NGO admin number. Enter the member’s own mobile number.'); return; }
     if (!(selectedNgo.memberFee > 0)) { setMessage(hi ? 'इस NGO ने सदस्य फीस सेट नहीं की है।' : 'This NGO has not set a member fee.'); return; }
     if (!photoData) { setMessage(hi ? 'अपनी फोटो अपलोड करें।' : 'Please upload your photo.'); return; }
     setBusy(true); setMessage('');
@@ -86,7 +90,7 @@ export function MemberIDPortal({ authUser, onLogin, language }: { authUser: User
       {selectedNgo && <div className="member-fee-box"><strong>{hi ? 'सदस्य फीस' : 'Member fee'}: ₹{selectedNgo.memberFee || 'सेट नहीं'}</strong><span>{selectedNgo.adminWhatsApp ? hi ? 'WhatsApp भुगतान संपर्क उपलब्ध है' : 'WhatsApp payment contact is configured' : hi ? 'Admin WhatsApp नंबर सेट नहीं है' : 'Admin WhatsApp is not configured'}</span></div>}
       <label>{hi ? 'पूरा नाम' : 'Full name'} *<input required maxLength={100} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}/></label>
       <label>{hi ? 'पिता / अभिभावक का नाम' : 'Father / guardian name'} *<input required maxLength={100} value={form.fatherName} onChange={e => setForm({ ...form, fatherName: e.target.value })}/></label>
-      <label>{hi ? 'मोबाइल नंबर' : 'Mobile number'} *<input required type="tel" minLength={7} maxLength={20} value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })}/></label>
+      <label>{hi ? 'सदस्य का अपना मोबाइल नंबर (Admin का नहीं)' : 'Member’s own mobile number (not the admin number)'} *<input required type="tel" minLength={7} maxLength={20} value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })}/></label>
       <label>{hi ? 'पूरा पता' : 'Full address'} *<textarea required maxLength={300} value={form.address} onChange={e => setForm({ ...form, address: e.target.value })}/></label>
       <label>{hi ? 'अपनी फोटो (JPG/PNG/WebP, 350 KB तक)' : 'Your photo (JPG/PNG/WebP, up to 350 KB)'} *<input required type="file" accept="image/png,image/jpeg,image/webp" onChange={e => { const f = e.target.files?.[0]; if (!f) return; if (!f.type.startsWith('image/')) { setMessage(hi ? 'केवल इमेज फ़ाइल चुनें।' : 'Choose an image file.'); return; } if (f.size > 350 * 1024) { setMessage(hi ? 'फोटो 350 KB से छोटी रखें।' : 'Keep photo smaller than 350 KB.'); return; } const r = new FileReader(); r.onload = () => { if (typeof r.result === 'string') setPhotoData(r.result); }; r.readAsDataURL(f); }}/></label>
       {photoData && <img className="member-photo-preview" src={photoData} alt="Photo preview"/>}
