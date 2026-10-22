@@ -124,7 +124,7 @@ function PublicNgoSite({ language, setLanguage, ngoId }: { language: Language; s
     if (!memberPhoto) { setMemberMessage(hi ? 'कृपया अपनी फोटो चुनें।' : 'Please choose your photo.'); return; }
     const aadhaar = memberForm.aadhaar.replace(/\D/g, '');
     if (!/^\d{12}$/.test(aadhaar)) { setMemberMessage(hi ? 'आधार नंबर 12 अंकों का होना चाहिए।' : 'Aadhaar number must contain 12 digits.'); return; }
-    if (!String(ngo?.adminWhatsApp || '').replace(/\D/g, '').match(/^\\d{10,15}$/)) { setMemberMessage(hi ? 'इस NGO Admin ने सही WhatsApp नंबर सेट नहीं किया है।' : 'This NGO admin has not configured a valid WhatsApp number.'); return; }
+    if (!String(ngo?.adminWhatsApp || '').replace(/\D/g, '').match(/^\d{10,15}$/)) { setMemberMessage(hi ? 'इस NGO Admin ने सही WhatsApp नंबर सेट नहीं किया है।' : 'This NGO admin has not configured a valid WhatsApp number.'); return; }
     setMemberBusy(true); setMemberMessage('');
     try {
       const ref = await addDoc(collection(db, 'ngoMembershipRequests'), {
@@ -132,7 +132,7 @@ function PublicNgoSite({ language, setLanguage, ngoId }: { language: Language; s
         aadhaarNumber: aadhaar, photoData: memberPhoto, status: 'PENDING', createdAt: serverTimestamp()
       });
       const whatsapp = String(ngo.adminWhatsApp).replace(/\D/g, '');
-      const message = (hi ? 'नया सदस्य आवेदन प्राप्त हुआ।\\nNGO: ' : 'New membership request received.\\nNGO: ') + name +
+      const message = (hi ? 'नया सदस्य आवेदन प्राप्त हुआ।\nNGO: ' : 'New membership request received.\nNGO: ') + name +
         '\n' + (hi ? 'नाम: ' : 'Name: ') + memberForm.name.trim() +
         '\n' + (hi ? 'पता: ' : 'Address: ') + memberForm.address.trim() +
         '\n' + (hi ? 'आवेदन नंबर: ' : 'Request ID: ') + ref.id +
