@@ -46,7 +46,7 @@ service cloud.firestore {
       allow create: if request.auth != null
         && request.auth.token.email_verified == true
         && request.resource.data.keys().hasOnly([
-          'name', 'contactName', 'email', 'phone', 'state', 'district', 'mission',
+          'name', 'contactName', 'email', 'phone', 'state', 'district', 'mission', 'imageData',
           'planId', 'subscriptionPlan', 'planPrice', 'planDurationDays',
           'paymentReference', 'status', 'paymentStatus', 'ownerUid', 'createdAt'
         ])
@@ -70,6 +70,8 @@ service cloud.firestore {
         && request.resource.data.phone.size() <= 25
         && request.resource.data.mission is string
         && request.resource.data.mission.size() <= 1000
+        && request.resource.data.imageData is string
+        && request.resource.data.imageData.size() <= 180000
         && request.resource.data.planId is string
         && request.resource.data.planId.size() > 0
         && exists(/databases/$(database)/documents/subscriptionPlans/$(request.resource.data.planId))
