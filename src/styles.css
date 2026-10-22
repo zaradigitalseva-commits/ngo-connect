@@ -2337,3 +2337,17 @@ input, select, textarea, button {
     white-space: nowrap;
   }
 }
+
+
+/* Public NGO detail page: remove the blue/purple strip behind the logo/navigation */
+.public-site:not(.ngo-directory-site) > .public-header {
+  background: #fff !important;
+  background-image: none !important;
+  border-bottom: 1px solid #edf0f5 !important;
+  box-shadow: 0 4px 18px rgba(31, 41, 55, .045) !important;
+}
+.public-site:not(.ngo-directory-site) > .public-header::before,
+.public-site:not(.ngo-directory-site) > .public-header::after {
+  content: none !important;
+  display: none !important;
+}
