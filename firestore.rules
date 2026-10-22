@@ -157,7 +157,10 @@ service cloud.firestore {
           && (request.resource.data.status != 'APPROVED'
             || (request.resource.data.memberId is string
               && request.resource.data.memberId.size() >= 5)));
-      allow delete: if isSuperAdmin();
+      allow delete: if isSuperAdmin()
+        || (request.auth != null
+          && resource.data.status in ['PENDING_PAYMENT', 'REJECTED']
+          && get(/databases/$(database)/documents/ngos/$(resource.data.ngoId)).data.ownerUid == request.auth.uid);
     }
 
     // Minimal public verification record: never expose phone, address, or photo here.
