@@ -3,7 +3,7 @@ import type { User } from 'firebase/auth';
 import { signOut } from 'firebase/auth';
 import { auth, db } from './firebase';
 import {
-  addDoc, collection, doc, getDoc, onSnapshot, query, serverTimestamp,
+  addDoc, collection, doc, getDoc, getDocs, onSnapshot, query, serverTimestamp,
   updateDoc, where, writeBatch
 } from 'firebase/firestore';
 
@@ -132,7 +132,7 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
     if (!/^\+?[0-9 ()-]{10,20}$/.test(whatsapp.trim()) || cleanWhatsApp(whatsapp).length < 10) { setMessage(hi ? 'वैध WhatsApp नंबर डालें, देश कोड सहित।' : 'Enter a valid WhatsApp number with country code.'); return; }
     const amount = Number(fee); if (!Number.isFinite(amount) || amount < 1 || amount > 100000) { setMessage(hi ? 'फीस ₹1 से ₹1,00,000 के बीच रखें।' : 'Fee must be between ₹1 and ₹100,000.'); return; }
     setBusy(true); setMessage('');
-    try { await updateDoc(doc(db, 'ngos', currentNgo.id), { memberFee: amount, adminWhatsApp: cleanWhatsApp(whatsapp), updatedAt: serverTimestamp() }); setMessage(hi ? 'फीस और WhatsApp नंबर सेव हो गए।' : 'Fee and WhatsApp number saved.'); await load(); }
+    try { await updateDoc(doc(db, 'ngos', currentNgo.id), { memberFee: amount, adminWhatsApp: cleanWhatsApp(whatsapp), updatedAt: serverTimestamp() }); setMessage(hi ? 'फीस और WhatsApp नंबर सेव हो गए।' : 'Fee and WhatsApp number saved.'); }
     catch (e) { setMessage(e instanceof Error ? e.message : 'Could not save settings. Check Firestore rules.'); }
     finally { setBusy(false); }
   };
