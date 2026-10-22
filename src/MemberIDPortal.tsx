@@ -211,34 +211,29 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
         if (cancelled) return;
         const teamRef = doc(db, 'ngoMembers', 'member-app-' + a.id);
         try {
-          const existing = await getDoc(teamRef);
+          // Older versions may have created the public team record under a different document ID.
+          const matching = await getDocs(query(collection(db, 'ngoMembers'), where('applicationId', '==', a.id)));
           if (cancelled) continue;
-          if (existing.exists()) {
-            const current = existing.data();
-            // Older public-team records may exist without the applicant's photo.
-            if (!current.photoData && a.photoData) {
-              await setDoc(teamRef, { photoData: a.photoData, updatedAt: serverTimestamp() }, { merge: true });
+          const existingMatch = matching.docs.find(d => String(d.data().ngoId || '') === a.ngoId);
+          if (existingMatch) {
+            const current = existingMatch.data();
+            if (a.photoData && current.photoData !== a.photoData) {
+              await setDoc(doc(db, 'ngoMembers', existingMatch.id), { photoData: a.photoData, updatedAt: serverTimestamp() }, { merge: true });
             }
             continue;
           }
-          await setDoc(teamRef, {
-            ngoId: a.ngoId,
-            name: a.name,
-            phone: a.phone,
-            photoData: a.photoData || '',
-            email: a.applicantEmail || '',
-            role: 'MEMBER',
-            designation: 'सदस्य',
-            location: a.address || '',
-            status: 'ACTIVE',
-            approvalStatus: 'APPROVED',
-            createdBy: authUser.uid,
-            source: 'memberApplication',
-            applicationId: a.id,
-            memberId: a.memberId,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
-          });
+          const existing = await getDoc(teamRef);
+          if (cancelled) continue;
+          const payload: Record<string, any> = {
+            ngoId: a.ngoId, name: a.name, phone: a.phone,
+            email: a.applicantEmail || '', role: 'MEMBER', designation: 'सदस्य',
+            location: a.address || '', status: 'ACTIVE', approvalStatus: 'APPROVED',
+            createdBy: authUser.uid, source: 'memberApplication', applicationId: a.id,
+            memberId: a.memberId, updatedAt: serverTimestamp()
+          };
+          if (a.photoData) payload.photoData = a.photoData;
+          if (!existing.exists()) payload.createdAt = serverTimestamp();
+          await setDoc(teamRef, payload, { merge: true });
         } catch (error) {
           // Keep the portal usable; the manual sync button below reports write errors.
           console.error('Could not sync approved application to public NGO team:', a.id, error);
@@ -253,8 +248,10 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
     if (a.status !== 'APPROVED' || !a.memberId) return;
     setBusy(true); setMessage('');
     try {
-      const teamRef = doc(db, 'ngoMembers', 'member-app-' + a.id);
-      const existing = await getDoc(teamRef);
+      const matching = await getDocs(query(collection(db, 'ngoMembers'), where('applicationId', '==', a.id)));
+      const existingMatch = matching.docs.find(d => String(d.data().ngoId || '') === a.ngoId);
+      const teamRef = existingMatch ? doc(db, 'ngoMembers', existingMatch.id) : doc(db, 'ngoMembers', 'member-app-' + a.id);
+      const existing = existingMatch ? null : await getDoc(teamRef);
       const payload: Record<string, any> = {
         ngoId: a.ngoId, name: a.name, phone: a.phone, email: a.applicantEmail || '',
         role: 'MEMBER', designation: 'सदस्य', location: a.address || '',
@@ -263,7 +260,7 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
         updatedAt: serverTimestamp()
       };
       if (a.photoData) payload.photoData = a.photoData;
-      if (!existing.exists()) payload.createdAt = serverTimestamp();
+      if (!existingMatch && !existing?.exists()) payload.createdAt = serverTimestamp();
       await setDoc(teamRef, payload, { merge: true });
       setMessage(hi ? 'सदस्य को NGO की सार्वजनिक टीम में जोड़ दिया गया। अब सार्वजनिक NGO पेज रीफ़्रेश करें।' : 'Member added to the public NGO team. Refresh the public NGO page.');
     } catch (e) { setMessage(e instanceof Error ? e.message : 'टीम में जोड़ नहीं सके। Firestore Rules जाँचें।'); }
