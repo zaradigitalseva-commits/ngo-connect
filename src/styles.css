@@ -2123,3 +2123,128 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
 @media (prefers-reduced-motion: reduce) {
   .app-install-float { animation: none; }
 }
+
+
+/* Responsive polish: compact NGO cards on desktop and phones */
+.public-home-ngo-directory {
+  box-sizing: border-box;
+  width: 100%;
+  padding: clamp(22px, 3.2vw, 42px) clamp(12px, 3vw, 30px) !important;
+}
+.public-home-ngo-directory > * {
+  min-width: 0;
+}
+.public-home-ngo-grid {
+  width: 100%;
+  max-width: 1080px;
+  margin-inline: auto;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: clamp(12px, 1.6vw, 18px) !important;
+  align-items: stretch;
+}
+.public-home-ngo-card {
+  min-height: 0 !important;
+  height: 100%;
+  padding: 0 !important;
+  border-radius: 19px !important;
+}
+.public-home-ngo-card > div:nth-child(2) {
+  padding: 17px !important;
+}
+.public-home-ngo-card h3 {
+  font-size: clamp(21px, 1.8vw, 27px) !important;
+  line-height: 1.18 !important;
+  margin-bottom: 10px !important;
+}
+.public-home-ngo-card .public-home-ngo-card-top {
+  margin-bottom: 11px !important;
+}
+.public-home-ngo-card .public-home-ngo-monogram {
+  width: 62px !important;
+  height: 62px !important;
+  flex-basis: 62px !important;
+  border-radius: 17px !important;
+}
+.public-home-ngo-card .public-home-ngo-category {
+  margin-bottom: 10px !important;
+}
+.public-home-ngo-card .public-home-ngo-location {
+  margin-bottom: 10px !important;
+  padding-bottom: 10px !important;
+  font-size: 13px !important;
+}
+.public-home-ngo-card > div:nth-child(2) > div[style*="margin-top: auto"] {
+  min-height: 48px !important;
+  padding: 9px 11px !important;
+  margin-bottom: 12px !important;
+}
+.public-home-ngo-card > div:nth-child(2) > div:last-child > span:last-child {
+  padding: 9px 12px !important;
+  font-size: 12px !important;
+}
+.public-home-ngo-card:hover {
+  transform: translateY(-3px);
+}
+@media (max-width: 900px) {
+  .public-home-ngo-grid {
+    max-width: 760px;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+@media (max-width: 560px) {
+  .public-home-ngo-directory {
+    padding: 20px 12px 26px !important;
+  }
+  .public-home-ngo-grid {
+    max-width: 420px;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 14px !important;
+  }
+  .public-home-ngo-card {
+    max-width: 100%;
+    border-radius: 17px !important;
+  }
+  .public-home-ngo-card > div:nth-child(2) {
+    padding: 15px !important;
+  }
+  .public-home-ngo-card .public-home-ngo-monogram {
+    width: 56px !important;
+    height: 56px !important;
+    flex-basis: 56px !important;
+  }
+  .public-home-ngo-card h3 {
+    font-size: clamp(22px, 6vw, 27px) !important;
+  }
+  .public-home-ngo-card > div:nth-child(2) > div:last-child {
+    align-items: center !important;
+    gap: 8px !important;
+  }
+  .public-home-ngo-card > div:nth-child(2) > div:last-child > span:first-child {
+    font-size: 11px !important;
+  }
+  .public-home-ngo-card > div:nth-child(2) > div:last-child > span:last-child {
+    padding: 9px 11px !important;
+    gap: 5px !important;
+    font-size: 11px !important;
+  }
+}
+/* Prevent page-wide sideways scrolling on narrow screens */
+html, body, #root {
+  max-width: 100%;
+  overflow-x: clip;
+}
+img, video, canvas, svg {
+  max-width: 100%;
+}
+input, select, textarea, button {
+  max-width: 100%;
+}
+@media (max-width: 680px) {
+  .public-site, .public-site main, .public-site section {
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  .public-site img {
+    height: auto;
+  }
+}
