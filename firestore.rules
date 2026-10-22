@@ -283,32 +283,6 @@ service cloud.firestore {
       allow delete: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
     }
 
-    match /ngoDocuments/{recordId} {
-      allow read: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
-      allow create: if isSuperAdmin() || (ownsNgo(request.resource.data.ngoId)
-        && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.keys().hasOnly(['ngoId','createdBy','createdAt','updatedAt','title','type','url','notes'])
-        && request.resource.data.keys().hasAll(['ngoId','createdBy','createdAt','updatedAt','title','type','url','notes'])
-        && request.resource.data.title is string && request.resource.data.title.size() > 1 && request.resource.data.title.size() <= 160
-        && request.resource.data.type in ['REPORT','CERTIFICATE','OTHER']
-        && request.resource.data.url is string && request.resource.data.url.size() <= 500
-        && (request.resource.data.url == '' || request.resource.data.url.matches('https://.*'))
-        && request.resource.data.notes is string && request.resource.data.notes.size() <= 2000
-        && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time);
-      allow update: if isSuperAdmin() || (ownsNgo(resource.data.ngoId)
-        && request.resource.data.ngoId == resource.data.ngoId
-        && request.resource.data.createdBy == resource.data.createdBy
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title','type','url','notes','updatedAt'])
-        && request.resource.data.title is string && request.resource.data.title.size() > 1 && request.resource.data.title.size() <= 160
-        && request.resource.data.type in ['REPORT','CERTIFICATE','OTHER']
-        && request.resource.data.url is string && request.resource.data.url.size() <= 500
-        && (request.resource.data.url == '' || request.resource.data.url.matches('https://.*'))
-        && request.resource.data.notes is string && request.resource.data.notes.size() <= 2000
-        && request.resource.data.updatedAt == request.time);
-      allow delete: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
-    }
-
-    // Homepage scrolling announcements: public read, Super Admin-only management.
     match /publicTickerMessages/{messageId} {
       allow read: if true;
       allow create: if isSuperAdmin()
