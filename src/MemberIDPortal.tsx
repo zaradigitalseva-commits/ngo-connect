@@ -4,7 +4,7 @@ import { signOut } from 'firebase/auth';
 import { auth, db } from './firebase';
 import {
   addDoc, collection, doc, getDoc, getDocs, onSnapshot, query, serverTimestamp,
-  updateDoc, where, writeBatch
+  updateDoc, where, writeBatch, setDoc
 } from 'firebase/firestore';
 
 type Language = 'hi' | 'en';
@@ -199,12 +199,27 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
     } catch (e) { setMessage(e instanceof Error ? e.message : 'Review failed. Check Firestore rules.'); }
     finally { setBusy(false); }
   };
+  const addApprovedApplicationToTeam = async (a: Application) => {
+    if (a.status !== 'APPROVED' || !a.memberId) return;
+    setBusy(true); setMessage('');
+    try {
+      await setDoc(doc(db, 'ngoMembers', 'member-app-' + a.id), {
+        ngoId: a.ngoId, name: a.name, phone: a.phone, email: a.applicantEmail || '',
+        role: 'MEMBER', designation: 'सदस्य', location: a.address || '',
+        status: 'ACTIVE', approvalStatus: 'APPROVED', createdBy: authUser.uid,
+        source: 'memberApplication', applicationId: a.id, memberId: a.memberId,
+        createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+      }, { merge: true });
+      setMessage(hi ? 'सदस्य को NGO की सार्वजनिक टीम में जोड़ दिया गया। अब सार्वजनिक NGO पेज रीफ़्रेश करें।' : 'Member added to the public NGO team. Refresh the public NGO page.');
+    } catch (e) { setMessage(e instanceof Error ? e.message : 'टीम में जोड़ नहीं सके। Firestore Rules जाँचें।'); }
+    finally { setBusy(false); }
+  };
   return <main className="member-portal"><header className="member-portal-header"><a className="member-brand" href="/">All NGO Connect</a><div><a className="outline-button" href="/ngo-workspace">{hi ? 'NGO डैशबोर्ड' : 'NGO Workspace'}</a><a className="outline-button" href="/members">{hi ? 'सदस्य पोर्टल' : 'Member portal'}</a><button className="outline-button" onClick={() => auth && void signOut(auth)}>{hi ? 'लॉगआउट' : 'Sign out'}</button></div></header>
     <section className="member-portal-hero"><span>{isPlatformAdmin(authUser) ? 'SUPER ADMIN · ALL NGOS' : 'NGO ADMIN'}</span><h1>{hi ? 'सदस्य आवेदन और फीस' : 'Member applications & fees'}</h1><p>{hi ? 'अपने NGO की फीस और WhatsApp नंबर सेट करें। फीस और जानकारी की पुष्टि के बाद ही सदस्य ID मंज़ूर करें।' : 'Set your NGO fee and WhatsApp number. Approve an ID only after verifying the fee and member details.'}</p></section>
     {isPlatformAdmin(authUser) && <section className="member-applications-panel" style={{marginBottom:24}}><h2>Super Admin · NGO सामग्री की मंज़ूरी ({moderationRecords.length})</h2><p>यहाँ NGO द्वारा भेजे गए सदस्य, दान/खर्च, कार्यक्रम और दस्तावेज़ की जाँच करें। मंज़ूरी से पहले सामग्री सार्वजनिक नहीं होगी।</p>{moderationRecords.length === 0 ? <p>अभी कोई pending सामग्री नहीं है।</p> : moderationRecords.map(record => <article className="member-review-card" key={record.collection + record.id}><div className="member-review-info"><h3>{record.title}</h3><p>प्रकार: {record.kind} · NGO ID: {record.ngoId}</p><p>{String(record.data.designation || record.data.location || record.data.date || record.data.notes || record.data.note || '')}</p><small>{record.collection} / {record.id}</small><div className="member-review-actions"><button className="primary-button" disabled={busy} onClick={() => void reviewContent(record, 'APPROVED')}>✓ मंज़ूर करें</button><button className="outline-button" disabled={busy} onClick={() => void reviewContent(record, 'REJECTED')}>अस्वीकार</button></div></div></article>)}</section>}
     {ngos.length === 0 ? <div className="member-notice">{hi ? 'इस लॉगिन से जुड़ा NGO नहीं मिला। NGO के owner email से लॉगिन करें।' : 'No NGO is linked to this login. Sign in with the NGO owner account.'}</div> : <>
       <section className="member-form-panel member-admin-settings"><h2>{hi ? 'NGO फीस और WhatsApp सेटिंग' : 'NGO fee and WhatsApp settings'}</h2><form onSubmit={saveProfile}><label>{hi ? 'अपना NGO' : 'Your NGO'}<select value={selectedId} onChange={e => setSelectedId(e.target.value)}>{ngos.map(n => <option key={n.id} value={n.id}>{n.name}</option>)}</select></label><label>{hi ? 'Member ID फीस (₹)' : 'Member ID fee (₹)'}<input required type="number" min="1" max="100000" value={fee} onChange={e => setFee(e.target.value)}/></label><label>{hi ? 'WhatsApp नंबर देश कोड सहित' : 'WhatsApp number with country code'}<input required value={whatsapp} onChange={e => setWhatsapp(e.target.value)} placeholder="919876543210"/></label><button className="primary-button" type="submit" disabled={busy}>{hi ? 'सेटिंग सेव करें' : 'Save settings'}</button></form></section>
-      <section className="member-applications-panel"><h2>{hi ? 'सदस्य आवेदन' : 'Member applications'}</h2>{applications.filter(a => a.ngoId === selectedId).length === 0 ? <p>{hi ? 'अभी आवेदन नहीं हैं।' : 'No applications yet.'}</p> : applications.filter(a => a.ngoId === selectedId).map(a => <article className="member-review-card" key={a.id}><img src={a.photoData} alt={a.name}/><div className="member-review-info"><h3>{a.name}</h3><p>{hi ? 'पिता/अभिभावक: ' : 'Father/guardian: '}{a.fatherName}</p><p>{a.phone} · {a.address}</p><p>{a.ngoName} · ₹{a.feeAmount} · <strong>{a.status}</strong></p><small>Ref: {a.id}</small>{a.status === 'PENDING_PAYMENT' && <div className="member-review-actions"><button className="primary-button" disabled={busy} onClick={() => void review(a, 'APPROVED')}>{hi ? 'फीस जाँचकर Approve' : 'Verify fee & approve'}</button><button className="outline-button" disabled={busy} onClick={() => void review(a, 'REJECTED')}>{hi ? 'Reject' : 'Reject'}</button></div>}</div></article>)}</section>
+      <section className="member-applications-panel"><h2>{hi ? 'सदस्य आवेदन' : 'Member applications'}</h2>{applications.filter(a => a.ngoId === selectedId).length === 0 ? <p>{hi ? 'अभी आवेदन नहीं हैं।' : 'No applications yet.'}</p> : applications.filter(a => a.ngoId === selectedId).map(a => <article className="member-review-card" key={a.id}><img src={a.photoData} alt={a.name}/><div className="member-review-info"><h3>{a.name}</h3><p>{hi ? 'पिता/अभिभावक: ' : 'Father/guardian: '}{a.fatherName}</p><p>{a.phone} · {a.address}</p><p>{a.ngoName} · ₹{a.feeAmount} · <strong>{a.status}</strong></p><small>Ref: {a.id}</small>{a.status === 'PENDING_PAYMENT' && <div className="member-review-actions"><button className="primary-button" disabled={busy} onClick={() => void review(a, 'APPROVED')}>{hi ? 'फीस जाँचकर Approve' : 'Verify fee & approve'}</button><button className="outline-button" disabled={busy} onClick={() => void review(a, 'REJECTED')}>{hi ? 'Reject' : 'Reject'}</button></div>}{a.status === 'APPROVED' && <div className="member-review-actions"><button className="primary-button" disabled={busy} onClick={() => void addApprovedApplicationToTeam(a)}>{hi ? 'टीम में जोड़ें / फिर से सिंक करें' : 'Add / sync to public team'}</button></div>}</div></article>)}</section>
     </>}
     {message && <p className="member-notice" role="status">{message}</p>}
   </main>;
