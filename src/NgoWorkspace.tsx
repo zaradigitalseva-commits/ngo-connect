@@ -9,7 +9,7 @@ type Language = 'hi' | 'en';
 const SUPER_ADMIN_EMAILS = ['ngogrant454@gmail.com', 'zaradigitalseva@gmail.com'];
 const isPlatformAdmin = (user: User) => Boolean(user.emailVerified && user.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase()));
 type Kind = 'members' | 'finance' | 'events' | 'documents';
-type Ngo = { id: string; name: string; status: string };
+type Ngo = { id: string; name: string; status: string; memberFee: number; adminWhatsApp: string };
 type RecordRow = { id: string; [key: string]: unknown };
 const modules: { id: Kind; hi: string; en: string; collection: string }[] = [
   { id: 'members', hi: 'सदस्य / स्वयंसेवक', en: 'Members / Volunteers', collection: 'ngoMembers' },
@@ -38,6 +38,9 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const [settingsFee, setSettingsFee] = useState('100');
+  const [settingsWhatsApp, setSettingsWhatsApp] = useState('');
+  const [settingsBusy, setSettingsBusy] = useState(false);
   const activeModule = modules.find(m => m.id === kind)!;
   const currentNgo = ngos.find(n => n.id === ngoId);
   const fields = useMemo<Array<{ key: string; label: string; required: boolean; type?: string; options?: Array<{ value: string; label: string }> }>>(() => {
@@ -76,13 +79,17 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
   useEffect(() => {
     // Each signed-in account sees only NGOs linked to its own UID.
     const unsubscribe = onSnapshot(query(collection(db, 'ngos'), where('ownerUid', '==', authUser.uid)), snap => {
-      const list = snap.docs.map(d => ({ id: d.id, name: String(d.data().name || d.data().ngoName || 'NGO'), status: String(d.data().status || '').toUpperCase() })).filter(n => ['LIVE', 'ACTIVE', 'APPROVED'].includes(n.status));
+      const list = snap.docs.map(d => ({ id: d.id, name: String(d.data().name || d.data().ngoName || 'NGO'), status: String(d.data().status || '').toUpperCase(), memberFee: Number(d.data().memberFee || 100), adminWhatsApp: String(d.data().adminWhatsApp || '') })).filter(n => ['LIVE', 'ACTIVE', 'APPROVED'].includes(n.status));
       setNgos(list);
       setNgoId(current => list.some(n => n.id === current) ? current : list[0]?.id || '');
       setLoading(false);
     }, e => { setMessage(e instanceof Error ? e.message : 'NGO load failed'); setLoading(false); });
     return unsubscribe;
   }, [authUser.uid]);
+  useEffect(() => {
+    setSettingsFee(String(currentNgo?.memberFee || 100));
+    setSettingsWhatsApp(currentNgo?.adminWhatsApp || '');
+  }, [ngoId, currentNgo?.memberFee, currentNgo?.adminWhatsApp]);
   useEffect(() => {
     setForm(blank(kind)); setEditingId('');
     if (!ngoId) { setRows([]); return; }
@@ -97,6 +104,20 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
     Object.keys(next).forEach(key => { next[key] = safe(row[key]); });
     setForm(next); setEditingId(row.id); setMessage('');
     document.getElementById('ngo-workspace-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  const saveSettings = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!currentNgo) return;
+    const fee = Number(settingsFee);
+    const whatsapp = settingsWhatsApp.replace(/[^0-9]/g, '');
+    if (!Number.isFinite(fee) || fee < 1 || fee > 100000) { setMessage(hi ? 'सदस्यता शुल्क ₹1 से ₹1,00,000 के बीच रखें।' : 'Member fee must be between ₹1 and ₹100,000.'); return; }
+    if (whatsapp.length < 10 || whatsapp.length > 20) { setMessage(hi ? 'सही WhatsApp नंबर डालें (10–20 अंक, देश कोड सहित)।' : 'Enter a valid WhatsApp number (10–20 digits including country code).'); return; }
+    setSettingsBusy(true); setMessage('');
+    try {
+      await updateDoc(doc(db, 'ngos', currentNgo.id), { memberFee: fee, adminWhatsApp: whatsapp, updatedAt: serverTimestamp() });
+      setMessage(hi ? 'NGO सेटिंग Firebase में सेव हो गई।' : 'NGO settings saved to Firebase.');
+    } catch (e) { setMessage(e instanceof Error ? e.message : (hi ? 'सेटिंग सेव नहीं हुई। Firestore Rules जाँचें।' : 'Settings could not be saved. Check Firestore rules.')); }
+    finally { setSettingsBusy(false); }
   };
   const save = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -125,6 +146,7 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
     <header className="member-portal-header"><a className="member-brand" href="/">All NGO Connect</a><div><a className="outline-button" href="/ngo-admin">{hi ? 'Member ID / Admin' : 'Member ID / Admin'}</a><button className="outline-button" onClick={() => auth && void signOut(auth)}>{hi ? 'लॉगआउट' : 'Sign out'}</button></div></header>
     <section className="member-portal-hero"><span>{isPlatformAdmin(authUser) ? 'SUPER ADMIN · ALL NGO WORKSPACES' : 'ALL NGO CONNECT · WORKSPACE'}</span><h1>{hi ? 'आपका NGO प्रबंधन डैशबोर्ड' : 'Your NGO management workspace'}</h1><p>{hi ? 'सदस्य, दान/खर्च, कार्यक्रम और दस्तावेज़ अपने NGO के भीतर प्रबंधित करें। रिकॉर्ड केवल आपके NGO ID से जुड़े हैं।' : 'Manage members, donations/expenses, events and documents within your NGO. Records are scoped to your NGO.'}</p></section>
     {loading ? <div className="member-notice">{hi ? 'NGO लोड हो रहा है…' : 'Loading NGOs…'}</div> : ngos.length === 0 ? <div className="member-notice">{hi ? 'इस Google खाते से जुड़ा NGO नहीं मिला। पहले Super Admin से NGO सक्रिय करवाएँ।' : 'No NGO is linked to this Google account. Ask the Super Admin to activate your NGO first.'}</div> : <>
+      <section className="member-form-panel ngo-settings-panel"><h2>{hi ? 'NGO सेटिंग और सदस्य आवेदन' : 'NGO settings & membership applications'}</h2><p>{hi ? 'यह जानकारी Firebase में सेव होगी। WhatsApp नंबर पर सदस्य आवेदन का संदेश खुलेगा।' : 'These settings are saved to Firebase. Membership requests can open a WhatsApp message to this number.'}</p><form onSubmit={saveSettings} className="ngo-workspace-form"><label>{hi ? 'सदस्यता शुल्क (₹)' : 'Membership fee (₹)'}<input required type="number" min="1" max="100000" step="1" value={settingsFee} onChange={e => setSettingsFee(e.target.value)} /></label><label>{hi ? 'NGO Admin WhatsApp नंबर (देश कोड सहित)' : 'NGO admin WhatsApp (include country code)'}<input required type="tel" maxLength={20} value={settingsWhatsApp} onChange={e => setSettingsWhatsApp(e.target.value)} placeholder="919876543210" /></label><div className="ngo-workspace-form-actions"><button className="primary-button" type="submit" disabled={settingsBusy}>{settingsBusy ? (hi ? 'सेव हो रहा है…' : 'Saving…') : (hi ? 'सेटिंग सेव करें' : 'Save settings')}</button></div></form></section>
       <section className="ngo-workspace-toolbar"><label>{hi ? 'NGO चुनें' : 'Select NGO'}<select value={ngoId} onChange={e => setNgoId(e.target.value)}>{ngos.map(n => <option key={n.id} value={n.id}>{n.name} · {n.status}</option>)}</select></label><div className="ngo-workspace-tabs">{modules.map(m => { const Icon = icons[m.id]; return <button key={m.id} className={kind === m.id ? 'active' : ''} onClick={() => setKind(m.id)}><Icon size={17}/>{hi ? m.hi : m.en}</button>; })}</div></section>
       <section className="ngo-workspace-summary"><article><span>{hi ? 'कुल रिकॉर्ड' : 'Total records'}</span><strong>{rows.length}</strong></article>{kind === 'finance' && <><article><span>{hi ? 'कुल दान' : 'Total donations'}</span><strong>₹{money(rows.filter(r => r.type === 'DONATION').reduce((s,r) => s + Number(r.amount || 0),0))}</strong></article><article><span>{hi ? 'कुल खर्च' : 'Total expenses'}</span><strong>₹{money(rows.filter(r => r.type === 'EXPENSE').reduce((s,r) => s + Number(r.amount || 0),0))}</strong></article></>}</section>
       <div className="ngo-workspace-grid"><section className="member-form-panel" id="ngo-workspace-form"><h2>{editingId ? (hi ? 'रिकॉर्ड संपादित करें' : 'Edit record') : (hi ? 'नया रिकॉर्ड जोड़ें' : 'Add a new record')}</h2><form onSubmit={save} className="ngo-workspace-form">{fields.map(field => <label key={field.key}>{field.label}{field.required ? ' *' : ''}{field.type === 'select' ? <select required={field.required} value={form[field.key] || ''} onChange={e => setForm(p => ({ ...p, [field.key]: e.target.value }))}>{field.options?.map(option => <option value={option.value} key={option.value}>{option.label}</option>)}</select> : field.type === 'textarea' ? <textarea required={field.required} maxLength={2000} value={form[field.key] || ''} onChange={e => setForm(p => ({ ...p, [field.key]: e.target.value }))}/> : <input required={field.required} type={field.type || 'text'} maxLength={field.key === 'url' ? 500 : 200} min={field.type === 'number' ? '0.01' : undefined} step={field.type === 'number' ? '0.01' : undefined} value={form[field.key] || ''} onChange={e => setForm(p => ({ ...p, [field.key]: e.target.value }))}/>}</label>)}<div className="ngo-workspace-form-actions"><button className="primary-button" type="submit" disabled={busy}><Plus size={16}/>{busy ? (hi ? 'सेव हो रहा है…' : 'Saving…') : (hi ? 'सेव करें' : 'Save')}</button>{editingId && <button className="outline-button" type="button" onClick={() => { setEditingId(''); setForm(blank(kind)); }}>{hi ? 'रद्द करें' : 'Cancel edit'}</button>}</div></form>{message && <p className="member-notice" role="status">{message}</p>}</section>
