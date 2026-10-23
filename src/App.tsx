@@ -270,7 +270,7 @@ function PublicNgoList({ language, setLanguage }: { language: Language; setLangu
         received.add(status);
         const merged = new Map<string, typeof records[number]>();
         snapshotsByStatus.forEach(rows => rows.forEach(row => merged.set(row.id, row)));
-        setNgos(Array.from(merged.values()).sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })));
+        setNgos(Array.from(merged.values()).sort((a, b) => b.createdAtMs - a.createdAtMs || a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })));
         setLoading(received.size < statuses.length);
         setLoadError('');
       },
@@ -383,10 +383,11 @@ function PublicTickerBanner({ language }: { language: Language }) {
 
 function PublicHomeNgoCards({ language }: { language: Language }) {
   const hi = language === 'hi';
-  const [ngos, setNgos] = useState<Array<{ id: string; name: string; category: string; location: string; mission: string; imageData: string }>>([]);
+  const [ngos, setNgos] = useState<Array<{ id: string; name: string; category: string; location: string; mission: string; imageData: string; createdAtMs: number }>>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  // Keep newest registrations first; search results retain this same order.
   const filteredNgos = ngos.filter(ngo => `${ngo.name} ${ngo.location} ${ngo.category} ${ngo.mission}`.toLocaleLowerCase().includes(searchQuery.trim().toLocaleLowerCase()));
 
   useEffect(() => {
@@ -403,13 +404,20 @@ function PublicHomeNgoCards({ language }: { language: Language }) {
         const rows = snapshot.docs.map(item => {
           const data = item.data();
           const parts = [data.city, data.district, data.state].filter(value => typeof value === 'string' && value.trim()).map(String);
+          const dateValue = data.createdAt || data.registeredAt || data.registrationDate || data.updatedAt;
+          const createdAtMs = dateValue && typeof dateValue.toMillis === 'function'
+            ? dateValue.toMillis()
+            : dateValue instanceof Date ? dateValue.getTime()
+            : typeof dateValue === 'number' ? dateValue
+            : typeof dateValue === 'string' ? (Date.parse(dateValue) || 0) : 0;
           return {
             id: item.id,
             name: String(data.name || data.ngoName || 'NGO'),
             category: String(data.type || data.category || ''),
             location: parts.filter((value, index) => parts.indexOf(value) === index).join(', ') || String(data.location || ''),
             mission: String(data.mission || data.description || ''),
-            imageData: String(data.imageData || data.registrationFormData?.imageData || '')
+            imageData: String(data.imageData || data.registrationFormData?.imageData || ''),
+            createdAtMs
           };
         });
         rowsByStatus.set(status, rows);
