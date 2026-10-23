@@ -390,12 +390,43 @@ function PublicHomeNgoCards({ language }: { language: Language }) {
   useEffect(() => {
     let active = true;
     if (!firebaseConfigured) { setLoading(false); setLoadError(true); return () => { active = false; }; }
-    const unsubscribeNgos = onSnapshot(firestoreQuery(collection(db, 'ngos'), where('status', 'in', ['LIVE', 'ACTIVE', 'APPROVED', 'Live', 'Active', 'Approved', 'live', 'active', 'approved'])), snapshot => {
-      if (!active) return;
-      setNgos(snapshot.docs.map(item => { const data = item.data(); const parts = [data.city, data.district, data.state].filter(value => typeof value === 'string' && value.trim()).map(String); return { id: item.id, name: String(data.name || data.ngoName || 'NGO'), category: String(data.type || data.category || ''), location: parts.filter((value, index) => parts.indexOf(value) === index).join(', ') || String(data.location || ''), mission: String(data.mission || data.description || ''), imageData: String(data.imageData || data.registrationFormData?.imageData || '') }; }).sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })));
-      setLoading(false); setLoadError(false);
-    }, () => { if (active) { setLoadError(true); setLoading(false); } });
-    return () => { active = false; unsubscribeNgos(); };
+    // Query each public status separately so Firestore Rules can prove access.
+    const statuses = ['LIVE', 'ACTIVE', 'APPROVED', 'Live', 'Active', 'Approved', 'live', 'active', 'approved'];
+    const rowsByStatus = new Map<string, Array<{ id: string; name: string; category: string; location: string; mission: string; imageData: string }>>();
+    const completed = new Set<string>();
+    const unsubscribers = statuses.map(status => onSnapshot(
+      firestoreQuery(collection(db, 'ngos'), where('status', '==', status)),
+      snapshot => {
+        if (!active) return;
+        const rows = snapshot.docs.map(item => {
+          const data = item.data();
+          const parts = [data.city, data.district, data.state].filter(value => typeof value === 'string' && value.trim()).map(String);
+          return {
+            id: item.id,
+            name: String(data.name || data.ngoName || 'NGO'),
+            category: String(data.type || data.category || ''),
+            location: parts.filter((value, index) => parts.indexOf(value) === index).join(', ') || String(data.location || ''),
+            mission: String(data.mission || data.description || ''),
+            imageData: String(data.imageData || data.registrationFormData?.imageData || '')
+          };
+        });
+        rowsByStatus.set(status, rows);
+        completed.add(status);
+        const merged = new Map<string, typeof rows[number]>();
+        rowsByStatus.forEach(items => items.forEach(item => merged.set(item.id, item)));
+        setNgos(Array.from(merged.values()).sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })));
+        setLoading(completed.size < statuses.length);
+        setLoadError(false);
+      },
+      () => {
+        if (!active) return;
+        completed.add(status);
+        // Do not hide successful status results if a legacy casing query is denied.
+        if (rowsByStatus.size === 0 && completed.size === statuses.length) setLoadError(true);
+        if (completed.size === statuses.length) setLoading(false);
+      }
+    ));
+    return () => { active = false; unsubscribers.forEach(unsubscribe => unsubscribe()); };
   }, []);
 
   return <section className="public-home-ngo-directory" aria-labelledby="home-ngo-heading">
