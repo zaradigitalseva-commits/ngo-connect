@@ -806,16 +806,16 @@ export default function App() {
       setDashboardLoading(false);
     };
     const unsubscribers = [
-      onSnapshot(collection(db, 'ngos'), snap => { ngoDocs = snap.docs; refresh(); }, error => { if (active) setDashboardError(error.message); }),
-      onSnapshot(collection(db, 'ngoMembers'), snap => { members = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord)); refresh(); }, error => { if (active) setDashboardError(error.message); }),
-      onSnapshot(collection(db, 'ngoEvents'), snap => { events = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord)); refresh(); }, error => { if (active) setDashboardError(error.message); }),
-      onSnapshot(collection(db, 'ngoDocuments'), snap => { documents = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord)); refresh(); }, error => { if (active) setDashboardError(error.message); }),
+      onSnapshot(collection(db, 'ngos'), snap => { ngoDocs = snap.docs; refresh(); }, error => { if (active) setDashboardError(`NGO सूची (ngos): ${error.message}`); }),
+      onSnapshot(collection(db, 'ngoMembers'), snap => { members = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord)); refresh(); }, error => { if (active) setDashboardError(`सदस्य (ngoMembers): ${error.message}`); }),
+      onSnapshot(firestoreQuery(collection(db, 'ngoEvents'), where('approvalStatus', '==', 'APPROVED')), snap => { events = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord)); refresh(); }, error => { if (active) setDashboardError(`स्वीकृत कार्यक्रम (ngoEvents): ${error.message}`); }),
+      onSnapshot(collection(db, 'ngoDocuments'), snap => { documents = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord)); refresh(); }, error => { if (active) setDashboardError(`दस्तावेज़ (ngoDocuments): ${error.message}`); }),
       // Super Admin may view only finance records explicitly published by the NGO.
       // Never subscribe to the full private transactions collection.
       onSnapshot(firestoreQuery(collection(db, 'ngoTransactions'), where('approvalStatus', '==', 'APPROVED')), snap => {
         transactions = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord));
         refresh();
-      }, error => { if (active) setDashboardError(error.message); }),
+      }, error => { if (active) setDashboardError(`स्वीकृत वित्तीय रिकॉर्ड (ngoTransactions): ${error.message}`); }),
     ];
     return () => { active = false; unsubscribers.forEach(unsubscribe => unsubscribe()); };
   }, [authUser]);
