@@ -438,57 +438,36 @@ function PublicHomeNgoCards({ language }: { language: Language }) {
         75% { filter: hue-rotate(35deg) saturate(1.16); }
       }
       .public-home-ngo-card {
-        height: 200px !important;
+        height: 180px !important;
         min-height: 0 !important;
-      }
-      .public-home-ngo-card .ngo-card-media-layout {
-        display: flex;
-        align-items: stretch;
-        gap: 8px;
-        height: 90px;
-        min-height: 90px;
-      }
-      .public-home-ngo-card .ngo-card-logo-panel {
-        width: 30%;
-        min-width: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .public-home-ngo-card .ngo-card-photos-panel {
-        flex: 1;
-        min-width: 0;
-        display: flex;
-        gap: 5px;
-        overflow: hidden;
-      }
-      .public-home-ngo-card .ngo-card-photos-panel img {
-        width: 50%;
-        min-width: 0;
-        height: 100%;
-        object-fit: cover;
-        border-radius: 8px;
-      }
-      .public-home-ngo-card .ngo-card-logo-panel img {
-        max-width: 100%;
-        max-height: 100%;
-        object-fit: contain;
-      }
         animation: ngo-card-color-wave 3s linear infinite;
         background-size: 180% 180% !important;
         transition: filter .5s ease, box-shadow .3s ease;
       }
-      .public-home-ngo-card:nth-child(2n) { animation-delay: -3s; }
-      .public-home-ngo-card:nth-child(3n) { animation-delay: -6s; }
+      .public-home-ngo-card:nth-child(2n) { animation-delay: -1s; }
+      .public-home-ngo-card:nth-child(3n) { animation-delay: -2s; }
+      .public-home-ngo-card .ngo-card-media-layout {
+        display: flex; align-items: stretch; gap: 6px; height: 72px; min-height: 72px;
+      }
+      .public-home-ngo-card .ngo-card-logo-panel {
+        width: 30%; min-width: 0; display: flex; align-items: center; justify-content: center;
+      }
+      .public-home-ngo-card .ngo-card-photos-panel {
+        flex: 1; min-width: 0; display: flex; gap: 4px; overflow: hidden;
+      }
+      .public-home-ngo-card .ngo-card-photos-panel img {
+        width: 50%; min-width: 0; height: 100%; object-fit: cover; border-radius: 7px;
+      }
+      .public-home-ngo-card .ngo-card-logo-panel img { max-width: 100%; max-height: 100%; object-fit: contain; }
       @media (prefers-reduced-motion: reduce) {
         .public-home-ngo-card { animation: none !important; }
       }
       @media (max-width: 600px) {
         .public-home-ngo-grid { gap: 10px !important; grid-template-columns: minmax(0, 1fr) !important; }
-        .public-home-ngo-card { min-height: 0 !important; border-radius: 14px !important; box-shadow: 0 2px 0 #bbf7d0, 0 5px 12px rgba(5,150,105,.09) !important; }
+        .public-home-ngo-card { height: 165px !important; min-height: 0 !important; border-radius: 14px !important; box-shadow: 0 2px 0 #bbf7d0, 0 5px 12px rgba(5,150,105,.09) !important; }
         .public-home-ngo-card > div:nth-child(2) { padding: 6px 9px 7px !important; }
         .public-home-ngo-card .public-home-ngo-card-top { justify-content: center !important; align-items: center !important; text-align: center !important; width: 100% !important; margin-bottom: 4px !important; gap: 0 !important; min-height: 0 !important; }
-        .public-home-ngo-card .public-home-ngo-monogram { width: 100% !important; height: 90px !important; min-height: 90px !important; max-height: 90px !important; aspect-ratio: auto !important; max-width: 100% !important; border-radius: 10px !important; padding: 3px !important; }
+        .public-home-ngo-card .public-home-ngo-monogram { width: 100% !important; height: 55px !important; min-height: 55px !important; max-height: 55px !important; aspect-ratio: auto !important; max-width: 100% !important; border-radius: 10px !important; padding: 3px !important; }
         .public-home-ngo-card .public-home-ngo-active { font-size: 10px !important; padding: 3px 7px !important; gap: 4px !important; }
         .public-home-ngo-card h3 { font-size: 14px !important; line-height: 1.15 !important; margin-bottom: 3px !important; letter-spacing: -.2px !important; }
         .public-home-ngo-card .public-home-ngo-category { font-size: 9px !important; padding: 2px 5px !important; margin-bottom: 3px !important; }
@@ -509,13 +488,13 @@ function PublicHomeNgoCards({ language }: { language: Language }) {
       : ngos.length === 0 ? <div className="ngo-directory-empty"><HeartHandshake size={30}/><strong>{hi ? 'अभी कोई सक्रिय NGO नहीं है' : 'No active NGOs yet'}</strong><p>{hi ? 'भुगतान सत्यापन और एडमिन की मंज़ूरी के बाद NGO के कार्ड यहाँ दिखाई देंगे।' : 'NGO cards will appear here after payment verification and admin approval.'}</p></div>
       : <div className="public-home-ngo-grid">{ngos.map((ngo, index) => <article className={`public-home-ngo-card public-home-ngo-tone-${index % 4}`} key={ngo.id} role="link" tabIndex={0} aria-label={(hi ? 'NGO साइट खोलें: ' : 'Open NGO website: ') + ngo.name} onClick={() => { window.location.href = '/ngo/' + encodeURIComponent(ngo.id); }} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); window.location.href = '/ngo/' + encodeURIComponent(ngo.id); } }} style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 0, minHeight: 0, padding: 0, borderRadius: 20, border: ['2px solid #34d399','2px solid #c084fc','2px solid #60a5fa','2px solid #fb7185'][index % 4], background: ['linear-gradient(145deg,#00b894 0%,#10b981 45%,#047857 100%)','linear-gradient(145deg,#7c3aed 0%,#a855f7 48%,#c026d3 100%)','linear-gradient(145deg,#0284c7 0%,#38bdf8 48%,#1d4ed8 100%)','linear-gradient(145deg,#f97316 0%,#fb7185 48%,#be185d 100%)'][index % 4], boxShadow: ['0 5px 0 #047857, 0 13px 24px rgba(5,150,105,.28)','0 5px 0 #6b21a8, 0 13px 24px rgba(126,34,206,.28)','0 5px 0 #1e40af, 0 13px 24px rgba(37,99,235,.26)','0 5px 0 #9d174d, 0 13px 24px rgba(225,29,72,.25)'][index % 4], transition: 'transform .22s ease, box-shadow .22s ease' }}>
           <div style={{ height: 4, width: '100%', background: ['linear-gradient(90deg,#a7f3d0,#fef08a,#34d399)','linear-gradient(90deg,#e9d5ff,#f9a8d4,#c084fc)','linear-gradient(90deg,#bae6fd,#fef08a,#60a5fa)','linear-gradient(90deg,#fed7aa,#fda4af,#fb7185)'][index % 4] }}/>
-          <div style={{ padding: '10px 12px 13px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', flex: 1, position: 'relative', gap: 5, textAlign: 'center' }}>
-            <h3 style={{ width: '100%', margin: '0 0 2px', fontSize: 'clamp(16px, 2vw, 21px)', lineHeight: 1.2, fontWeight: 950, letterSpacing: '.2px', color: '#fff', textAlign: 'center', overflowWrap: 'anywhere', textShadow: '0 2px 0 rgba(0,0,0,.28), 0 4px 8px rgba(0,0,0,.28)' }}>{ngo.name}</h3>
+          <div style={{ padding: '5px 7px 7px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', flex: 1, position: 'relative', gap: 3, textAlign: 'center' }}>
+            <h3 style={{ width: '100%', margin: '0 0 2px', fontSize: 'clamp(13px, 1.6vw, 17px)', lineHeight: 1.2, fontWeight: 950, letterSpacing: '.2px', color: '#fff', textAlign: 'center', overflowWrap: 'anywhere', textShadow: '0 2px 0 rgba(0,0,0,.28), 0 4px 8px rgba(0,0,0,.28)' }}>{ngo.name}</h3>
             <div className="public-home-ngo-card-top" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', width: '100%', maxWidth: 280, margin: '0 auto', gap: 0, position: 'relative', flex: '0 0 auto' }}>
-              {ngo.imageData ? <img className="public-home-ngo-monogram" src={ngo.imageData} alt={ngo.name + ' logo'} style={{ width: '100%', height: 82, maxHeight: 82, flexShrink: 0, objectFit: 'contain', objectPosition: 'center', display: 'block', margin: '0 auto', alignSelf: 'center', background: '#fff', border: '2px solid rgba(255,255,255,.9)', borderRadius: 16, padding: 6, boxSizing: 'border-box', boxShadow: '0 5px 0 rgba(0,0,0,.16), 0 8px 16px rgba(15,23,42,.2)' }}/> : <span className="public-home-ngo-monogram" style={{ width: '100%', height: 82, minHeight: 82, maxHeight: 82, flexShrink: 0, display: 'grid', placeItems: 'center', fontSize: 48, fontWeight: 900, color: '#fff', background: ['linear-gradient(135deg,#047857,#34d399)','linear-gradient(135deg,#6d28d9,#ec4899)','linear-gradient(135deg,#1d4ed8,#38bdf8)','linear-gradient(135deg,#c2410c,#fb7185)'][index % 4], border: '2px solid rgba(255,255,255,.8)', borderRadius: 16, boxShadow: '0 5px 0 rgba(0,0,0,.18), 0 8px 16px rgba(15,23,42,.2)' }}>{ngo.name.slice(0, 2).toUpperCase()}</span>}
+              {ngo.imageData ? <img className="public-home-ngo-monogram" src={ngo.imageData} alt={ngo.name + ' logo'} style={{ width: '100%', height: 65, maxHeight: 65, flexShrink: 0, objectFit: 'contain', objectPosition: 'center', display: 'block', margin: '0 auto', alignSelf: 'center', background: '#fff', border: '2px solid rgba(255,255,255,.9)', borderRadius: 16, padding: 6, boxSizing: 'border-box', boxShadow: '0 5px 0 rgba(0,0,0,.16), 0 8px 16px rgba(15,23,42,.2)' }}/> : <span className="public-home-ngo-monogram" style={{ width: '100%', height: 65, minHeight: 65, maxHeight: 65, flexShrink: 0, display: 'grid', placeItems: 'center', fontSize: 48, fontWeight: 900, color: '#fff', background: ['linear-gradient(135deg,#047857,#34d399)','linear-gradient(135deg,#6d28d9,#ec4899)','linear-gradient(135deg,#1d4ed8,#38bdf8)','linear-gradient(135deg,#c2410c,#fb7185)'][index % 4], border: '2px solid rgba(255,255,255,.8)', borderRadius: 16, boxShadow: '0 5px 0 rgba(0,0,0,.18), 0 8px 16px rgba(15,23,42,.2)' }}>{ngo.name.slice(0, 2).toUpperCase()}</span>}
             </div>
             <div style={{ width: '100%', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7, marginTop: 0 }}>
-              <a href={'/ngo/' + encodeURIComponent(ngo.id)} onClick={event => event.stopPropagation()} style={{ minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '5px 6px', borderRadius: 12, color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 950, textAlign: 'center', background: 'linear-gradient(180deg,#ff6384 0%,#e11d48 100%)', border: '1px solid rgba(255,255,255,.8)', boxShadow: '0 4px 0 #9f1239, 0 7px 12px rgba(80,0,20,.25)', textShadow: '0 1px 2px rgba(0,0,0,.25)' }}>❤️ {hi ? 'डोनेट करें' : 'Donate'}</a>
+              <a href={'/ngo/' + encodeURIComponent(ngo.id)} onClick={event => event.stopPropagation()} style={{ minWidth: 0, minHeight: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px 5px', borderRadius: 12, color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 950, textAlign: 'center', background: 'linear-gradient(180deg,#ff6384 0%,#e11d48 100%)', border: '1px solid rgba(255,255,255,.8)', boxShadow: '0 4px 0 #9f1239, 0 7px 12px rgba(80,0,20,.25)', textShadow: '0 1px 2px rgba(0,0,0,.25)' }}>❤️ {hi ? 'डोनेट करें' : 'Donate'}</a>
               <a href={'/ngo/' + encodeURIComponent(ngo.id)} onClick={event => event.stopPropagation()} style={{ minWidth: 0, minHeight: 42, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px 7px', borderRadius: 12, color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 950, textAlign: 'center', background: 'linear-gradient(180deg,#34d399 0%,#047857 100%)', border: '1px solid rgba(255,255,255,.8)', boxShadow: '0 4px 0 #065f46, 0 7px 12px rgba(0,0,0,.2)', textShadow: '0 1px 2px rgba(0,0,0,.25)' }}>🤝 {hi ? 'सदस्य बनें' : 'Become a Member'}</a>
             </div>
           </div>
