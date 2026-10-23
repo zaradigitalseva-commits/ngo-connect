@@ -2544,3 +2544,39 @@ input, select, textarea, button {
     font-size: 15px !important;
   }
 }
+
+
+/* Requested brand styling: red title, pale blue-white background, sky-blue 3D border */
+.public-site .public-header a.public-brand .brand-name-stack .brand-name-banner {
+  display: inline-flex !important;
+  width: max-content !important;
+  max-width: 100% !important;
+  background: linear-gradient(180deg, #ffffff 0%, #eff9ff 100%) !important;
+  border: 2px solid #7dd3fc !important;
+  border-radius: 8px !important;
+  padding: 5px 10px !important;
+  box-shadow: 0 3px 0 #7dd3fc, 0 5px 12px rgba(2,132,199,.18), inset 0 1px 0 rgba(255,255,255,.95) !important;
+}
+.public-site .public-header a.public-brand .brand-name-stack .brand-name-banner > span {
+  color: #dc2626 !important;
+  -webkit-text-fill-color: #dc2626 !important;
+  font-weight: 1000 !important;
+  font-size: 17px !important;
+  letter-spacing: .35px !important;
+  line-height: 1.12 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  text-shadow: 0 1px 0 rgba(255,255,255,.9) !important;
+  background: transparent !important;
+}
+.public-site .public-header a.public-brand .brand-name-stack > small {
+  color: #073b5c !important;
+  font-weight: 800 !important;
+  opacity: 1 !important;
+}
+@media (max-width: 600px) {
+  .public-site .public-header a.public-brand .brand-name-stack .brand-name-banner > span {
+    font-size: clamp(13px, 3.8vw, 15px) !important;
+    letter-spacing: .1px !important;
+  }
+}
