@@ -151,7 +151,7 @@ service cloud.firestore {
           && resource.data.status == 'PENDING_PAYMENT'
           && get(/databases/$(database)/documents/ngos/$(resource.data.ngoId)).data.ownerUid == request.auth.uid
           && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['status', 'memberId', 'rejectionReason', 'reviewedAt', 'reviewedBy'])
+            .hasOnly(['status', 'memberId', 'rejectionReason', 'reviewedAt', 'reviewedBy', 'name', 'fatherName', 'phone', 'address'])
           && request.resource.data.status in ['APPROVED', 'REJECTED']
           && request.resource.data.reviewedBy == request.auth.uid
           && (request.resource.data.status != 'APPROVED'
