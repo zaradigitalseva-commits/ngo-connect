@@ -13,11 +13,13 @@ service cloud.firestore {
         ];
     }
 
-    // Public NGO profiles: only approved statuses
+    // Public directory: visitors can read only NGOs activated/approved by Super Admin.
+    // The public directory query must filter status to this same allow-list.
+    // Pending/unapproved NGO records remain private to the owner and Super Admin.
     match /ngos/{ngoId} {
-      allow read: if isSuperAdmin()
-        || (request.auth != null && resource.data.ownerUid == request.auth.uid)
-        || resource.data.status in ['LIVE', 'ACTIVE', 'APPROVED'];
+      allow get, list: if resource.data.status in ['LIVE', 'ACTIVE', 'APPROVED'];
+      allow get, list: if isSuperAdmin()
+        || (request.auth != null && resource.data.ownerUid == request.auth.uid);
       allow create, delete: if isSuperAdmin();
       allow update: if isSuperAdmin()
         || (request.auth != null
