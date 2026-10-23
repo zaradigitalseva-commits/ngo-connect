@@ -438,7 +438,7 @@ function PublicHomeNgoCards({ language }: { language: Language }) {
         75% { filter: hue-rotate(35deg) saturate(1.16); }
       }
       .public-home-ngo-card {
-        animation: ngo-card-color-wave 12s ease-in-out infinite;
+        animation: ngo-card-color-wave 3s linear infinite;
         background-size: 180% 180% !important;
         transition: filter .5s ease, box-shadow .3s ease;
       }
