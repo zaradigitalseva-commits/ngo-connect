@@ -235,8 +235,10 @@ service cloud.firestore {
     }
 
     match /ngoTransactions/{recordId} {
-      allow read: if isSuperAdmin() || ownsNgo(resource.data.ngoId) || resource.data.approvalStatus == 'APPROVED';
-      allow create: if isSuperAdmin() || (ownsNgo(request.resource.data.ngoId)
+      // Finance is owned by the NGO admin. Public can read only records the NGO has published.
+      // Super Admin has no create, update, delete, or private-record access for this collection.
+      allow read: if ownsNgo(resource.data.ngoId) || resource.data.approvalStatus == 'APPROVED';
+      allow create: if ownsNgo(request.resource.data.ngoId)
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.ngoId is string
         && request.resource.data.type in ['DONATION','EXPENSE']
@@ -245,14 +247,14 @@ service cloud.firestore {
         && request.resource.data.date is string
         && request.resource.data.approvalStatus in ['PENDING', 'APPROVED']
         && request.resource.data.createdAt == request.time
-        && request.resource.data.updatedAt == request.time);
-      allow update: if isSuperAdmin() || (ownsNgo(resource.data.ngoId)
+        && request.resource.data.updatedAt == request.time;
+      allow update: if ownsNgo(resource.data.ngoId)
         && request.resource.data.ngoId == resource.data.ngoId
         && request.resource.data.createdBy == resource.data.createdBy
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['type','amount','category','donor','date','note','approvalStatus','updatedAt'])
         && request.resource.data.approvalStatus in ['PENDING', 'APPROVED']
-        && request.resource.data.updatedAt == request.time);
-      allow delete: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if ownsNgo(resource.data.ngoId);
     }
 
     match /ngoEvents/{recordId} {
@@ -310,9 +312,10 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
-    // Protect all other collections
+    // Protect all other collections. NGO transactions are deliberately excluded:
+    // only the owning NGO admin may manage finance records.
     match /{document=**} {
-      allow read, write: if isSuperAdmin();
+      allow read, write: if isSuperAdmin() && !document.matches('ngoTransactions/.*');
     }
   }
 }
