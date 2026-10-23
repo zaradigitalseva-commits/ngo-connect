@@ -248,7 +248,7 @@ function PublicNgoList({ language, setLanguage }: { language: Language; setLangu
     }
     // Use separate equality queries so Firestore Rules can safely verify each public status.
     const statuses = ['LIVE', 'ACTIVE', 'APPROVED'];
-    const snapshotsByStatus = new Map<string, Array<{ id: string; name: string; category: string; location: string; mission: string; imageData: string }>>();
+    const snapshotsByStatus = new Map<string, Array<{ id: string; name: string; category: string; location: string; mission: string; imageData: string; createdAtMs: number }>>();
     const received = new Set<string>();
     const unsubscribers = statuses.map(status => onSnapshot(
       firestoreQuery(collection(db, 'ngos'), where('status', '==', status)),
@@ -257,13 +257,20 @@ function PublicNgoList({ language, setLanguage }: { language: Language; setLangu
         const records = snapshot.docs.map(item => {
           const data = item.data();
           const locationParts = [data.city, data.district, data.state].filter(value => typeof value === 'string' && value.trim()).map(String);
+          const dateValue = data.createdAt || data.registeredAt || data.registrationDate || data.updatedAt;
+          const createdAtMs = dateValue && typeof dateValue.toMillis === 'function'
+            ? dateValue.toMillis()
+            : dateValue instanceof Date ? dateValue.getTime()
+            : typeof dateValue === 'number' ? dateValue
+            : typeof dateValue === 'string' ? (Date.parse(dateValue) || 0) : 0;
           return {
             id: item.id,
             name: String(data.name || data.ngoName || 'NGO'),
             category: String(data.type || data.category || ''),
             location: locationParts.filter((value, index) => locationParts.indexOf(value) === index).join(', ') || String(data.location || ''),
             mission: String(data.mission || data.description || ''),
-            imageData: String(data.imageData || data.registrationFormData?.imageData || '')
+            imageData: String(data.imageData || data.registrationFormData?.imageData || ''),
+            createdAtMs
           };
         });
         snapshotsByStatus.set(status, records);
@@ -424,7 +431,7 @@ function PublicHomeNgoCards({ language }: { language: Language }) {
         completed.add(status);
         const merged = new Map<string, typeof rows[number]>();
         rowsByStatus.forEach(items => items.forEach(item => merged.set(item.id, item)));
-        setNgos(Array.from(merged.values()).sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })));
+        setNgos(Array.from(merged.values()).sort((a, b) => b.createdAtMs - a.createdAtMs || a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })));
         setLoading(completed.size < statuses.length);
         setLoadError(false);
       },
