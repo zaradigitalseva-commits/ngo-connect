@@ -810,6 +810,12 @@ export default function App() {
       onSnapshot(collection(db, 'ngoMembers'), snap => { members = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord)); refresh(); }, error => { if (active) setDashboardError(error.message); }),
       onSnapshot(collection(db, 'ngoEvents'), snap => { events = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord)); refresh(); }, error => { if (active) setDashboardError(error.message); }),
       onSnapshot(collection(db, 'ngoDocuments'), snap => { documents = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord)); refresh(); }, error => { if (active) setDashboardError(error.message); }),
+      // Super Admin may view only finance records explicitly published by the NGO.
+      // Never subscribe to the full private transactions collection.
+      onSnapshot(firestoreQuery(collection(db, 'ngoTransactions'), where('approvalStatus', '==', 'APPROVED')), snap => {
+        transactions = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord));
+        refresh();
+      }, error => { if (active) setDashboardError(error.message); }),
     ];
     return () => { active = false; unsubscribers.forEach(unsubscribe => unsubscribe()); };
   }, [authUser]);
