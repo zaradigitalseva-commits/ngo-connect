@@ -246,12 +246,44 @@ function PublicNgoList({ language, setLanguage }: { language: Language; setLangu
       setLoadError(hi ? 'NGO सूची लोड करने के लिए Firebase सेटअप आवश्यक है।' : 'Firebase setup is required to load the NGO directory.');
       return () => { active = false; };
     }
-    const unsubscribeNgos = onSnapshot(firestoreQuery(collection(db, 'ngos'), where('status', 'in', ['LIVE', 'ACTIVE', 'APPROVED', 'Live', 'Active', 'Approved', 'live', 'active', 'approved'])), snapshot => {
-      if (!active) return;
-      const records = snapshot.docs.map(item => { const data = item.data(); const locationParts = [data.city, data.district, data.state].filter(value => typeof value === 'string' && value.trim()).map(String); return { id: item.id, name: String(data.name || data.ngoName || 'NGO'), category: String(data.type || data.category || ''), location: locationParts.filter((value, index) => locationParts.indexOf(value) === index).join(', ') || String(data.location || ''), mission: String(data.mission || data.description || ''), imageData: String(data.imageData || data.registrationFormData?.imageData || '') }; }).sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
-      setNgos(records); setLoading(false); setLoadError('');
-    }, (error) => { if (active) { const code = String((error as { code?: string })?.code || 'unknown'); setLoadError(hi ? `NGO सूची लोड नहीं हुई (Firebase: ${code}, Project: ${db.app.options.projectId || 'unknown'}). Firebase Console में इसी प्रोजेक्ट के Firestore Rules प्रकाशित करें और ngos.status को LIVE/ACTIVE/APPROVED रखें।` : `Could not load NGOs (Firebase: ${code}, Project: ${db.app.options.projectId || 'unknown'}). Publish Firestore Rules in this exact Firebase project and ensure ngos.status is LIVE/ACTIVE/APPROVED.`); setLoading(false); } });
-    return () => { active = false; unsubscribeNgos(); };
+    // Use separate equality queries so Firestore Rules can safely verify each public status.
+    const statuses = ['LIVE', 'ACTIVE', 'APPROVED'];
+    const snapshotsByStatus = new Map<string, Array<{ id: string; name: string; category: string; location: string; mission: string; imageData: string }>>();
+    const received = new Set<string>();
+    const unsubscribers = statuses.map(status => onSnapshot(
+      firestoreQuery(collection(db, 'ngos'), where('status', '==', status)),
+      snapshot => {
+        if (!active) return;
+        const records = snapshot.docs.map(item => {
+          const data = item.data();
+          const locationParts = [data.city, data.district, data.state].filter(value => typeof value === 'string' && value.trim()).map(String);
+          return {
+            id: item.id,
+            name: String(data.name || data.ngoName || 'NGO'),
+            category: String(data.type || data.category || ''),
+            location: locationParts.filter((value, index) => locationParts.indexOf(value) === index).join(', ') || String(data.location || ''),
+            mission: String(data.mission || data.description || ''),
+            imageData: String(data.imageData || data.registrationFormData?.imageData || '')
+          };
+        });
+        snapshotsByStatus.set(status, records);
+        received.add(status);
+        const merged = new Map<string, typeof records[number]>();
+        snapshotsByStatus.forEach(rows => rows.forEach(row => merged.set(row.id, row)));
+        setNgos(Array.from(merged.values()).sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })));
+        setLoading(received.size < statuses.length);
+        setLoadError('');
+      },
+      error => {
+        if (!active) return;
+        const code = String((error as { code?: string })?.code || 'unknown');
+        setLoadError(hi
+          ? `NGO सूची लोड नहीं हुई (Firebase: ${code}). Firestore Rules और Firebase प्रोजेक्ट जाँचें।`
+          : `Could not load NGO directory (Firebase: ${code}). Check Firestore Rules and Firebase project.`);
+        setLoading(false);
+      }
+    ));
+    return () => { active = false; unsubscribers.forEach(unsubscribe => unsubscribe()); };
   }, [hi]);
 
   const filtered = ngos.filter(ngo => [ngo.name, ngo.category, ngo.location, ngo.mission].join(' ').toLocaleLowerCase().includes(searchText.trim().toLocaleLowerCase()));
