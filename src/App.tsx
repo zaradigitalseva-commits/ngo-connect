@@ -431,6 +431,22 @@ function PublicHomeNgoCards({ language }: { language: Language }) {
 
   return <section className="public-home-ngo-directory" aria-labelledby="home-ngo-heading">
     <style>{`
+      @keyframes ngo-card-color-wave {
+        0%, 100% { filter: hue-rotate(0deg) saturate(1); }
+        25% { filter: hue-rotate(35deg) saturate(1.18); }
+        50% { filter: hue-rotate(75deg) saturate(1.22); }
+        75% { filter: hue-rotate(35deg) saturate(1.16); }
+      }
+      .public-home-ngo-card {
+        animation: ngo-card-color-wave 12s ease-in-out infinite;
+        background-size: 180% 180% !important;
+        transition: filter .5s ease, box-shadow .3s ease;
+      }
+      .public-home-ngo-card:nth-child(2n) { animation-delay: -3s; }
+      .public-home-ngo-card:nth-child(3n) { animation-delay: -6s; }
+      @media (prefers-reduced-motion: reduce) {
+        .public-home-ngo-card { animation: none !important; }
+      }
       @media (max-width: 600px) {
         .public-home-ngo-grid { gap: 10px !important; grid-template-columns: minmax(0, 1fr) !important; }
         .public-home-ngo-card { min-height: 0 !important; border-radius: 14px !important; box-shadow: 0 2px 0 #bbf7d0, 0 5px 12px rgba(5,150,105,.09) !important; }
