@@ -23,20 +23,24 @@ service cloud.firestore {
         || (request.auth != null
           && resource.data.ownerUid == request.auth.uid
           && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['memberFee', 'adminWhatsApp', 'updatedAt'])
-          && request.resource.data.memberFee is number
-          && request.resource.data.memberFee >= 1
-          && request.resource.data.memberFee <= 100000
-          && request.resource.data.adminWhatsApp is string
-          && request.resource.data.adminWhatsApp.size() >= 10
-          && request.resource.data.adminWhatsApp.size() <= 20);
+            .hasOnly(['memberFee', 'adminWhatsApp', 'mission', 'description', 'updatedAt'])
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['memberFee'])
+            || (request.resource.data.memberFee is number
+              && request.resource.data.memberFee >= 1
+              && request.resource.data.memberFee <= 100000))
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['adminWhatsApp'])
+            || (request.resource.data.adminWhatsApp is string
+              && request.resource.data.adminWhatsApp.size() >= 10
+              && request.resource.data.adminWhatsApp.size() <= 20))
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['mission'])
+            || (request.resource.data.mission is string && request.resource.data.mission.size() <= 2000))
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['description'])
+            || (request.resource.data.description is string && request.resource.data.description.size() <= 2000)));
     }
 
-    // Subscription plans: public plan metadata can be read by the registration form.
-    // Keep this collection limited to non-sensitive plan details.
-    // Only verified Super Admins can create, update, or delete plans.
+    // Subscription plans: active plans are visible to registration forms; only Super Admin can manage them.
     match /subscriptionPlans/{planId} {
-      allow get, list: if true;
+      allow read: if isSuperAdmin() || resource.data.active == true;
       allow create, update, delete: if isSuperAdmin();
     }
 
@@ -48,12 +52,12 @@ service cloud.firestore {
       allow create: if request.auth != null
         && request.auth.token.email_verified == true
         && request.resource.data.keys().hasOnly([
-          'name', 'contactName', 'email', 'phone', 'state', 'district', 'mission',
+          'name', 'contactName', 'email', 'phone', 'state', 'district', 'mission', 'imageData',
           'planId', 'subscriptionPlan', 'planPrice', 'planDurationDays',
           'paymentReference', 'status', 'paymentStatus', 'ownerUid', 'createdAt'
         ])
         && request.resource.data.keys().hasAll([
-          'name', 'contactName', 'email', 'phone', 'state', 'district', 'mission',
+          'name', 'contactName', 'email', 'phone', 'state', 'district', 'mission', 'imageData',
           'planId', 'subscriptionPlan', 'planPrice', 'planDurationDays',
           'paymentReference', 'status', 'paymentStatus', 'ownerUid', 'createdAt'
         ])
@@ -72,13 +76,16 @@ service cloud.firestore {
         && request.resource.data.phone.size() <= 25
         && request.resource.data.mission is string
         && request.resource.data.mission.size() <= 1000
+        && request.resource.data.imageData is string
+        && request.resource.data.imageData.size() <= 180000
         && request.resource.data.planId is string
         && request.resource.data.planId.size() > 0
         && exists(/databases/$(database)/documents/subscriptionPlans/$(request.resource.data.planId))
         && get(/databases/$(database)/documents/subscriptionPlans/$(request.resource.data.planId)).data.active == true
-        && request.resource.data.subscriptionPlan == get(/databases/$(database)/documents/subscriptionPlans/$(request.resource.data.planId)).data.name
-        && request.resource.data.planPrice == get(/databases/$(database)/documents/subscriptionPlans/$(request.resource.data.planId)).data.price
-        && request.resource.data.planDurationDays == get(/databases/$(database)/documents/subscriptionPlans/$(request.resource.data.planId)).data.durationDays
+        // Accept legacy plan field names that the registration UI already supports.
+        && request.resource.data.subscriptionPlan == get(/databases/$(database)/documents/subscriptionPlans/$(request.resource.data.planId)).data.get('name', get(/databases/$(database)/documents/subscriptionPlans/$(request.resource.data.planId)).data.get('planName', ''))
+        && request.resource.data.planPrice == get(/databases/$(database)/documents/subscriptionPlans/$(request.resource.data.planId)).data.get('price', get(/databases/$(database)/documents/subscriptionPlans/$(request.resource.data.planId)).data.get('fee', get(/databases/$(database)/documents/subscriptionPlans/$(request.resource.data.planId)).data.get('amount', 0)))
+        && request.resource.data.planDurationDays == get(/databases/$(database)/documents/subscriptionPlans/$(request.resource.data.planId)).data.get('durationDays', get(/databases/$(database)/documents/subscriptionPlans/$(request.resource.data.planId)).data.get('validityDays', get(/databases/$(database)/documents/subscriptionPlans/$(request.resource.data.planId)).data.get('duration', 0)))
         && request.resource.data.planPrice is number && request.resource.data.planPrice > 0
         && request.resource.data.planDurationDays is int && request.resource.data.planDurationDays >= 1
         && request.resource.data.paymentReference is string
@@ -102,7 +109,7 @@ service cloud.firestore {
     }
 
 
-    // Member applications are private to the applicant, their NGO owner, and Super Admin.
+    // Legacy Aadhaar-based membership request endpoint is retired; new applications use memberApplications.
     match /memberApplications/{applicationId} {
       allow create: if request.auth != null
         && request.resource.data.keys().hasOnly([
@@ -119,7 +126,7 @@ service cloud.firestore {
         && request.resource.data.applicantEmail.size() <= 160
         && request.resource.data.applicantUid == request.auth.uid
         && request.resource.data.ngoId is string
-        && request.resource.data.ngoName == get(/databases/$(database)/documents/ngos/$(request.resource.data.ngoId)).data.name
+        && request.resource.data.ngoName == get(/databases/$(database)/documents/ngos/$(request.resource.data.ngoId)).data.get('name', get(/databases/$(database)/documents/ngos/$(request.resource.data.ngoId)).data.get('ngoName', ''))
         && get(/databases/$(database)/documents/ngos/$(request.resource.data.ngoId)).data.status in ['LIVE', 'ACTIVE', 'APPROVED']
         && get(/databases/$(database)/documents/ngos/$(request.resource.data.ngoId)).data.memberFee == request.resource.data.feeAmount
         && get(/databases/$(database)/documents/ngos/$(request.resource.data.ngoId)).data.adminWhatsApp is string
@@ -149,14 +156,25 @@ service cloud.firestore {
         || (request.auth != null
           && resource.data.status == 'PENDING_PAYMENT'
           && get(/databases/$(database)/documents/ngos/$(resource.data.ngoId)).data.ownerUid == request.auth.uid
-          && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['status', 'memberId', 'rejectionReason', 'reviewedAt', 'reviewedBy'])
-          && request.resource.data.status in ['APPROVED', 'REJECTED']
-          && request.resource.data.reviewedBy == request.auth.uid
-          && (request.resource.data.status != 'APPROVED'
-            || (request.resource.data.memberId is string
-              && request.resource.data.memberId.size() >= 5)));
-      allow delete: if isSuperAdmin();
+          && (
+            // NGO owner can correct applicant details while the application is still pending.
+            (resource.data.status == 'PENDING_PAYMENT'
+              && request.resource.data.status == resource.data.status
+              && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['name', 'fatherName', 'phone', 'address', 'updatedAt']))
+            ||
+            // Or review the application and issue/reject the Member ID.
+            (request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['status', 'memberId', 'rejectionReason', 'reviewedAt', 'reviewedBy', 'name', 'fatherName', 'phone', 'address'])
+              && request.resource.data.status in ['APPROVED', 'REJECTED']
+              && request.resource.data.reviewedBy == request.auth.uid
+              && (request.resource.data.status != 'APPROVED'
+                || (request.resource.data.memberId is string
+                  && request.resource.data.memberId.size() >= 5)))));
+      // The owning NGO admin can remove its own application; super admins can remove any.
+      allow delete: if isSuperAdmin()
+        || (request.auth != null
+          && get(/databases/$(database)/documents/ngos/$(resource.data.ngoId)).data.ownerUid == request.auth.uid);
     }
 
     // Minimal public verification record: never expose phone, address, or photo here.
@@ -196,108 +214,99 @@ service cloud.firestore {
     }
 
     match /ngoMembers/{recordId} {
-      allow read: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
+      allow read: if isSuperAdmin() || ownsNgo(resource.data.ngoId) || resource.data.approvalStatus == 'APPROVED';
       allow create: if isSuperAdmin() || (ownsNgo(request.resource.data.ngoId)
         && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.keys().hasOnly(['ngoId','createdBy','createdAt','updatedAt','name','phone','email','role','status'])
-        && request.resource.data.keys().hasAll(['ngoId','createdBy','createdAt','updatedAt','name','phone','email','role','status'])
-        && request.resource.data.name is string && request.resource.data.name.size() > 1 && request.resource.data.name.size() <= 120
-        && request.resource.data.phone is string && request.resource.data.phone.size() >= 7 && request.resource.data.phone.size() <= 25
-        && request.resource.data.email is string && request.resource.data.email.size() <= 160
+        && request.resource.data.ngoId is string
+        && request.resource.data.name is string && request.resource.data.name.size() > 0
+        && request.resource.data.phone is string
         && request.resource.data.role in ['MEMBER','VOLUNTEER']
         && request.resource.data.status in ['ACTIVE','INACTIVE']
-        && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time);
+        && request.resource.data.approvalStatus in ['PENDING', 'APPROVED']
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time);
       allow update: if isSuperAdmin() || (ownsNgo(resource.data.ngoId)
         && request.resource.data.ngoId == resource.data.ngoId
-        && request.resource.data.createdBy == resource.data.createdBy
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','phone','email','role','status','updatedAt'])
-        && request.resource.data.name is string && request.resource.data.name.size() > 1 && request.resource.data.name.size() <= 120
-        && request.resource.data.phone is string && request.resource.data.phone.size() >= 7 && request.resource.data.phone.size() <= 25
-        && request.resource.data.email is string && request.resource.data.email.size() <= 160
-        && request.resource.data.role in ['MEMBER','VOLUNTEER']
-        && request.resource.data.status in ['ACTIVE','INACTIVE']
+        && (!resource.data.keys().hasAny(['createdBy']) || request.resource.data.createdBy == resource.data.createdBy)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','phone','email','photoData','role','status','designation','location','approvalStatus','source','applicationId','memberId','createdAt','updatedAt'])
+        && request.resource.data.approvalStatus in ['PENDING', 'APPROVED']
         && request.resource.data.updatedAt == request.time);
       allow delete: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
     }
 
     match /ngoTransactions/{recordId} {
-      allow read: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
-      allow create: if isSuperAdmin() || (ownsNgo(request.resource.data.ngoId)
+      // Finance is owned by the NGO admin. Public can read only records the NGO has published.
+      // Super Admin has no create, update, delete, or private-record access for this collection.
+      allow read: if ownsNgo(resource.data.ngoId) || resource.data.approvalStatus == 'APPROVED';
+      allow create: if ownsNgo(request.resource.data.ngoId)
         && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.keys().hasOnly(['ngoId','createdBy','createdAt','updatedAt','type','amount','category','donor','date','note'])
-        && request.resource.data.keys().hasAll(['ngoId','createdBy','createdAt','updatedAt','type','amount','category','donor','date','note'])
+        && request.resource.data.ngoId is string
         && request.resource.data.type in ['DONATION','EXPENSE']
-        && request.resource.data.amount is number && request.resource.data.amount > 0 && request.resource.data.amount <= 1000000000
-        && request.resource.data.category is string && request.resource.data.category.size() > 0 && request.resource.data.category.size() <= 120
-        && request.resource.data.donor is string && request.resource.data.donor.size() <= 160
-        && request.resource.data.date is string && request.resource.data.date.size() == 10
-        && request.resource.data.note is string && request.resource.data.note.size() <= 2000
-        && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time);
-      allow update: if isSuperAdmin() || (ownsNgo(resource.data.ngoId)
+        && request.resource.data.amount is number && request.resource.data.amount > 0
+        && request.resource.data.category is string
+        && request.resource.data.date is string
+        && request.resource.data.approvalStatus in ['PENDING', 'APPROVED']
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if ownsNgo(resource.data.ngoId)
         && request.resource.data.ngoId == resource.data.ngoId
         && request.resource.data.createdBy == resource.data.createdBy
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['type','amount','category','donor','date','note','updatedAt'])
-        && request.resource.data.type in ['DONATION','EXPENSE']
-        && request.resource.data.amount is number && request.resource.data.amount > 0 && request.resource.data.amount <= 1000000000
-        && request.resource.data.category is string && request.resource.data.category.size() > 0 && request.resource.data.category.size() <= 120
-        && request.resource.data.donor is string && request.resource.data.donor.size() <= 160
-        && request.resource.data.date is string && request.resource.data.date.size() == 10
-        && request.resource.data.note is string && request.resource.data.note.size() <= 2000
-        && request.resource.data.updatedAt == request.time);
-      allow delete: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['type','amount','category','donor','date','note','approvalStatus','updatedAt'])
+        && request.resource.data.approvalStatus in ['PENDING', 'APPROVED']
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if ownsNgo(resource.data.ngoId);
     }
 
     match /ngoEvents/{recordId} {
-      allow read: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
-      allow create: if isSuperAdmin() || (ownsNgo(request.resource.data.ngoId)
+      // Events are managed by the owning NGO only. Super Admin has no event-management bypass.
+      allow read: if ownsNgo(resource.data.ngoId) || resource.data.approvalStatus == 'APPROVED';
+      allow create: if ownsNgo(request.resource.data.ngoId)
+        && request.resource.data.ngoId is string
         && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.keys().hasOnly(['ngoId','createdBy','createdAt','updatedAt','title','date','location','description','status'])
-        && request.resource.data.keys().hasAll(['ngoId','createdBy','createdAt','updatedAt','title','date','location','description','status'])
-        && request.resource.data.title is string && request.resource.data.title.size() > 1 && request.resource.data.title.size() <= 160
+        && request.resource.data.keys().hasOnly(['title','date','location','description','status','ngoId','createdBy','createdAt','updatedAt','approvalStatus'])
+        && request.resource.data.keys().hasAll(['title','date','location','description','status','ngoId','createdBy','createdAt','updatedAt'])
+        && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 160
         && request.resource.data.date is string && request.resource.data.date.size() == 10
         && request.resource.data.location is string && request.resource.data.location.size() <= 300
         && request.resource.data.description is string && request.resource.data.description.size() <= 2000
         && request.resource.data.status in ['PLANNED','COMPLETED','CANCELLED']
-        && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time);
-      allow update: if isSuperAdmin() || (ownsNgo(resource.data.ngoId)
+        && (!request.resource.data.keys().hasAny(['approvalStatus']) || request.resource.data.approvalStatus in ['PENDING','APPROVED'])
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if ownsNgo(resource.data.ngoId)
         && request.resource.data.ngoId == resource.data.ngoId
         && request.resource.data.createdBy == resource.data.createdBy
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title','date','location','description','status','updatedAt'])
-        && request.resource.data.title is string && request.resource.data.title.size() > 1 && request.resource.data.title.size() <= 160
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title','date','location','description','status','approvalStatus','updatedAt'])
+        && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 160
         && request.resource.data.date is string && request.resource.data.date.size() == 10
         && request.resource.data.location is string && request.resource.data.location.size() <= 300
         && request.resource.data.description is string && request.resource.data.description.size() <= 2000
         && request.resource.data.status in ['PLANNED','COMPLETED','CANCELLED']
-        && request.resource.data.updatedAt == request.time);
-      allow delete: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
+        && (!request.resource.data.keys().hasAny(['approvalStatus']) || request.resource.data.approvalStatus in ['PENDING','APPROVED'])
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if ownsNgo(resource.data.ngoId);
     }
 
     match /ngoDocuments/{recordId} {
-      allow read: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
+      allow read: if isSuperAdmin() || ownsNgo(resource.data.ngoId) || resource.data.approvalStatus == 'APPROVED';
       allow create: if isSuperAdmin() || (ownsNgo(request.resource.data.ngoId)
         && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.keys().hasOnly(['ngoId','createdBy','createdAt','updatedAt','title','type','url','notes'])
-        && request.resource.data.keys().hasAll(['ngoId','createdBy','createdAt','updatedAt','title','type','url','notes'])
-        && request.resource.data.title is string && request.resource.data.title.size() > 1 && request.resource.data.title.size() <= 160
+        && request.resource.data.ngoId is string
+        && request.resource.data.title is string && request.resource.data.title.size() > 0
         && request.resource.data.type in ['REPORT','CERTIFICATE','OTHER']
-        && request.resource.data.url is string && request.resource.data.url.size() <= 500
-        && (request.resource.data.url == '' || request.resource.data.url.matches('https://.*'))
-        && request.resource.data.notes is string && request.resource.data.notes.size() <= 2000
-        && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time);
+        && request.resource.data.url is string
+        && request.resource.data.approvalStatus in ['PENDING', 'APPROVED']
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time);
       allow update: if isSuperAdmin() || (ownsNgo(resource.data.ngoId)
         && request.resource.data.ngoId == resource.data.ngoId
         && request.resource.data.createdBy == resource.data.createdBy
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title','type','url','notes','updatedAt'])
-        && request.resource.data.title is string && request.resource.data.title.size() > 1 && request.resource.data.title.size() <= 160
-        && request.resource.data.type in ['REPORT','CERTIFICATE','OTHER']
-        && request.resource.data.url is string && request.resource.data.url.size() <= 500
-        && (request.resource.data.url == '' || request.resource.data.url.matches('https://.*'))
-        && request.resource.data.notes is string && request.resource.data.notes.size() <= 2000
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title','type','url','notes','approvalStatus','updatedAt'])
+        && request.resource.data.approvalStatus in ['PENDING', 'APPROVED']
         && request.resource.data.updatedAt == request.time);
       allow delete: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
     }
 
-    // Homepage scrolling announcements: public read, Super Admin-only management.
     match /publicTickerMessages/{messageId} {
       allow read: if true;
       allow create: if isSuperAdmin()
@@ -313,9 +322,10 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
-    // Protect all other collections
+    // Protect all other collections. NGO transactions are deliberately excluded:
+    // only the owning NGO admin may manage finance records.
     match /{document=**} {
-      allow read, write: if isSuperAdmin();
+      allow read, write: if isSuperAdmin() && !document.matches('ngoTransactions/.*');
     }
   }
 }
