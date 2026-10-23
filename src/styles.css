@@ -2580,3 +2580,12 @@ input, select, textarea, button {
     letter-spacing: .1px !important;
   }
 }
+
+
+/* Make the tagline below the site name blue */
+.public-site .public-header a.public-brand .brand-name-stack > small {
+  color: #0284c7 !important;
+  -webkit-text-fill-color: #0284c7 !important;
+  font-weight: 800 !important;
+  opacity: 1 !important;
+}
