@@ -110,6 +110,8 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [moderationRecords, setModerationRecords] = useState<ModerationRecord[]>([]);
+  const [memberIdDrafts, setMemberIdDrafts] = useState<Record<string, { name: string; fatherName: string; phone: string; address: string; designation: string }>>({});
+  const getMemberIdDraft = (a: Application) => memberIdDrafts[a.id] || { name: a.name || '', fatherName: a.fatherName || '', phone: a.phone || '', address: a.address || '', designation: 'सदस्य' };
   useEffect(() => {
     if (!isPlatformAdmin(authUser)) { setModerationRecords([]); return; }
     const sources = [{ collection: 'ngoMembers', kind: 'सदस्य' }, { collection: 'ngoTransactions', kind: 'दान / खर्च' }, { collection: 'ngoEvents', kind: 'कार्यक्रम' }, { collection: 'ngoDocuments', kind: 'दस्तावेज़' }];
@@ -161,37 +163,35 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
     if (status === 'APPROVED' && !window.confirm(hi ? 'क्या आपने सदस्य की जानकारी और फीस प्राप्त होने की पुष्टि कर ली है? मंज़ूरी के बाद ID डाउनलोड हो सकेगी।' : 'Have you verified the member details and received the fee? The ID will become downloadable after approval.')) return;
     setBusy(true); setMessage('');
     try {
+      const draft = getMemberIdDraft(a);
+      const finalName = status === 'APPROVED' ? draft.name.trim() : a.name;
+      const finalFatherName = status === 'APPROVED' ? draft.fatherName.trim() : a.fatherName;
+      const finalPhone = status === 'APPROVED' ? draft.phone.trim() : a.phone;
+      const finalAddress = status === 'APPROVED' ? draft.address.trim() : a.address;
+      if (status === 'APPROVED' && (!finalName || !finalFatherName || !finalPhone || !finalAddress)) {
+        setMessage(hi ? 'Member ID फॉर्म में नाम, अभिभावक, फोन और पता पूरा भरें।' : 'Complete the member ID form before approval.');
+        return;
+      }
       const memberId = status === 'APPROVED' ? (a.memberId || makeMemberId()) : (a.memberId || '');
       const batch = writeBatch(db);
       if (status === 'APPROVED') {
         batch.set(doc(db, 'memberVerifications', memberId), {
-          memberId, name: a.name, ngoId: a.ngoId, ngoName: a.ngoName,
+          memberId, name: finalName, ngoId: a.ngoId, ngoName: a.ngoName,
           applicationId: a.id, status: 'APPROVED', approvedAt: serverTimestamp()
         });
-        // Keep the approved application and public NGO team record in one atomic batch.
-        // Use the application ID as the record ID so retrying approval cannot create duplicates.
+        // The NGO admin verifies and finalizes the member details before publishing.
         batch.set(doc(db, 'ngoMembers', 'member-app-' + a.id), {
-          ngoId: a.ngoId,
-          name: a.name,
-          phone: a.phone,
-          photoData: a.photoData || '',
-          email: a.applicantEmail || '',
-          role: 'MEMBER',
-          designation: 'सदस्य',
-          location: a.address || '',
-          status: 'ACTIVE',
-          approvalStatus: 'APPROVED',
-          createdBy: authUser.uid,
-          source: 'memberApplication',
-          applicationId: a.id,
-          memberId,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
+          ngoId: a.ngoId, name: finalName, phone: finalPhone,
+          photoData: a.photoData || '', email: a.applicantEmail || '',
+          role: 'MEMBER', designation: draft.designation.trim() || 'सदस्य',
+          location: finalAddress, status: 'ACTIVE', approvalStatus: 'APPROVED',
+          createdBy: authUser.uid, source: 'memberApplication', applicationId: a.id,
+          memberId, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
         }, { merge: true });
       }
       batch.update(doc(db, 'memberApplications', a.id), {
         status,
-        ...(status === 'APPROVED' ? { memberId } : { rejectionReason: hi ? 'NGO Admin ने आवेदन स्वीकार नहीं किया।' : 'The NGO admin did not approve this application.' }),
+        ...(status === 'APPROVED' ? { memberId, name: finalName, fatherName: finalFatherName, phone: finalPhone, address: finalAddress } : { rejectionReason: hi ? 'NGO Admin ने आवेदन स्वीकार नहीं किया।' : 'The NGO admin did not approve this application.' }),
         reviewedAt: serverTimestamp(), reviewedBy: authUser.uid
       });
       await batch.commit();
@@ -271,7 +271,7 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
     {isPlatformAdmin(authUser) && <section className="member-applications-panel" style={{marginBottom:24}}><h2>Super Admin · NGO सामग्री की मंज़ूरी ({moderationRecords.length})</h2><p>यहाँ NGO द्वारा भेजे गए सदस्य, दान/खर्च, कार्यक्रम और दस्तावेज़ की जाँच करें। मंज़ूरी से पहले सामग्री सार्वजनिक नहीं होगी।</p>{moderationRecords.length === 0 ? <p>अभी कोई pending सामग्री नहीं है।</p> : moderationRecords.map(record => <article className="member-review-card" key={record.collection + record.id}><div className="member-review-info"><h3>{record.title}</h3><p>प्रकार: {record.kind} · NGO ID: {record.ngoId}</p><p>{String(record.data.designation || record.data.location || record.data.date || record.data.notes || record.data.note || '')}</p><small>{record.collection} / {record.id}</small><div className="member-review-actions"><button className="primary-button" disabled={busy} onClick={() => void reviewContent(record, 'APPROVED')}>✓ मंज़ूर करें</button><button className="outline-button" disabled={busy} onClick={() => void reviewContent(record, 'REJECTED')}>अस्वीकार</button></div></div></article>)}</section>}
     {ngos.length === 0 ? <div className="member-notice">{hi ? 'इस लॉगिन से जुड़ा NGO नहीं मिला। NGO के owner email से लॉगिन करें।' : 'No NGO is linked to this login. Sign in with the NGO owner account.'}</div> : <>
       <section className="member-form-panel member-admin-settings"><h2>{hi ? 'NGO फीस और WhatsApp सेटिंग' : 'NGO fee and WhatsApp settings'}</h2><form onSubmit={saveProfile}><label>{hi ? 'अपना NGO' : 'Your NGO'}<select value={selectedId} onChange={e => setSelectedId(e.target.value)}>{ngos.map(n => <option key={n.id} value={n.id}>{n.name}</option>)}</select></label><label>{hi ? 'Member ID फीस (₹)' : 'Member ID fee (₹)'}<input required type="number" min="1" max="100000" value={fee} onChange={e => setFee(e.target.value)}/></label><label>{hi ? 'WhatsApp नंबर देश कोड सहित' : 'WhatsApp number with country code'}<input required value={whatsapp} onChange={e => setWhatsapp(e.target.value)} placeholder="919876543210"/></label><button className="primary-button" type="submit" disabled={busy}>{hi ? 'सेटिंग सेव करें' : 'Save settings'}</button></form></section>
-      <section className="member-applications-panel"><h2>{hi ? 'सदस्य आवेदन' : 'Member applications'}</h2>{applications.filter(a => a.ngoId === selectedId).length === 0 ? <p>{hi ? 'अभी आवेदन नहीं हैं।' : 'No applications yet.'}</p> : applications.filter(a => a.ngoId === selectedId).map(a => <article className="member-review-card" key={a.id}><img src={a.photoData} alt={a.name}/><div className="member-review-info"><h3>{a.name}</h3><p>{hi ? 'पिता/अभिभावक: ' : 'Father/guardian: '}{a.fatherName}</p><p>{a.phone} · {a.address}</p><p>{a.ngoName} · ₹{a.feeAmount} · <strong>{a.status}</strong></p><small>Ref: {a.id}</small>{a.status === 'PENDING_PAYMENT' && <div className="member-review-actions"><button className="primary-button" disabled={busy} onClick={() => void review(a, 'APPROVED')}>{hi ? 'फीस जाँचकर Approve' : 'Verify fee & approve'}</button><button className="outline-button" disabled={busy} onClick={() => void review(a, 'REJECTED')}>{hi ? 'Reject' : 'Reject'}</button></div>}{a.status === 'APPROVED' && <div className="member-review-actions"><button className="primary-button" disabled={busy} onClick={() => void addApprovedApplicationToTeam(a)}>{hi ? 'टीम में जोड़ें / फिर से सिंक करें' : 'Add / sync to public team'}</button></div>}</div></article>)}</section>
+      <section className="member-applications-panel"><h2>{hi ? 'सदस्य आवेदन' : 'Member applications'}</h2>{applications.filter(a => a.ngoId === selectedId).length === 0 ? <p>{hi ? 'अभी आवेदन नहीं हैं।' : 'No applications yet.'}</p> : applications.filter(a => a.ngoId === selectedId).map(a => <article className="member-review-card" key={a.id}><img src={a.photoData} alt={a.name}/><div className="member-review-info"><h3>{a.name}</h3><p>{hi ? 'आवेदक की दी जानकारी' : 'Applicant-submitted details'}</p><p>{a.ngoName} · ₹{a.feeAmount} · <strong>{a.status}</strong></p><small>Ref: {a.id}</small>{a.status === 'PENDING_PAYMENT' && <><h4 style={{margin:'14px 0 6px'}}>{hi ? 'Admin द्वारा Member ID फॉर्म भरें' : 'Admin: finalize member ID details'}</h4><label>{hi ? 'सदस्य का नाम' : 'Member name'}<input required maxLength={100} value={getMemberIdDraft(a).name} onChange={e => setMemberIdDrafts(v => ({...v,[a.id]:{...getMemberIdDraft(a),name:e.target.value}}))}/></label><label>{hi ? 'पिता / अभिभावक का नाम' : 'Father / guardian name'}<input required maxLength={100} value={getMemberIdDraft(a).fatherName} onChange={e => setMemberIdDrafts(v => ({...v,[a.id]:{...getMemberIdDraft(a),fatherName:e.target.value}}))}/></label><label>{hi ? 'सदस्य का फोन' : 'Member phone'}<input required maxLength={20} value={getMemberIdDraft(a).phone} onChange={e => setMemberIdDrafts(v => ({...v,[a.id]:{...getMemberIdDraft(a),phone:e.target.value}}))}/></label><label>{hi ? 'पूरा पता / कार्यक्षेत्र' : 'Address / service area'}<textarea required maxLength={300} rows={2} value={getMemberIdDraft(a).address} onChange={e => setMemberIdDrafts(v => ({...v,[a.id]:{...getMemberIdDraft(a),address:e.target.value}}))}/></label><label>{hi ? 'पद' : 'Designation'}<input maxLength={80} value={getMemberIdDraft(a).designation} onChange={e => setMemberIdDrafts(v => ({...v,[a.id]:{...getMemberIdDraft(a),designation:e.target.value}}))}/></label><div className="member-review-actions"><button className="primary-button" disabled={busy} onClick={() => void review(a, 'APPROVED')}>{hi ? 'फीस जाँचें, ID बनाएं और वेबसाइट पर दिखाएँ' : 'Verify fee, create ID & publish to site'}</button><button className="outline-button" disabled={busy} onClick={() => void review(a, 'REJECTED')}>{hi ? 'अस्वीकार करें' : 'Reject request'}</button></div></>}{a.status === 'APPROVED' && <div className="member-review-actions"><button className="primary-button" disabled={busy} onClick={() => void addApprovedApplicationToTeam(a)}>{hi ? 'टीम में जोड़ें / फिर से सिंक करें' : 'Add / sync to public team'}</button></div>}</div></article>)}</section>
     </>}
     {message && <p className="member-notice" role="status">{message}</p>}
   </main>;
