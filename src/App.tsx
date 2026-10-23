@@ -246,11 +246,11 @@ function PublicNgoList({ language, setLanguage }: { language: Language; setLangu
       setLoadError(hi ? 'NGO सूची लोड करने के लिए Firebase सेटअप आवश्यक है।' : 'Firebase setup is required to load the NGO directory.');
       return () => { active = false; };
     }
-    const unsubscribeNgos = onSnapshot(firestoreQuery(collection(db, 'ngos'), where('status', 'in', ['LIVE', 'ACTIVE', 'APPROVED'])), snapshot => {
+    const unsubscribeNgos = onSnapshot(firestoreQuery(collection(db, 'ngos'), where('status', 'in', ['LIVE', 'ACTIVE', 'APPROVED', 'Live', 'Active', 'Approved', 'live', 'active', 'approved'])), snapshot => {
       if (!active) return;
       const records = snapshot.docs.map(item => { const data = item.data(); const locationParts = [data.city, data.district, data.state].filter(value => typeof value === 'string' && value.trim()).map(String); return { id: item.id, name: String(data.name || data.ngoName || 'NGO'), category: String(data.type || data.category || ''), location: locationParts.filter((value, index) => locationParts.indexOf(value) === index).join(', ') || String(data.location || ''), mission: String(data.mission || data.description || ''), imageData: String(data.imageData || data.registrationFormData?.imageData || '') }; }).sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
       setNgos(records); setLoading(false); setLoadError('');
-    }, () => { if (active) { setLoadError(hi ? 'NGO सूची लोड नहीं हुई। Firebase Rules और इंटरनेट कनेक्शन जाँचें।' : 'Could not load NGOs. Check Firestore rules and your internet connection.'); setLoading(false); } });
+    }, (error) => { if (active) { const code = String((error as { code?: string })?.code || 'unknown'); setLoadError(hi ? `NGO सूची लोड नहीं हुई (Firebase: ${code}, Project: ${db.app.options.projectId || 'unknown'}). Firebase Console में इसी प्रोजेक्ट के Firestore Rules प्रकाशित करें और ngos.status को LIVE/ACTIVE/APPROVED रखें।` : `Could not load NGOs (Firebase: ${code}, Project: ${db.app.options.projectId || 'unknown'}). Publish Firestore Rules in this exact Firebase project and ensure ngos.status is LIVE/ACTIVE/APPROVED.`); setLoading(false); } });
     return () => { active = false; unsubscribeNgos(); };
   }, [hi]);
 
