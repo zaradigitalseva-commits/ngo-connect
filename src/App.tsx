@@ -386,6 +386,8 @@ function PublicHomeNgoCards({ language }: { language: Language }) {
   const [ngos, setNgos] = useState<Array<{ id: string; name: string; category: string; location: string; mission: string; imageData: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const filteredNgos = ngos.filter(ngo => `${ngo.name} ${ngo.location} ${ngo.category} ${ngo.mission}`.toLocaleLowerCase().includes(searchQuery.trim().toLocaleLowerCase()));
 
   useEffect(() => {
     let active = true;
@@ -470,15 +472,20 @@ function PublicHomeNgoCards({ language }: { language: Language }) {
         .public-home-ngo-card > div:nth-child(2) > div:last-child > a:first-child { min-height: 26px !important; padding: 3px 5px !important; font-size: 11px !important; border-radius: 8px !important; }
       }
     `}</style>
-    <div className="public-section-heading">
-      <span>{hi ? 'ALL NGO CONNECT · NGO परिवार' : 'ALL NGO CONNECT · NGO COMMUNITY'}</span>
-      
-      <p>{hi ? 'सामाजिक बदलाव के लिए साथ काम करने वाली संस्थाएँ।' : 'Organizations working together for social impact.'}</p>
+    <div className="public-home-ngo-search" style={{ margin: '0 0 8px', padding: 0 }}>
+      <input
+        type="search"
+        value={searchQuery}
+        onChange={event => setSearchQuery(event.target.value)}
+        placeholder={hi ? 'NGO नाम, जिला या राज्य से खोजें…' : 'Search by NGO name, district or state…'}
+        aria-label={hi ? 'NGO नाम, जिला या राज्य से खोजें' : 'Search by NGO name, district or state'}
+        style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: 12, border: '1px solid #cbd5e1', background: '#fff', color: '#0f172a', fontSize: 15, fontWeight: 600, outlineOffset: 2, boxShadow: '0 3px 10px rgba(15,23,42,.08)' }}
+      />
     </div>
     {loading ? <div className="public-home-ngo-empty"><span className="directory-loader"/><p>{hi ? 'NGO की सूची लोड हो रही है…' : 'Loading NGOs…'}</p></div>
       : loadError ? <div className="ngo-directory-empty"><Building2 size={28}/><p>{hi ? 'अभी NGO सूची लोड नहीं हो सकी।' : 'The NGO list could not be loaded right now.'}</p></div>
-      : ngos.length === 0 ? <div className="ngo-directory-empty"><HeartHandshake size={30}/><strong>{hi ? 'अभी कोई सक्रिय NGO नहीं है' : 'No active NGOs yet'}</strong><p>{hi ? 'भुगतान सत्यापन और एडमिन की मंज़ूरी के बाद NGO के कार्ड यहाँ दिखाई देंगे।' : 'NGO cards will appear here after payment verification and admin approval.'}</p></div>
-      : <div className="public-home-ngo-grid">{ngos.map((ngo, index) => <article className={`public-home-ngo-card public-home-ngo-tone-${index % 4}`} key={ngo.id} role="link" tabIndex={0} aria-label={(hi ? 'NGO साइट खोलें: ' : 'Open NGO website: ') + ngo.name} onClick={() => { window.location.href = '/ngo/' + encodeURIComponent(ngo.id); }} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); window.location.href = '/ngo/' + encodeURIComponent(ngo.id); } }} style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 0, minHeight: 0, padding: 0, borderRadius: 20, border: ['2px solid #34d399','2px solid #c084fc','2px solid #60a5fa','2px solid #fb7185'][index % 4], background: ['linear-gradient(145deg,#00b894 0%,#10b981 45%,#047857 100%)','linear-gradient(145deg,#7c3aed 0%,#a855f7 48%,#c026d3 100%)','linear-gradient(145deg,#0284c7 0%,#38bdf8 48%,#1d4ed8 100%)','linear-gradient(145deg,#f97316 0%,#fb7185 48%,#be185d 100%)'][index % 4], boxShadow: ['0 5px 0 #047857, 0 13px 24px rgba(5,150,105,.28)','0 5px 0 #6b21a8, 0 13px 24px rgba(126,34,206,.28)','0 5px 0 #1e40af, 0 13px 24px rgba(37,99,235,.26)','0 5px 0 #9d174d, 0 13px 24px rgba(225,29,72,.25)'][index % 4], transition: 'transform .22s ease, box-shadow .22s ease' }}>
+      : filteredNgos.length === 0 ? <div className="ngo-directory-empty"><HeartHandshake size={30}/><strong>{ngos.length === 0 ? (hi ? 'अभी कोई सक्रिय NGO नहीं है' : 'No active NGOs yet') : (hi ? 'कोई NGO नहीं मिला' : 'No NGOs found')}</strong><p>{ngos.length === 0 ? (hi ? 'भुगतान सत्यापन और एडमिन की मंज़ूरी के बाद NGO के कार्ड यहाँ दिखाई देंगे।' : 'NGO cards will appear here after payment verification and admin approval.') : (hi ? 'दूसरा NGO नाम, जिला या राज्य खोजकर देखें।' : 'Try another NGO name, district or state.')}</p></div>
+      : <div className="public-home-ngo-grid">{filteredNgos.map((ngo, index) => <article className={`public-home-ngo-card public-home-ngo-tone-${index % 4}`} key={ngo.id} role="link" tabIndex={0} aria-label={(hi ? 'NGO साइट खोलें: ' : 'Open NGO website: ') + ngo.name} onClick={() => { window.location.href = '/ngo/' + encodeURIComponent(ngo.id); }} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); window.location.href = '/ngo/' + encodeURIComponent(ngo.id); } }} style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 0, minHeight: 0, padding: 0, borderRadius: 20, border: ['2px solid #34d399','2px solid #c084fc','2px solid #60a5fa','2px solid #fb7185'][index % 4], background: ['linear-gradient(145deg,#00b894 0%,#10b981 45%,#047857 100%)','linear-gradient(145deg,#7c3aed 0%,#a855f7 48%,#c026d3 100%)','linear-gradient(145deg,#0284c7 0%,#38bdf8 48%,#1d4ed8 100%)','linear-gradient(145deg,#f97316 0%,#fb7185 48%,#be185d 100%)'][index % 4], boxShadow: ['0 5px 0 #047857, 0 13px 24px rgba(5,150,105,.28)','0 5px 0 #6b21a8, 0 13px 24px rgba(126,34,206,.28)','0 5px 0 #1e40af, 0 13px 24px rgba(37,99,235,.26)','0 5px 0 #9d174d, 0 13px 24px rgba(225,29,72,.25)'][index % 4], transition: 'transform .22s ease, box-shadow .22s ease' }}>
           <div style={{ height: 4, width: '100%', background: ['linear-gradient(90deg,#a7f3d0,#fef08a,#34d399)','linear-gradient(90deg,#e9d5ff,#f9a8d4,#c084fc)','linear-gradient(90deg,#bae6fd,#fef08a,#60a5fa)','linear-gradient(90deg,#fed7aa,#fda4af,#fb7185)'][index % 4] }}/>
           <div style={{ padding: '5px 6px 5px', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'space-between', flex: 1, position: 'relative', gap: 2, textAlign: 'center', minHeight: 0 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', alignItems: 'stretch', width: '100%', gap: 5, flex: '1 1 auto', minHeight: 0 }}>
