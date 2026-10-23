@@ -171,12 +171,46 @@ function PublicNgoSite({ language, setLanguage, ngoId, authUser, onLogin }: { la
           <h2 style={{ color: '#065f46', fontSize: 'clamp(24px,3vw,34px)', margin: '12px 0 8px' }}>{hi ? 'इस NGO में काम करने वाले लोग' : 'People working with this NGO'}</h2>
           <p style={{ color: '#64748b', marginTop: 0 }}>{hi ? 'टीम के सदस्य, उनका पद और कार्यक्षेत्र।' : 'Meet the team, their roles and the areas they serve.'}</p>
           {team.length ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,230px),1fr))', gap: 16, marginTop: 20 }}>
-            {team.map(person => <article key={person.id} style={{ borderRadius: 18, padding: 18, background: 'linear-gradient(145deg,#ecfdf5,#eff6ff)', border: '1px solid #bbf7d0', boxShadow: '0 8px 20px rgba(16,185,129,.09)' }}>
-              <div style={{ width: 54, height: 54, borderRadius: 17, display: 'grid', placeItems: 'center', color: '#fff', fontSize: 20, fontWeight: 900, background: 'linear-gradient(135deg,#059669,#4f46e5)', marginBottom: 12 }}>{person.photoData ? <img src={String(person.photoData)} alt={String(person.name || 'Team member')} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} onError={e => { e.currentTarget.style.display = 'none'; }}/> : String(person.name || 'T').trim().slice(0,1).toUpperCase()}</div>
-              <h3 style={{ margin: '0 0 6px', color: '#0f172a', fontSize: 19 }}>{String(person.name || (hi ? 'टीम सदस्य' : 'Team member'))}</h3>
-              <p style={{ margin: '0 0 7px', color: '#4338ca', fontWeight: 800 }}>{String(person.designation || person.position || (String(person.role || '').toUpperCase() === 'VOLUNTEER' ? (hi ? 'स्वयंसेवक' : 'Volunteer') : (hi ? 'सदस्य' : 'Member')))}</p>
-              {(person.location || person.workArea) && <p style={{ margin: 0, color: '#475569', display: 'flex', alignItems: 'flex-start', gap: 7 }}><MapPin size={16} style={{ flexShrink: 0, marginTop: 3 }}/>{String(person.location || person.workArea)}</p>}
-            </article>)}
+            {team.map(person => {
+              const canManageTeam = Boolean(authUser && ngo && (authUser.uid === ngo.ownerUid || isSuperAdmin(authUser)));
+              const editTeamMember = async () => {
+                const nextName = window.prompt(hi ? 'सदस्य का नाम बदलें:' : 'Edit member name:', String(person.name || ''));
+                if (nextName === null) return;
+                const nextDesignation = window.prompt(hi ? 'पद बदलें:' : 'Edit designation:', String(person.designation || person.position || 'सदस्य'));
+                if (nextDesignation === null) return;
+                const nextLocation = window.prompt(hi ? 'कार्य क्षेत्र / स्थान बदलें:' : 'Edit work area / location:', String(person.location || person.workArea || ''));
+                if (nextLocation === null) return;
+                if (!nextName.trim()) { window.alert(hi ? 'नाम खाली नहीं हो सकता।' : 'Name cannot be empty.'); return; }
+                try {
+                  await updateDoc(doc(db, 'ngoMembers', person.id), {
+                    name: nextName.trim(), designation: nextDesignation.trim(),
+                    location: nextLocation.trim(), updatedAt: serverTimestamp()
+                  });
+                  window.alert(hi ? 'टीम सदस्य की जानकारी अपडेट हो गई।' : 'Team member updated.');
+                } catch (error) {
+                  window.alert(error instanceof Error ? error.message : (hi ? 'अपडेट नहीं हुआ। अनुमति जाँचें।' : 'Update failed. Check permissions.'));
+                }
+              };
+              const deleteTeamMember = async () => {
+                if (!window.confirm(hi ? 'क्या इस सदस्य को NGO की सार्वजनिक टीम सूची से हटाना है? यह रिकॉर्ड स्थायी रूप से हट जाएगा।' : 'Remove this member from the public NGO team? This permanently deletes the record.')) return;
+                try {
+                  await deleteDoc(doc(db, 'ngoMembers', person.id));
+                  window.alert(hi ? 'टीम सदस्य हटा दिया गया।' : 'Team member deleted.');
+                } catch (error) {
+                  window.alert(error instanceof Error ? error.message : (hi ? 'डिलीट नहीं हुआ। अनुमति जाँचें।' : 'Delete failed. Check permissions.'));
+                }
+              };
+              return <article key={person.id} style={{ borderRadius: 18, padding: 18, background: 'linear-gradient(145deg,#ecfdf5,#eff6ff)', border: '1px solid #bbf7d0', boxShadow: '0 8px 20px rgba(16,185,129,.09)' }}>
+                <div style={{ width: 54, height: 54, borderRadius: 17, display: 'grid', placeItems: 'center', color: '#fff', fontSize: 20, fontWeight: 900, background: 'linear-gradient(135deg,#059669,#4f46e5)', marginBottom: 12 }}>{person.photoData ? <img src={String(person.photoData)} alt={String(person.name || 'Team member')} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} onError={e => { e.currentTarget.style.display = 'none'; }}/> : String(person.name || 'T').trim().slice(0,1).toUpperCase()}</div>
+                <h3 style={{ margin: '0 0 6px', color: '#0f172a', fontSize: 19 }}>{String(person.name || (hi ? 'टीम सदस्य' : 'Team member'))}</h3>
+                <p style={{ margin: '0 0 7px', color: '#4338ca', fontWeight: 800 }}>{String(person.designation || person.position || (String(person.role || '').toUpperCase() === 'VOLUNTEER' ? (hi ? 'स्वयंसेवक' : 'Volunteer') : (hi ? 'सदस्य' : 'Member')))}</p>
+                {(person.location || person.workArea) && <p style={{ margin: 0, color: '#475569', display: 'flex', alignItems: 'flex-start', gap: 7 }}><MapPin size={16} style={{ flexShrink: 0, marginTop: 3 }}/>{String(person.location || person.workArea)}</p>}
+                {canManageTeam && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14, paddingTop: 12, borderTop: '1px solid #d1fae5' }}>
+                  <button type="button" onClick={() => void editTeamMember()} style={{ flex: '1 1 90px', border: '1px solid #a5b4fc', borderRadius: 10, padding: '9px 12px', background: '#eef2ff', color: '#3730a3', fontWeight: 800, cursor: 'pointer' }}>✏️ {hi ? 'Edit करें' : 'Edit'}</button>
+                  <button type="button" onClick={() => void deleteTeamMember()} style={{ flex: '1 1 90px', border: '1px solid #fecaca', borderRadius: 10, padding: '9px 12px', background: '#fff1f2', color: '#b91c1c', fontWeight: 800, cursor: 'pointer' }}>🗑️ {hi ? 'Delete करें' : 'Delete'}</button>
+                </div>}
+              </article>;
+            })}
           </div> : <div style={{ marginTop: 16, borderRadius: 16, padding: 20, background: '#f8fafc', color: '#64748b', textAlign: 'center' }}>{hi ? 'NGO Admin ने अभी टीम की जानकारी नहीं जोड़ी है।' : 'The NGO admin has not added team information yet.'}</div>}
         </section>
         <section style={{ marginTop: 22, padding: 'clamp(22px,4vw,34px)', background: '#fff', borderRadius: 24, boxShadow: '0 14px 35px rgba(15,23,42,.08)', border: '1px solid #dbeafe' }}>
