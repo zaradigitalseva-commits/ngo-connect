@@ -438,6 +438,42 @@ function PublicHomeNgoCards({ language }: { language: Language }) {
         75% { filter: hue-rotate(35deg) saturate(1.16); }
       }
       .public-home-ngo-card {
+        height: 230px !important;
+        min-height: 0 !important;
+      }
+      .public-home-ngo-card .ngo-card-media-layout {
+        display: flex;
+        align-items: stretch;
+        gap: 8px;
+        height: 116px;
+        min-height: 116px;
+      }
+      .public-home-ngo-card .ngo-card-logo-panel {
+        width: 30%;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .public-home-ngo-card .ngo-card-photos-panel {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        gap: 5px;
+        overflow: hidden;
+      }
+      .public-home-ngo-card .ngo-card-photos-panel img {
+        width: 50%;
+        min-width: 0;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 8px;
+      }
+      .public-home-ngo-card .ngo-card-logo-panel img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+      }
         animation: ngo-card-color-wave 3s linear infinite;
         background-size: 180% 180% !important;
         transition: filter .5s ease, box-shadow .3s ease;
