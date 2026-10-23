@@ -2452,3 +2452,20 @@ input, select, textarea, button {
     margin-top: 2px !important;
   }
 }
+
+
+/* Make the All NGO Connect brand clearly visible in sky blue */
+.public-brand .brand-name-banner {
+  background: linear-gradient(180deg, #7dd3fc 0%, #0284c7 100%) !important;
+  box-shadow: 0 2px 0 #0369a1, 0 4px 10px rgba(2, 132, 199, .28), inset 0 1px 0 rgba(255,255,255,.45) !important;
+  border: 1px solid rgba(224, 242, 254, .95) !important;
+}
+.public-brand .brand-name-banner > span,
+.public-site:not(.ngo-directory-site) > .public-header > .public-brand > .brand-name-stack > .brand-name-banner > span {
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(3, 37, 65, .35);
+}
+.public-brand .brand-name-stack > small {
+  color: #0284c7 !important;
+  font-weight: 800 !important;
+}
