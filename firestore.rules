@@ -23,13 +23,19 @@ service cloud.firestore {
         || (request.auth != null
           && resource.data.ownerUid == request.auth.uid
           && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['memberFee', 'adminWhatsApp', 'updatedAt'])
-          && request.resource.data.memberFee is number
-          && request.resource.data.memberFee >= 1
-          && request.resource.data.memberFee <= 100000
-          && request.resource.data.adminWhatsApp is string
-          && request.resource.data.adminWhatsApp.size() >= 10
-          && request.resource.data.adminWhatsApp.size() <= 20);
+            .hasOnly(['memberFee', 'adminWhatsApp', 'mission', 'description', 'updatedAt'])
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['memberFee'])
+            || (request.resource.data.memberFee is number
+              && request.resource.data.memberFee >= 1
+              && request.resource.data.memberFee <= 100000))
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['adminWhatsApp'])
+            || (request.resource.data.adminWhatsApp is string
+              && request.resource.data.adminWhatsApp.size() >= 10
+              && request.resource.data.adminWhatsApp.size() <= 20))
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['mission'])
+            || (request.resource.data.mission is string && request.resource.data.mission.size() <= 2000))
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['description'])
+            || (request.resource.data.description is string && request.resource.data.description.size() <= 2000)));
     }
 
     // Subscription plans: active plans are visible to registration forms; only Super Admin can manage them.
