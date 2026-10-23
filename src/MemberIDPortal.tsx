@@ -254,7 +254,7 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
       const existing = existingMatch ? null : await getDoc(teamRef);
       const payload: Record<string, any> = {
         ngoId: a.ngoId, name: a.name, phone: a.phone, email: a.applicantEmail || '',
-        role: 'MEMBER', designation: 'सदस्य', location: a.address || '',
+        role: 'MEMBER', designation: String(existingMatch?.data().designation || 'सदस्य'), location: a.address || '',
         status: 'ACTIVE', approvalStatus: 'APPROVED', createdBy: authUser.uid,
         source: 'memberApplication', applicationId: a.id, memberId: a.memberId,
         updatedAt: serverTimestamp()
