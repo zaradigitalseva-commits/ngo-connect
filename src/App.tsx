@@ -808,7 +808,6 @@ export default function App() {
     const unsubscribers = [
       onSnapshot(collection(db, 'ngos'), snap => { ngoDocs = snap.docs; refresh(); }, error => { if (active) setDashboardError(error.message); }),
       onSnapshot(collection(db, 'ngoMembers'), snap => { members = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord)); refresh(); }, error => { if (active) setDashboardError(error.message); }),
-      onSnapshot(collection(db, 'ngoTransactions'), snap => { transactions = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord)); refresh(); }, error => { if (active) setDashboardError(error.message); }),
       onSnapshot(collection(db, 'ngoEvents'), snap => { events = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord)); refresh(); }, error => { if (active) setDashboardError(error.message); }),
       onSnapshot(collection(db, 'ngoDocuments'), snap => { documents = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord)); refresh(); }, error => { if (active) setDashboardError(error.message); }),
     ];
