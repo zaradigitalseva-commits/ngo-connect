@@ -438,44 +438,35 @@ function PublicHomeNgoCards({ language }: { language: Language }) {
         75% { filter: hue-rotate(35deg) saturate(1.16); }
       }
       .public-home-ngo-card {
-        height: 180px !important;
-        min-height: 0 !important;
+        height: 100px !important; min-height: 0 !important;
         animation: ngo-card-color-wave 3s linear infinite;
         background-size: 180% 180% !important;
         transition: filter .5s ease, box-shadow .3s ease;
       }
       .public-home-ngo-card:nth-child(2n) { animation-delay: -1s; }
       .public-home-ngo-card:nth-child(3n) { animation-delay: -2s; }
-      .public-home-ngo-card .ngo-card-media-layout {
-        display: flex; align-items: stretch; gap: 6px; height: 72px; min-height: 72px;
-      }
-      .public-home-ngo-card .ngo-card-logo-panel {
-        width: 30%; min-width: 0; display: flex; align-items: center; justify-content: center;
-      }
-      .public-home-ngo-card .ngo-card-photos-panel {
-        flex: 1; min-width: 0; display: flex; gap: 4px; overflow: hidden;
-      }
-      .public-home-ngo-card .ngo-card-photos-panel img {
-        width: 50%; min-width: 0; height: 100%; object-fit: cover; border-radius: 7px;
-      }
-      .public-home-ngo-card .ngo-card-logo-panel img { max-width: 100%; max-height: 100%; object-fit: contain; }
+      .public-home-ngo-card .ngo-card-media-layout { display:flex; align-items:center; gap:5px; height:48px; min-height:48px; }
+      .public-home-ngo-card .ngo-card-logo-panel { width:35%; min-width:0; display:flex; align-items:center; justify-content:center; }
+      .public-home-ngo-card .ngo-card-photos-panel { flex:1; min-width:0; display:flex; gap:4px; overflow:hidden; }
+      .public-home-ngo-card .ngo-card-photos-panel img { width:50%; min-width:0; height:100%; object-fit:cover; border-radius:6px; }
+      .public-home-ngo-card .ngo-card-logo-panel img { max-width:100%; max-height:100%; object-fit:contain; }
+      .public-home-ngo-card > div:nth-child(2) { padding:5px 7px !important; gap:4px !important; }
+      .public-home-ngo-card h3 { display:none !important; }
+      .public-home-ngo-card .public-home-ngo-card-top { width:48px !important; height:48px !important; min-height:48px !important; max-width:48px !important; margin:0 !important; }
+      .public-home-ngo-card .public-home-ngo-monogram { width:48px !important; height:48px !important; min-height:48px !important; max-height:48px !important; padding:2px !important; border-radius:8px !important; }
+      .public-home-ngo-card > div:nth-child(2) > div:last-child { width:100% !important; margin:0 !important; }
+      .public-home-ngo-card > div:nth-child(2) > div:last-child > a:last-child { display:none !important; }
+      .public-home-ngo-card > div:nth-child(2) > div:last-child > a:first-child { min-height:30px !important; padding:4px 8px !important; }
       @media (prefers-reduced-motion: reduce) {
         .public-home-ngo-card { animation: none !important; }
       }
       @media (max-width: 600px) {
-        .public-home-ngo-grid { gap: 10px !important; grid-template-columns: minmax(0, 1fr) !important; }
-        .public-home-ngo-card { height: 165px !important; min-height: 0 !important; border-radius: 14px !important; box-shadow: 0 2px 0 #bbf7d0, 0 5px 12px rgba(5,150,105,.09) !important; }
-        .public-home-ngo-card > div:nth-child(2) { padding: 6px 9px 7px !important; }
-        .public-home-ngo-card .public-home-ngo-card-top { justify-content: center !important; align-items: center !important; text-align: center !important; width: 100% !important; margin-bottom: 4px !important; gap: 0 !important; min-height: 0 !important; }
-        .public-home-ngo-card .public-home-ngo-monogram { width: 100% !important; height: 55px !important; min-height: 55px !important; max-height: 55px !important; aspect-ratio: auto !important; max-width: 100% !important; border-radius: 10px !important; padding: 3px !important; }
-        .public-home-ngo-card .public-home-ngo-active { font-size: 10px !important; padding: 3px 7px !important; gap: 4px !important; }
-        .public-home-ngo-card h3 { font-size: 14px !important; line-height: 1.15 !important; margin-bottom: 3px !important; letter-spacing: -.2px !important; }
-        .public-home-ngo-card .public-home-ngo-category { font-size: 9px !important; padding: 2px 5px !important; margin-bottom: 3px !important; }
-        .public-home-ngo-card .public-home-ngo-location { font-size: 10px !important; margin-bottom: 3px !important; padding-bottom: 3px !important; }
-        .public-home-ngo-card > div:nth-child(2) > div[style*="minHeight"] { padding: 3px 5px !important; margin-bottom: 3px !important; min-height: 0 !important; gap: 5px !important; border-radius: 7px !important; }
-        .public-home-ngo-card .ngo-directory-mission { font-size: 10px !important; line-height: 1.2 !important; -webkit-line-clamp: 1 !important; }
-        .public-home-ngo-card > div:nth-child(2) > div:last-child > span:first-child { font-size: 10px !important; }
-        .public-home-ngo-card > div:nth-child(2) > div:last-child > span:last-child { font-size: 11px !important; padding: 6px 8px !important; gap: 5px !important; }
+        .public-home-ngo-grid { gap: 8px !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+        .public-home-ngo-card { height: 88px !important; min-height: 88px !important; border-radius: 10px !important; }
+        .public-home-ngo-card > div:nth-child(2) { padding: 4px !important; gap: 3px !important; }
+        .public-home-ngo-card .public-home-ngo-card-top { width: 42px !important; height: 42px !important; min-height: 42px !important; max-width: 42px !important; margin: 0 !important; }
+        .public-home-ngo-card .public-home-ngo-monogram { width: 42px !important; height: 42px !important; min-height: 42px !important; max-height: 42px !important; padding: 2px !important; border-radius: 7px !important; }
+        .public-home-ngo-card > div:nth-child(2) > div:last-child > a:first-child { min-height: 26px !important; padding: 3px 5px !important; font-size: 11px !important; border-radius: 8px !important; }
       }
     `}</style>
     <div className="public-section-heading">
