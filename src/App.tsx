@@ -430,6 +430,23 @@ function PublicHomeNgoCards({ language }: { language: Language }) {
   }, []);
 
   return <section className="public-home-ngo-directory" aria-labelledby="home-ngo-heading">
+    <style>{`
+      @media (max-width: 600px) {
+        .public-home-ngo-grid { gap: 10px !important; grid-template-columns: minmax(0, 1fr) !important; }
+        .public-home-ngo-card { min-height: 0 !important; border-radius: 14px !important; box-shadow: 0 2px 0 #bbf7d0, 0 5px 12px rgba(5,150,105,.09) !important; }
+        .public-home-ngo-card > div:nth-child(2) { padding: 9px 11px 10px !important; }
+        .public-home-ngo-card .public-home-ngo-card-top { margin-bottom: 6px !important; gap: 7px !important; }
+        .public-home-ngo-card .public-home-ngo-monogram { width: 42px !important; height: 42px !important; border-radius: 10px !important; padding: 3px !important; }
+        .public-home-ngo-card .public-home-ngo-active { font-size: 10px !important; padding: 3px 7px !important; gap: 4px !important; }
+        .public-home-ngo-card h3 { font-size: 16px !important; line-height: 1.2 !important; margin-bottom: 5px !important; letter-spacing: -.2px !important; }
+        .public-home-ngo-card .public-home-ngo-category { font-size: 10px !important; padding: 3px 6px !important; margin-bottom: 5px !important; }
+        .public-home-ngo-card .public-home-ngo-location { font-size: 11px !important; margin-bottom: 5px !important; padding-bottom: 5px !important; }
+        .public-home-ngo-card > div:nth-child(2) > div[style*="minHeight"] { padding: 5px 7px !important; margin-bottom: 6px !important; min-height: 0 !important; gap: 6px !important; border-radius: 8px !important; }
+        .public-home-ngo-card .ngo-directory-mission { font-size: 11px !important; line-height: 1.3 !important; -webkit-line-clamp: 1 !important; }
+        .public-home-ngo-card > div:nth-child(2) > div:last-child > span:first-child { font-size: 10px !important; }
+        .public-home-ngo-card > div:nth-child(2) > div:last-child > span:last-child { font-size: 11px !important; padding: 6px 8px !important; gap: 5px !important; }
+      }
+    `}</style>
     <div className="public-section-heading">
       <span>{hi ? 'ALL NGO CONNECT · NGO परिवार' : 'ALL NGO CONNECT · NGO COMMUNITY'}</span>
       
