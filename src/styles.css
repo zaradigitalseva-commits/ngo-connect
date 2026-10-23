@@ -2509,3 +2509,38 @@ input, select, textarea, button {
     font-size: 15px !important;
   }
 }
+
+
+/* Final brand fix: sky-blue letters (not just a blue background) */
+.public-site .public-header a.public-brand .brand-name-stack .brand-name-banner {
+  display: inline-flex !important;
+  width: max-content !important;
+  max-width: 100% !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%) !important;
+  border: 2px solid #7dd3fc !important;
+  border-radius: 8px !important;
+  padding: 5px 10px !important;
+  box-shadow: 0 3px 0 #bae6fd, 0 5px 12px rgba(2,132,199,.16) !important;
+}
+.public-site .public-header a.public-brand .brand-name-stack .brand-name-banner > span {
+  color: #0284c7 !important;
+  -webkit-text-fill-color: #0284c7 !important;
+  font-weight: 1000 !important;
+  font-size: 17px !important;
+  letter-spacing: .35px !important;
+  line-height: 1.12 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  text-shadow: none !important;
+  background: transparent !important;
+}
+.public-site .public-header a.public-brand .brand-name-stack > small {
+  color: #0369a1 !important;
+  font-weight: 800 !important;
+  opacity: 1 !important;
+}
+@media (max-width: 600px) {
+  .public-site .public-header a.public-brand .brand-name-stack .brand-name-banner > span {
+    font-size: 15px !important;
+  }
+}
