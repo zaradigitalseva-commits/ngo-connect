@@ -3,7 +3,7 @@ import type { User } from 'firebase/auth';
 import { signOut } from 'firebase/auth';
 import { auth, db } from './firebase';
 import {
-  addDoc, collection, doc, getDoc, getDocs, onSnapshot, query, serverTimestamp,
+  addDoc, collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, query, serverTimestamp,
   updateDoc, where, writeBatch, setDoc
 } from 'firebase/firestore';
 
@@ -105,6 +105,7 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
   const [ngos, setNgos] = useState<Ngo[]>([]);
   const [selectedId, setSelectedId] = useState('');
   const [applications, setApplications] = useState<Application[]>([]);
+  const [teamMembers, setTeamMembers] = useState<Record<string, any>[]>([]);
   const [fee, setFee] = useState('100');
   const [whatsapp, setWhatsapp] = useState('');
   const [busy, setBusy] = useState(false);
@@ -149,6 +150,41 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
     return () => unsubs.forEach(unsubscribe => unsubscribe());
   }, [ngos.map(n => n.id).join('|')]);
   useEffect(() => { const n = ngos.find(x => x.id === selectedId); if (n) { setFee(String(n.memberFee || 100)); setWhatsapp(n.adminWhatsApp || ''); } }, [selectedId, ngos]);
+  useEffect(() => {
+    if (!selectedId) { setTeamMembers([]); return; }
+    const unsubscribe = onSnapshot(query(collection(db, 'ngoMembers'), where('ngoId', '==', selectedId)), snapshot => {
+      setTeamMembers(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Record<string, any>))
+        .filter(member => String(member.approvalStatus || '').toUpperCase() === 'APPROVED')
+        .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))));
+    }, error => setMessage(error instanceof Error ? error.message : 'टीम की जानकारी लोड नहीं हुई।'));
+    return unsubscribe;
+  }, [selectedId]);
+  const editTeamMember = async (member: Record<string, any>) => {
+    const name = window.prompt(hi ? 'सदस्य का नाम:' : 'Member name:', String(member.name || ''));
+    if (name === null) return;
+    const designation = window.prompt(hi ? 'सदस्य का पद:' : 'Designation:', String(member.designation || 'सदस्य'));
+    if (designation === null) return;
+    const location = window.prompt(hi ? 'कार्य क्षेत्र / स्थान:' : 'Work area / location:', String(member.location || member.workArea || ''));
+    if (location === null) return;
+    const phone = window.prompt(hi ? 'मोबाइल नंबर:' : 'Phone number:', String(member.phone || ''));
+    if (phone === null) return;
+    if (!name.trim() || !phone.trim()) { setMessage(hi ? 'नाम और मोबाइल नंबर खाली नहीं हो सकते।' : 'Name and phone cannot be empty.'); return; }
+    setBusy(true); setMessage('');
+    try {
+      await updateDoc(doc(db, 'ngoMembers', member.id), { name: name.trim(), designation: designation.trim() || 'सदस्य', location: location.trim(), phone: phone.trim(), updatedAt: serverTimestamp() });
+      setMessage(hi ? 'टीम सदस्य की जानकारी सेव हो गई।' : 'Team member changes saved.');
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'Edit सेव नहीं हुआ। Firestore Rules जाँचें।'); }
+    finally { setBusy(false); }
+  };
+  const deleteTeamMember = async (member: Record<string, any>) => {
+    if (!window.confirm(hi ? 'क्या इस सदस्य को NGO की सार्वजनिक टीम से स्थायी रूप से हटाना है? यह उसकी सदस्य ID verification को नहीं मिटाएगा।' : 'Remove this person from the public NGO team permanently? Their member ID verification will remain.')) return;
+    setBusy(true); setMessage('');
+    try {
+      await deleteDoc(doc(db, 'ngoMembers', member.id));
+      setMessage(hi ? 'सदस्य सार्वजनिक टीम से हटा दिया गया।' : 'Member removed from public team.');
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'Delete नहीं हुआ। Firestore Rules जाँचें।'); }
+    finally { setBusy(false); }
+  };
   const currentNgo = ngos.find(n => n.id === selectedId);
   const saveProfile = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault(); if (!currentNgo) return;
@@ -271,6 +307,7 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
     {isPlatformAdmin(authUser) && <section className="member-applications-panel" style={{marginBottom:24}}><h2>Super Admin · NGO सामग्री की मंज़ूरी ({moderationRecords.length})</h2><p>यहाँ NGO द्वारा भेजे गए सदस्य, दान/खर्च, कार्यक्रम और दस्तावेज़ की जाँच करें। मंज़ूरी से पहले सामग्री सार्वजनिक नहीं होगी।</p>{moderationRecords.length === 0 ? <p>अभी कोई pending सामग्री नहीं है।</p> : moderationRecords.map(record => <article className="member-review-card" key={record.collection + record.id}><div className="member-review-info"><h3>{record.title}</h3><p>प्रकार: {record.kind} · NGO ID: {record.ngoId}</p><p>{String(record.data.designation || record.data.location || record.data.date || record.data.notes || record.data.note || '')}</p><small>{record.collection} / {record.id}</small><div className="member-review-actions"><button className="primary-button" disabled={busy} onClick={() => void reviewContent(record, 'APPROVED')}>✓ मंज़ूर करें</button><button className="outline-button" disabled={busy} onClick={() => void reviewContent(record, 'REJECTED')}>अस्वीकार</button></div></div></article>)}</section>}
     {ngos.length === 0 ? <div className="member-notice">{hi ? 'इस लॉगिन से जुड़ा NGO नहीं मिला। NGO के owner email से लॉगिन करें।' : 'No NGO is linked to this login. Sign in with the NGO owner account.'}</div> : <>
       <section className="member-form-panel member-admin-settings"><h2>{hi ? 'NGO फीस और WhatsApp सेटिंग' : 'NGO fee and WhatsApp settings'}</h2><form onSubmit={saveProfile}><label>{hi ? 'अपना NGO' : 'Your NGO'}<select value={selectedId} onChange={e => setSelectedId(e.target.value)}>{ngos.map(n => <option key={n.id} value={n.id}>{n.name}</option>)}</select></label><label>{hi ? 'Member ID फीस (₹)' : 'Member ID fee (₹)'}<input required type="number" min="1" max="100000" value={fee} onChange={e => setFee(e.target.value)}/></label><label>{hi ? 'WhatsApp नंबर देश कोड सहित' : 'WhatsApp number with country code'}<input required value={whatsapp} onChange={e => setWhatsapp(e.target.value)} placeholder="919876543210"/></label><button className="primary-button" type="submit" disabled={busy}>{hi ? 'सेटिंग सेव करें' : 'Save settings'}</button></form></section>
+      <section className="member-applications-panel"><h2>{hi ? 'वेबसाइट पर दिखने वाली टीम' : 'Public website team'} ({teamMembers.length})</h2><p>{hi ? 'यहाँ से आप अपनी NGO वेबसाइट पर दिख रहे सदस्यों की जानकारी बदल या उन्हें सूची से हटा सकते हैं।' : 'Edit member details or remove members from your NGO public team listing here.'}</p>{teamMembers.length === 0 ? <p>{hi ? 'अभी कोई मंज़ूर टीम सदस्य नहीं है।' : 'No approved team members yet.'}</p> : teamMembers.map(member => <article className="member-review-card" key={member.id}><img src={String(member.photoData || '')} alt={String(member.name || 'Member')} onError={e => { e.currentTarget.style.display = 'none'; }} /><div className="member-review-info"><h3>{String(member.name || 'सदस्य')}</h3><p>{String(member.designation || 'सदस्य')} · {String(member.location || member.workArea || 'स्थान नहीं दिया')}</p><p>{String(member.phone || '')}</p><div className="member-review-actions"><button className="primary-button" disabled={busy} onClick={() => void editTeamMember(member)}>{hi ? '✏️ Edit करें' : '✏️ Edit'}</button><button className="outline-button" disabled={busy} onClick={() => void deleteTeamMember(member)}>{hi ? '🗑️ Delete करें' : '🗑️ Delete'}</button></div></div></article>)}</section>
       <section className="member-applications-panel"><h2>{hi ? 'सदस्य आवेदन' : 'Member applications'}</h2>{applications.filter(a => a.ngoId === selectedId).length === 0 ? <p>{hi ? 'अभी आवेदन नहीं हैं।' : 'No applications yet.'}</p> : applications.filter(a => a.ngoId === selectedId).map(a => <article className="member-review-card" key={a.id}><img src={a.photoData} alt={a.name}/><div className="member-review-info"><h3>{a.name}</h3><p>{hi ? 'आवेदक की दी जानकारी' : 'Applicant-submitted details'}</p><p>{a.ngoName} · ₹{a.feeAmount} · <strong>{a.status}</strong></p><small>Ref: {a.id}</small>{a.status === 'PENDING_PAYMENT' && <><h4 style={{margin:'14px 0 6px'}}>{hi ? 'Admin द्वारा Member ID फॉर्म भरें' : 'Admin: finalize member ID details'}</h4><label>{hi ? 'सदस्य का नाम' : 'Member name'}<input required maxLength={100} value={getMemberIdDraft(a).name} onChange={e => setMemberIdDrafts(v => ({...v,[a.id]:{...getMemberIdDraft(a),name:e.target.value}}))}/></label><label>{hi ? 'पिता / अभिभावक का नाम' : 'Father / guardian name'}<input required maxLength={100} value={getMemberIdDraft(a).fatherName} onChange={e => setMemberIdDrafts(v => ({...v,[a.id]:{...getMemberIdDraft(a),fatherName:e.target.value}}))}/></label><label>{hi ? 'सदस्य का फोन' : 'Member phone'}<input required maxLength={20} value={getMemberIdDraft(a).phone} onChange={e => setMemberIdDrafts(v => ({...v,[a.id]:{...getMemberIdDraft(a),phone:e.target.value}}))}/></label><label>{hi ? 'पूरा पता / कार्यक्षेत्र' : 'Address / service area'}<textarea required maxLength={300} rows={2} value={getMemberIdDraft(a).address} onChange={e => setMemberIdDrafts(v => ({...v,[a.id]:{...getMemberIdDraft(a),address:e.target.value}}))}/></label><label>{hi ? 'पद' : 'Designation'}<input maxLength={80} value={getMemberIdDraft(a).designation} onChange={e => setMemberIdDrafts(v => ({...v,[a.id]:{...getMemberIdDraft(a),designation:e.target.value}}))}/></label><div className="member-review-actions"><button className="primary-button" disabled={busy} onClick={() => void review(a, 'APPROVED')}>{hi ? 'फीस जाँचें, ID बनाएं और वेबसाइट पर दिखाएँ' : 'Verify fee, create ID & publish to site'}</button><button className="outline-button" disabled={busy} onClick={() => void review(a, 'REJECTED')}>{hi ? 'अस्वीकार करें' : 'Reject request'}</button></div></>}{a.status === 'APPROVED' && <div className="member-review-actions"><button className="primary-button" disabled={busy} onClick={() => void addApprovedApplicationToTeam(a)}>{hi ? 'टीम में जोड़ें / फिर से सिंक करें' : 'Add / sync to public team'}</button></div>}</div></article>)}</section>
     </>}
     {message && <p className="member-notice" role="status">{message}</p>}
