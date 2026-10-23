@@ -2469,3 +2469,43 @@ input, select, textarea, button {
   color: #0284c7 !important;
   font-weight: 800 !important;
 }
+
+
+/* High-contrast site name: strong sky-blue lettering on every header */
+.public-brand .brand-name-banner,
+.public-site .brand-name-banner {
+  background: linear-gradient(135deg, #e0f2fe 0%, #7dd3fc 45%, #38bdf8 100%) !important;
+  border: 2px solid #0284c7 !important;
+  border-radius: 8px !important;
+  padding: 6px 11px !important;
+  box-shadow: 0 3px 0 #0369a1, 0 5px 12px rgba(2,132,199,.22) !important;
+}
+.public-brand .brand-name-banner > span,
+.public-site .brand-name-banner > span {
+  color: #073b5c !important;
+  -webkit-text-fill-color: #073b5c !important;
+  font-weight: 1000 !important;
+  font-size: 17px !important;
+  letter-spacing: .5px !important;
+  line-height: 1.12 !important;
+  text-shadow: none !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+.public-brand .brand-name-stack,
+.public-brand .brand-name-stack small {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+.brand .brand-name,
+.member-brand {
+  color: #0284c7 !important;
+  font-weight: 1000 !important;
+  text-shadow: 0 1px 0 #e0f2fe !important;
+}
+@media (max-width: 600px) {
+  .public-brand .brand-name-banner > span,
+  .public-site .brand-name-banner > span {
+    font-size: 15px !important;
+  }
+}
