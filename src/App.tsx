@@ -402,7 +402,7 @@ function PublicHomeNgoCards({ language }: { language: Language }) {
     if (!firebaseConfigured) { setLoading(false); setLoadError(true); return () => { active = false; }; }
     // Query each public status separately so Firestore Rules can prove access.
     const statuses = ['LIVE', 'ACTIVE', 'APPROVED', 'Live', 'Active', 'Approved', 'live', 'active', 'approved'];
-    const rowsByStatus = new Map<string, Array<{ id: string; name: string; category: string; location: string; mission: string; imageData: string }>>();
+    const rowsByStatus = new Map<string, Array<{ id: string; name: string; category: string; location: string; mission: string; imageData: string; createdAtMs: number }>>();
     const completed = new Set<string>();
     const unsubscribers = statuses.map(status => onSnapshot(
       firestoreQuery(collection(db, 'ngos'), where('status', '==', status)),
