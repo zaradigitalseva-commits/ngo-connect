@@ -106,6 +106,8 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
   const [selectedId, setSelectedId] = useState('');
   const [applications, setApplications] = useState<Application[]>([]);
   const [teamMembers, setTeamMembers] = useState<Record<string, any>[]>([]);
+  const [ngoMission, setNgoMission] = useState('');
+  const [contentRecords, setContentRecords] = useState<Record<string, any>[]>([]);
   const [fee, setFee] = useState('100');
   const [whatsapp, setWhatsapp] = useState('');
   const [busy, setBusy] = useState(false);
@@ -150,6 +152,68 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
     return () => unsubs.forEach(unsubscribe => unsubscribe());
   }, [ngos.map(n => n.id).join('|')]);
   useEffect(() => { const n = ngos.find(x => x.id === selectedId); if (n) { setFee(String(n.memberFee || 100)); setWhatsapp(n.adminWhatsApp || ''); } }, [selectedId, ngos]);
+  useEffect(() => {
+    if (!selectedId) { setContentRecords([]); setNgoMission(''); return; }
+    const unsubNgo = onSnapshot(doc(db, 'ngos', selectedId), snap => setNgoMission(String(snap.data()?.mission || snap.data()?.description || '')));
+    const sources = ['ngoEvents', 'ngoDocuments', 'ngoTransactions'];
+    const unsubs = sources.map(collectionName => onSnapshot(query(collection(db, collectionName), where('ngoId', '==', selectedId)), snap => {
+      setContentRecords(current => [...current.filter(item => item.collectionName !== collectionName), ...snap.docs.map(d => ({id:d.id, collectionName, ...d.data()} as Record<string, any>))]);
+    }, error => setMessage(error instanceof Error ? error.message : 'जानकारी लोड नहीं हुई।')));
+    return () => { unsubNgo(); unsubs.forEach(unsub => unsub()); };
+  }, [selectedId]);
+  const saveMission = async () => {
+    if (!currentNgo) return;
+    const value = window.prompt(hi ? 'NGO का उद्देश्य / हमारे बारे में:' : 'NGO mission / about:', ngoMission);
+    if (value === null) return;
+    setBusy(true); setMessage('');
+    try { await updateDoc(doc(db, 'ngos', currentNgo.id), { mission: value.trim(), description: value.trim(), updatedAt: serverTimestamp() }); setNgoMission(value.trim()); setMessage('NGO का उद्देश्य सेव हो गया।'); }
+    catch (e) { setMessage(e instanceof Error ? e.message : 'उद्देश्य सेव नहीं हुआ।'); }
+    finally { setBusy(false); }
+  };
+  const managePublicRecord = async (collectionName: 'ngoEvents'|'ngoDocuments'|'ngoTransactions', existing?: Record<string, any>) => {
+    if (!currentNgo) return;
+    const event = collectionName === 'ngoEvents', documentRecord = collectionName === 'ngoDocuments';
+    const title = window.prompt(event ? 'कार्यक्रम का नाम:' : documentRecord ? 'रिपोर्ट / दस्तावेज़ का शीर्षक:' : 'दान या खर्च की श्रेणी:', String(existing?.title || existing?.category || ''));
+    if (title === null) return;
+    const detail = window.prompt('विवरण / नोट:', String(existing?.description || existing?.notes || existing?.note || existing?.donor || ''));
+    if (detail === null) return;
+    const date = window.prompt('तारीख (YYYY-MM-DD):', String(existing?.date || new Date().toISOString().slice(0,10)));
+    if (date === null) return;
+    let payload: Record<string, any>;
+    if (event) {
+      const location = window.prompt('कार्यक्रम का स्थान:', String(existing?.location || ''));
+      if (location === null) return;
+      payload = { title: title.trim(), description: detail.trim(), date: date.trim(), location: location.trim(), status: existing?.status || 'PLANNED' };
+    } else if (documentRecord) {
+      const url = window.prompt('PDF / दस्तावेज़ का सार्वजनिक URL:', String(existing?.url || ''));
+      if (url === null) return;
+      payload = { title: title.trim(), notes: detail.trim(), type: existing?.type || 'REPORT', url: url.trim() };
+    } else {
+      const amountRaw = window.prompt('राशि (₹):', String(existing?.amount || ''));
+      if (amountRaw === null) return;
+      const amount = Number(amountRaw);
+      if (!Number.isFinite(amount) || amount <= 0) { setMessage('सही राशि डालें।'); return; }
+      const type = window.prompt('DONATION या EXPENSE लिखें:', String(existing?.type || 'DONATION'));
+      if (type === null) return;
+      payload = { category: title.trim(), note: detail.trim(), date: date.trim(), amount, type: type.toUpperCase() === 'EXPENSE' ? 'EXPENSE' : 'DONATION', donor: detail.trim() };
+    }
+    if (!title.trim()) { setMessage('शीर्षक खाली नहीं हो सकता।'); return; }
+    setBusy(true); setMessage('');
+    try {
+      if (existing?.id) await updateDoc(doc(db, collectionName, existing.id), { ...payload, updatedAt: serverTimestamp(), approvalStatus: 'PENDING' });
+      else await addDoc(collection(db, collectionName), { ...payload, ngoId: currentNgo.id, createdBy: authUser.uid, approvalStatus: 'PENDING', createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      setMessage('जानकारी सेव हुई। सार्वजनिक पेज पर दिखाने से पहले Super Admin की मंज़ूरी ज़रूरी है।');
+    } catch (e) { setMessage(e instanceof Error ? e.message : 'जानकारी सेव नहीं हुई। Firestore Rules जाँचें।'); }
+    finally { setBusy(false); }
+  };
+  const deletePublicRecord = async (record: Record<string, any>) => {
+    if (!window.confirm('क्या इस जानकारी को हमेशा के लिए हटाना है?')) return;
+    setBusy(true); setMessage('');
+    try { await deleteDoc(doc(db, String(record.collectionName), String(record.id))); setMessage('जानकारी Delete हो गई।'); }
+    catch (e) { setMessage(e instanceof Error ? e.message : 'Delete नहीं हुआ।'); }
+    finally { setBusy(false); }
+  };
+
   useEffect(() => {
     if (!selectedId) { setTeamMembers([]); return; }
     const unsubscribe = onSnapshot(query(collection(db, 'ngoMembers'), where('ngoId', '==', selectedId)), snapshot => {
@@ -351,6 +415,13 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
     {isPlatformAdmin(authUser) && <section className="member-applications-panel" style={{marginBottom:24}}><h2>Super Admin · NGO सामग्री की मंज़ूरी ({moderationRecords.length})</h2><p>यहाँ NGO द्वारा भेजे गए सदस्य, दान/खर्च, कार्यक्रम और दस्तावेज़ की जाँच करें। मंज़ूरी से पहले सामग्री सार्वजनिक नहीं होगी।</p>{moderationRecords.length === 0 ? <p>अभी कोई pending सामग्री नहीं है।</p> : moderationRecords.map(record => <article className="member-review-card" key={record.collection + record.id}><div className="member-review-info"><h3>{record.title}</h3><p>प्रकार: {record.kind} · NGO ID: {record.ngoId}</p><p>{String(record.data.designation || record.data.location || record.data.date || record.data.notes || record.data.note || '')}</p><small>{record.collection} / {record.id}</small><div className="member-review-actions"><button className="primary-button" disabled={busy} onClick={() => void reviewContent(record, 'APPROVED')}>✓ मंज़ूर करें</button><button className="outline-button" disabled={busy} onClick={() => void reviewContent(record, 'REJECTED')}>अस्वीकार</button></div></div></article>)}</section>}
     {ngos.length === 0 ? <div className="member-notice">{hi ? 'इस लॉगिन से जुड़ा NGO नहीं मिला। NGO के owner email से लॉगिन करें।' : 'No NGO is linked to this login. Sign in with the NGO owner account.'}</div> : <>
       <section className="member-form-panel member-admin-settings"><h2>{hi ? 'NGO फीस और WhatsApp सेटिंग' : 'NGO fee and WhatsApp settings'}</h2><form onSubmit={saveProfile}><label>{hi ? 'अपना NGO' : 'Your NGO'}<select value={selectedId} onChange={e => setSelectedId(e.target.value)}>{ngos.map(n => <option key={n.id} value={n.id}>{n.name}</option>)}</select></label><label>{hi ? 'Member ID फीस (₹)' : 'Member ID fee (₹)'}<input required type="number" min="1" max="100000" value={fee} onChange={e => setFee(e.target.value)}/></label><label>{hi ? 'WhatsApp नंबर देश कोड सहित' : 'WhatsApp number with country code'}<input required value={whatsapp} onChange={e => setWhatsapp(e.target.value)} placeholder="919876543210"/></label><button className="primary-button" type="submit" disabled={busy}>{hi ? 'सेटिंग सेव करें' : 'Save settings'}</button></form></section>
+
+      <section className="member-applications-panel"><h2>हमारे बारे में · NGO उद्देश्य</h2><p>{ngoMission || 'अभी उद्देश्य नहीं लिखा है।'}</p><button className="primary-button" disabled={busy} onClick={() => void saveMission()}>✏️ उद्देश्य Edit / सेव करें</button></section>
+      {([
+        {collectionName:'ngoEvents', title:'कार्यक्रम और इवेंट', add:'➕ कार्यक्रम जोड़ें'},
+        {collectionName:'ngoDocuments', title:'रिपोर्ट और दस्तावेज़', add:'➕ रिपोर्ट / दस्तावेज़ जोड़ें'},
+        {collectionName:'ngoTransactions', title:'मंज़ूर दान और खर्च', add:'➕ दान / खर्च जोड़ें'}
+      ] as const).map(group => <section className="member-applications-panel" key={group.collectionName}><h2>{group.title}</h2><button className="primary-button" disabled={busy} onClick={() => void managePublicRecord(group.collectionName)}>{group.add}</button>{contentRecords.filter(record => record.collectionName === group.collectionName).length === 0 ? <p>अभी कोई जानकारी नहीं है।</p> : contentRecords.filter(record => record.collectionName === group.collectionName).map(record => <article className="member-review-card" key={record.id}><div className="member-review-info"><h3>{String(record.title || record.category || 'रिकॉर्ड')} {record.amount ? '· ₹'+record.amount : ''}</h3><p>{String(record.date || '')} · {String(record.location || record.url || record.note || record.description || '')}</p><p>स्थिति: {String(record.approvalStatus || 'PENDING')}</p><div className="member-review-actions"><button className="outline-button" disabled={busy} onClick={() => void managePublicRecord(group.collectionName, record)}>✏️ Edit</button><button className="outline-button" disabled={busy} onClick={() => void deletePublicRecord(record)}>🗑️ Delete</button></div></div></article>)}</section>)}
       <section className="member-applications-panel"><h2>{hi ? 'वेबसाइट पर दिखने वाली टीम' : 'Public website team'} ({teamMembers.length})</h2><p>{hi ? 'यहाँ से आप अपनी NGO वेबसाइट पर दिख रहे सदस्यों की जानकारी बदल या उन्हें सूची से हटा सकते हैं।' : 'Edit member details or remove members from your NGO public team listing here.'}</p>{teamMembers.length === 0 ? <p>{hi ? 'अभी कोई मंज़ूर टीम सदस्य नहीं है।' : 'No approved team members yet.'}</p> : teamMembers.map(member => <article className="member-review-card" key={member.id}><img src={String(member.photoData || '')} alt={String(member.name || 'Member')} onError={e => { e.currentTarget.style.display = 'none'; }} /><div className="member-review-info"><h3>{String(member.name || 'सदस्य')}</h3><p>{String(member.designation || 'सदस्य')} · {String(member.location || member.workArea || 'स्थान नहीं दिया')}</p><p>{String(member.phone || '')}</p><div className="member-review-actions"><button className="primary-button" disabled={busy} onClick={() => void editTeamMember(member)}>{hi ? '✏️ Edit करें' : '✏️ Edit'}</button><button className="outline-button" disabled={busy} onClick={() => void deleteTeamMember(member)}>{hi ? '🗑️ Delete करें' : '🗑️ Delete'}</button></div></div></article>)}</section>
       <section className="member-applications-panel"><h2>{hi ? 'यूज़र के सदस्य आवेदन' : 'User member applications'} · {applications.filter(a => a.ngoId === selectedId).length}</h2><p>{hi ? 'हर आवेदन के सामने Edit या Delete करें। मंज़ूर आवेदन की टीम जानकारी ऊपर वाले सेक्शन में Edit की जा सकती है।' : 'Use Edit or Delete on each application. Approved member details can be edited in the public team section above.'}</p>{applications.filter(a => a.ngoId === selectedId).length === 0 ? <p>{hi ? 'अभी आवेदन नहीं हैं।' : 'No applications yet.'}</p> : applications.filter(a => a.ngoId === selectedId).map(a => <article className="member-review-card" key={a.id}><img src={a.photoData} alt={a.name}/><div className="member-review-info"><h3>{a.name}</h3><p>{hi ? 'आवेदक की दी जानकारी' : 'Applicant-submitted details'}</p><p>{a.ngoName} · ₹{a.feeAmount} · <strong>{a.status}</strong></p><small>Ref: {a.id}</small><div className="member-review-actions"><button className="outline-button" disabled={busy} onClick={() => void editApplication(a)}>{hi ? '✏️ Edit' : '✏️ Edit'}</button><button className="outline-button" disabled={busy} onClick={() => void deleteApplication(a)}>{hi ? '🗑️ Delete' : '🗑️ Delete'}</button></div>{a.status === 'PENDING_PAYMENT' && <><h4 style={{margin:'14px 0 6px'}}>{hi ? 'Admin द्वारा Member ID फॉर्म भरें' : 'Admin: finalize member ID details'}</h4><label>{hi ? 'सदस्य का नाम' : 'Member name'}<input required maxLength={100} value={getMemberIdDraft(a).name} onChange={e => setMemberIdDrafts(v => ({...v,[a.id]:{...getMemberIdDraft(a),name:e.target.value}}))}/></label><label>{hi ? 'पिता / अभिभावक का नाम' : 'Father / guardian name'}<input required maxLength={100} value={getMemberIdDraft(a).fatherName} onChange={e => setMemberIdDrafts(v => ({...v,[a.id]:{...getMemberIdDraft(a),fatherName:e.target.value}}))}/></label><label>{hi ? 'सदस्य का फोन' : 'Member phone'}<input required maxLength={20} value={getMemberIdDraft(a).phone} onChange={e => setMemberIdDrafts(v => ({...v,[a.id]:{...getMemberIdDraft(a),phone:e.target.value}}))}/></label><label>{hi ? 'पूरा पता / कार्यक्षेत्र' : 'Address / service area'}<textarea required maxLength={300} rows={2} value={getMemberIdDraft(a).address} onChange={e => setMemberIdDrafts(v => ({...v,[a.id]:{...getMemberIdDraft(a),address:e.target.value}}))}/></label><label>{hi ? 'पद' : 'Designation'}<input maxLength={80} value={getMemberIdDraft(a).designation} onChange={e => setMemberIdDrafts(v => ({...v,[a.id]:{...getMemberIdDraft(a),designation:e.target.value}}))}/></label><div className="member-review-actions"><button className="primary-button" disabled={busy} onClick={() => void review(a, 'APPROVED')}>{hi ? 'फीस जाँचें, ID बनाएं और वेबसाइट पर दिखाएँ' : 'Verify fee, create ID & publish to site'}</button><button className="outline-button" disabled={busy} onClick={() => void review(a, 'REJECTED')}>{hi ? 'अस्वीकार करें' : 'Reject request'}</button></div></>}{a.status === 'APPROVED' && <div className="member-review-actions"><button className="primary-button" disabled={busy} onClick={() => void addApprovedApplicationToTeam(a)}>{hi ? 'टीम में जोड़ें / फिर से सिंक करें' : 'Add / sync to public team'}</button></div>}</div></article>)}</section>
     </>}
