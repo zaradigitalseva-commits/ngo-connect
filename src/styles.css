@@ -2422,3 +2422,33 @@ input, select, textarea, button {
 .ngo-member-modal form label { display: grid; gap: 6px; font-weight: 700; color: #334155; }
 .ngo-member-modal form input, .ngo-member-modal form textarea { width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 10px; padding: 11px 12px; font: inherit; background: #fff; color: #0f172a; }
 @media (max-width: 640px) { .ngo-join-3d-button { width: 100%; max-width: 320px; } }
+
+
+/* Compact homepage spacing from scrolling announcement to NGO cards */
+.public-site section.public-ticker-box {
+  margin-top: 4px !important;
+  margin-bottom: 0 !important;
+}
+.public-site section.public-ticker-box + * {
+  margin-top: 0 !important;
+}
+.public-home-ngo-directory {
+  padding-top: 6px !important;
+  padding-bottom: 18px !important;
+}
+.public-home-ngo-directory .public-home-ngo-grid {
+  margin-top: 4px !important;
+}
+@media (max-width: 640px) {
+  .public-site section.public-ticker-box {
+    margin-top: 3px !important;
+    margin-bottom: 0 !important;
+  }
+  .public-home-ngo-directory {
+    padding-top: 4px !important;
+    padding-bottom: 12px !important;
+  }
+  .public-home-ngo-directory .public-home-ngo-grid {
+    margin-top: 2px !important;
+  }
+}
