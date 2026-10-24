@@ -315,30 +315,40 @@ service cloud.firestore {
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.imageData is string
         && request.resource.data.imageData.size() <= 500000
-        && request.resource.data.approvalStatus == 'PENDING'
-        && request.resource.data.keys().hasOnly(['ngoId','imageData','title','approvalStatus','createdBy','createdAt','updatedAt','order'])
+        && request.resource.data.approvalStatus == 'PENDING_PAYMENT'
+        && request.resource.data.paymentStatus == 'NOT_SUBMITTED'
+        && request.resource.data.paymentReference == ''
+        && request.resource.data.batchId is string
+        && request.resource.data.batchId.size() >= 8
+        && request.resource.data.keys().hasOnly(['ngoId','imageData','title','batchId','approvalStatus','paymentStatus','paymentReference','createdBy','createdAt','updatedAt','order'])
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time
         && request.resource.data.order is int && request.resource.data.order >= 0 && request.resource.data.order < 5;
-      // Super Admin can change only review fields; NGO owner can edit image metadata
-      // but cannot approve their own image or move it to another NGO.
+      // Super Admin reviews payment and approval; NGO owner can only submit UTR/plan.
       allow update: if (isSuperAdmin()
           && request.resource.data.ngoId == resource.data.ngoId
           && request.resource.data.createdBy == resource.data.createdBy
           && request.resource.data.imageData == resource.data.imageData
-          && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['approvalStatus','reviewedBy','reviewedAt','updatedAt'])
-          && request.resource.data.approvalStatus in ['PENDING','APPROVED','REJECTED']
+          && request.resource.data.batchId == resource.data.batchId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['approvalStatus','paymentStatus','reviewedBy','reviewedAt','updatedAt'])
+          && request.resource.data.approvalStatus in ['PENDING_PAYMENT','APPROVED','REJECTED']
+          && request.resource.data.paymentStatus in ['SUBMITTED_FOR_REVIEW','VERIFIED','REJECTED']
           && request.resource.data.reviewedBy == request.auth.uid
-          && request.resource.data.updatedAt == request.time)
+          && request.resource.data.updatedAt == request.time
+          && (request.resource.data.approvalStatus != 'APPROVED' || (resource.data.paymentStatus == 'SUBMITTED_FOR_REVIEW' && resource.data.paymentReference is string && resource.data.paymentReference.size() >= 4)))
         || (ownsNgo(resource.data.ngoId)
           && request.resource.data.ngoId == resource.data.ngoId
           && request.resource.data.createdBy == resource.data.createdBy
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['imageData','title','updatedAt'])
-          && request.resource.data.imageData is string
-          && request.resource.data.imageData.size() <= 500000
-          && request.resource.data.title is string
-          && request.resource.data.title.size() <= 120
+          && request.resource.data.batchId == resource.data.batchId
+          && request.resource.data.approvalStatus == resource.data.approvalStatus
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['paymentReference','paymentStatus','planId','subscriptionPlan','planPrice','planDurationDays','updatedAt'])
+          && request.resource.data.paymentReference is string
+          && request.resource.data.paymentReference.size() >= 4
+          && request.resource.data.paymentReference.size() <= 80
+          && request.resource.data.paymentStatus == 'SUBMITTED_FOR_REVIEW'
+          && request.resource.data.planId is string
+          && request.resource.data.planPrice is number && request.resource.data.planPrice > 0
+          && request.resource.data.planDurationDays is int && request.resource.data.planDurationDays > 0
           && request.resource.data.updatedAt == request.time);
       allow delete: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
     }
