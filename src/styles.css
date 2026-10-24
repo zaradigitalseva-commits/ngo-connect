@@ -2619,3 +2619,44 @@ input, select, textarea, button {
   background-size: cover, cover !important;
   background-repeat: no-repeat, no-repeat !important;
 }
+
+
+/* Refined individual NGO header: elegant teal-blue overlay with warm, readable contrast */
+.public-site.ngo-directory-site header.public-header.ngo-individual-site-header {
+  background-color: #0b3b46 !important;
+  background-image:
+    linear-gradient(110deg, rgba(5, 43, 54, .90) 0%, rgba(9, 78, 91, .76) 48%, rgba(16, 105, 112, .58) 100%),
+    url("https://images.unsplash.com/photo-1531206715517-5c0ba140b2b8?auto=format&fit=crop&w=2000&q=85") !important;
+  background-position: center, center 42% !important;
+  background-size: cover, cover !important;
+  background-repeat: no-repeat, no-repeat !important;
+  border-bottom: 3px solid #f0b35a !important;
+  box-shadow: 0 5px 18px rgba(6, 50, 60, .18) !important;
+}
+.public-site.ngo-directory-site header.public-header.ngo-individual-site-header .brand-name-stack > small {
+  color: #e0f2fe !important;
+  -webkit-text-fill-color: #e0f2fe !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .4) !important;
+}
+.public-site.ngo-directory-site header.public-header.ngo-individual-site-header .ngo-section-nav a {
+  background: linear-gradient(180deg, #ffffff 0%, #eaf8fb 100%) !important;
+  border-color: #9dd8e2 !important;
+  color: #075563 !important;
+  box-shadow: 0 2px 0 #5da9b6 !important;
+}
+.public-site.ngo-directory-site header.public-header.ngo-individual-site-header .ngo-section-nav a:hover {
+  background: #fef3c7 !important;
+  border-color: #f0b35a !important;
+  color: #713f12 !important;
+}
+.public-site.ngo-directory-site header.public-header.ngo-individual-site-header .ngo-header-join-button {
+  background: linear-gradient(180deg, #fbbf55 0%, #e58a20 100%) !important;
+  border: 1px solid #ffdf9b !important;
+  box-shadow: 0 3px 0 #a95413, 0 5px 12px rgba(0, 0, 0, .2) !important;
+  color: #3d2508 !important;
+}
+@media (max-width: 700px) {
+  .public-site.ngo-directory-site header.public-header.ngo-individual-site-header {
+    background-position: center, center 42% !important;
+  }
+}
