@@ -2589,3 +2589,13 @@ input, select, textarea, button {
   font-weight: 800 !important;
   opacity: 1 !important;
 }
+
+
+/* NGO membership action now lives in each NGO's own header */
+.ngo-individual-site-header .public-actions { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:8px; }
+.ngo-individual-site-header .ngo-header-join-button { display:inline-flex; align-items:center; justify-content:center; gap:6px; white-space:nowrap; padding:9px 13px; border-radius:12px; background:linear-gradient(180deg,#10b981 0%,#047857 100%); border:1px solid #a7f3d0; box-shadow:0 3px 0 #065f46,0 5px 12px rgba(6,95,70,.18); color:#fff; font-weight:800; }
+@media (max-width:700px) {
+  .ngo-individual-site-header { flex-wrap:wrap; gap:10px; }
+  .ngo-individual-site-header .public-actions { width:100%; justify-content:flex-start; gap:7px; }
+  .ngo-individual-site-header .ngo-header-join-button { padding:8px 10px; font-size:13px; }
+}
