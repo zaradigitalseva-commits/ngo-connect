@@ -320,13 +320,26 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time
         && request.resource.data.order is int && request.resource.data.order >= 0 && request.resource.data.order < 5;
-      allow update: if isSuperAdmin()
+      // Super Admin can change only review fields; NGO owner can edit image metadata
+      // but cannot approve their own image or move it to another NGO.
+      allow update: if (isSuperAdmin()
+          && request.resource.data.ngoId == resource.data.ngoId
+          && request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.imageData == resource.data.imageData
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['approvalStatus','reviewedBy','reviewedAt','updatedAt'])
+          && request.resource.data.approvalStatus in ['PENDING','APPROVED','REJECTED']
+          && request.resource.data.reviewedBy == request.auth.uid
+          && request.resource.data.updatedAt == request.time)
         || (ownsNgo(resource.data.ngoId)
           && request.resource.data.ngoId == resource.data.ngoId
           && request.resource.data.createdBy == resource.data.createdBy
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['imageData','title','updatedAt'])
           && request.resource.data.imageData is string
-          && request.resource.data.imageData.size() <= 500000);
+          && request.resource.data.imageData.size() <= 500000
+          && request.resource.data.title is string
+          && request.resource.data.title.size() <= 120
+          && request.resource.data.updatedAt == request.time);
       allow delete: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
     }
 
