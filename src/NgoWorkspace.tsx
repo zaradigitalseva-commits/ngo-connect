@@ -200,9 +200,9 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
       <section className="member-form-panel" style={{marginBottom:20}}>
         <h2>{hi ? 'NGO हेडर की स्क्रॉलिंग तस्वीरें' : 'NGO header slideshow images'}</h2>
         <p>{hi ? 'अधिकतम 5 तस्वीरें अपलोड करें। तस्वीरें अपने-आप resize और compress होंगी। सार्वजनिक पेज पर दिखने से पहले Super Admin की मंज़ूरी ज़रूरी है।' : 'Upload up to 5 images. Images are automatically resized and compressed. Super Admin approval is required before they appear publicly.'}</p>
-        {!platformAdminView && <label style={{display:'grid',gap:8,fontWeight:700}}>{hi ? 'तस्वीरें चुनें (JPG/PNG/WebP, हर फ़ाइल अधिकतम 5 MB)' : 'Choose images (JPG/PNG/WebP, max 5 MB each)'}<input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={slideBusy || slideRows.length >= 5} onChange={async e => {
+        {!platformAdminView && <label style={{display:'grid',gap:8,fontWeight:700}}>{hi ? '📤 तस्वीरें चुनें और अपलोड करें (JPG/PNG/WebP, हर फ़ाइल अधिकतम 5 MB)' : '📤 Choose and upload images (JPG/PNG/WebP, max 5 MB each)'}<input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={slideBusy || slideRows.length >= 5} onChange={async e => {
           const input=e.currentTarget; const files=Array.from(input.files || []).slice(0,Math.max(0,5-slideRows.length)); input.value=''; if(!files.length)return;
-          setSlideBusy(true);setSlideMessage('');
+          setSlideBusy(true);setSlideMessage(hi?'⏳ तस्वीरें अपलोड हो रही हैं… कृपया पेज बंद न करें।':'⏳ Uploading images… Please keep this page open.');
           const batchId = globalThis.crypto?.randomUUID?.() || `batch-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
           try { for(const [fileIndex,file] of files.entries()) {
             if(file.size>5*1024*1024) throw new Error(hi?'हर तस्वीर 5 MB से कम होनी चाहिए।':'Each image must be under 5 MB.');
