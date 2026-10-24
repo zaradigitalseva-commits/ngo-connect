@@ -358,7 +358,10 @@ service cloud.firestore {
           && request.resource.data.planPrice is number && request.resource.data.planPrice > 0
           && request.resource.data.planDurationDays is int && request.resource.data.planDurationDays > 0
           && request.resource.data.updatedAt == request.time);
-      allow delete: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
+      // Let the uploader remove their own slideshow image even when their account is a delegated NGO admin; keep other NGOs' images protected.
+      allow delete: if isSuperAdmin()
+        || (request.auth != null && resource.data.createdBy == request.auth.uid)
+        || ownsNgo(resource.data.ngoId);
     }
 
     match /publicTickerMessages/{messageId} {
