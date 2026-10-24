@@ -310,7 +310,15 @@ service cloud.firestore {
     }
 
     match /ngoHeaderSlides/{slideId} {
-      allow read: if resource.data.approvalStatus == 'APPROVED' || isSuperAdmin() || ownsNgo(resource.data.ngoId) || (request.auth != null && resource.data.createdBy == request.auth.uid);
+      // Owners of the parent NGO, uploader, and verified Super Admin can view
+      // pending submissions; the public can only read approved slides.
+      allow get, list: if resource.data.approvalStatus == 'APPROVED'
+        || isSuperAdmin()
+        || (request.auth != null && resource.data.createdBy == request.auth.uid)
+        || (request.auth != null
+          && resource.data.ngoId is string
+          && exists(/databases/$(database)/documents/ngos/$(resource.data.ngoId))
+          && get(/databases/$(database)/documents/ngos/$(resource.data.ngoId)).data.ownerUid == request.auth.uid);
       allow create: if ownsNgo(request.resource.data.ngoId)
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.imageData is string
