@@ -564,6 +564,8 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
     return () => window.clearInterval(interval);
   }, []);
   const [showPublicRegistration, setShowPublicRegistration] = useState(false);
+  const [publicForm, setPublicForm] = useState({ name: '', contact: '', phone: '', state: '', district: '', mission: '', planId: '', paymentReference: '', imageData: '' });
+  const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
   const [hasPendingRegistration, setHasPendingRegistration] = useState(false);
   const [hasOwnedNgo, setHasOwnedNgo] = useState(false);
   const registrationAlreadySubmitted = hasPendingRegistration || hasOwnedNgo;
