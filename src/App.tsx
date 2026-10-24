@@ -93,7 +93,6 @@ function PublicNgoSite({ language, setLanguage, ngoId, authUser, onLogin }: { la
   const [publicDocuments, setPublicDocuments] = useState<Record<string, any>[]>([]);
   const [publicFinance, setPublicFinance] = useState<Record<string, any>[]>([]);
   const [headerSlides, setHeaderSlides] = useState<Record<string, any>[]>([]);
-  const [headerSlides, setHeaderSlides] = useState<Record<string, any>[]>([]);
   useEffect(() => {
     let active = true;
     const unsubscribeTeam = onSnapshot(firestoreQuery(collection(db, 'ngoMembers'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => {
@@ -103,7 +102,6 @@ function PublicNgoSite({ language, setLanguage, ngoId, authUser, onLogin }: { la
     const unsubscribeEvents = onSnapshot(firestoreQuery(collection(db, 'ngoEvents'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => setPublicEvents(snapshot.docs.map(d => ({id:d.id,...d.data()} as Record<string, any>)).filter(row => row.approvalStatus === 'APPROVED').sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')))), () => setPublicEvents([]));
     const unsubscribeDocuments = onSnapshot(firestoreQuery(collection(db, 'ngoDocuments'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => setPublicDocuments(snapshot.docs.map(d => ({id:d.id,...d.data()} as Record<string, any>)).filter(row => row.approvalStatus === 'APPROVED')), () => setPublicDocuments([]));
     const unsubscribeFinance = onSnapshot(firestoreQuery(collection(db, 'ngoTransactions'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => setPublicFinance(snapshot.docs.map(d => ({id:d.id,...d.data()} as Record<string, any>)).filter(row => row.approvalStatus === 'APPROVED').sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')))), () => setPublicFinance([]));
-    const unsubscribeSlides = onSnapshot(firestoreQuery(collection(db, 'ngoHeaderSlides'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => setHeaderSlides(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Record<string, any>)).sort((a,b) => Number(a.order || 0) - Number(b.order || 0)).slice(0,5)), () => setHeaderSlides([]));
     const unsubscribeSlides = onSnapshot(firestoreQuery(collection(db, 'ngoHeaderSlides'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => setHeaderSlides(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Record<string, any>)).sort((a,b) => Number(a.order || 0) - Number(b.order || 0)).slice(0,5)), () => setHeaderSlides([]));
     const unsubscribeNgo = onSnapshot(doc(db, 'ngos', ngoId), snapshot => {
       if (!active) return;
