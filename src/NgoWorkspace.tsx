@@ -203,8 +203,8 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
         <p>{hi ? 'अधिकतम 5 तस्वीरें अपलोड करें। तस्वीरें अपने-आप resize और compress होंगी। सार्वजनिक पेज पर दिखने से पहले Super Admin की मंज़ूरी ज़रूरी है।' : 'Upload up to 5 images. Images are automatically resized and compressed. Super Admin approval is required before they appear publicly.'}</p>
         {!platformAdminView && <div style={{display:'grid',gap:10}}>
           <label style={{display:'grid',gap:8,fontWeight:700}}>{hi ? 'तस्वीरें चुनें (JPG/PNG/WebP, हर फ़ाइल अधिकतम 5 MB)' : 'Choose images (JPG/PNG/WebP, max 5 MB each)'}<input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={slideBusy || slideRows.length >= 5} onChange={e => { const files=Array.from(e.currentTarget.files || []).slice(0,Math.max(0,5-slideRows.length)); setSelectedSlideFiles(files); setSlideMessage(files.length ? (hi ? `${files.length} तस्वीर चुनी गई। अब “तस्वीरें सबमिट करें” दबाएँ।` : `${files.length} image(s) selected. Click “Submit images” to continue.`) : ''); e.currentTarget.value=''; }} /></label>
-          <button className="primary-button" type="button" disabled={slideBusy || selectedSlideFiles.length===0 || slideRows.length>=5} onClick={async()=>{
-            const files=selectedSlideFiles.slice(0,Math.max(0,5-slideRows.length)); if(!files.length)return;
+          <button className="primary-button" type="button" disabled={slideBusy || slideRows.length>=5} onClick={async()=>{
+            const files=selectedSlideFiles.slice(0,Math.max(0,5-slideRows.length)); if(!files.length){setSlideMessage(hi?'⚠️ पहले “तस्वीरें चुनें” से कम-से-कम एक तस्वीर चुनें, फिर सबमिट करें।':'⚠️ First choose at least one image, then click Submit.');return;}
             setSlideBusy(true);setSlideMessage(hi?'⏳ तस्वीरें अपलोड हो रही हैं… कृपया पेज बंद न करें।':'⏳ Uploading images… Please keep this page open.');
             const batchId = globalThis.crypto?.randomUUID?.() || `batch-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
             try { for(const [fileIndex,file] of files.entries()) {
