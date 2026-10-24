@@ -92,7 +92,6 @@ function PublicNgoSite({ language, setLanguage, ngoId, authUser, onLogin }: { la
   const [publicEvents, setPublicEvents] = useState<Record<string, any>[]>([]);
   const [publicDocuments, setPublicDocuments] = useState<Record<string, any>[]>([]);
   const [publicFinance, setPublicFinance] = useState<Record<string, any>[]>([]);
-  const [headerSlides, setHeaderSlides] = useState<Record<string, any>[]>([]);
   useEffect(() => {
     let active = true;
     const unsubscribeTeam = onSnapshot(firestoreQuery(collection(db, 'ngoMembers'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => {
@@ -102,14 +101,13 @@ function PublicNgoSite({ language, setLanguage, ngoId, authUser, onLogin }: { la
     const unsubscribeEvents = onSnapshot(firestoreQuery(collection(db, 'ngoEvents'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => setPublicEvents(snapshot.docs.map(d => ({id:d.id,...d.data()} as Record<string, any>)).filter(row => row.approvalStatus === 'APPROVED').sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')))), () => setPublicEvents([]));
     const unsubscribeDocuments = onSnapshot(firestoreQuery(collection(db, 'ngoDocuments'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => setPublicDocuments(snapshot.docs.map(d => ({id:d.id,...d.data()} as Record<string, any>)).filter(row => row.approvalStatus === 'APPROVED')), () => setPublicDocuments([]));
     const unsubscribeFinance = onSnapshot(firestoreQuery(collection(db, 'ngoTransactions'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => setPublicFinance(snapshot.docs.map(d => ({id:d.id,...d.data()} as Record<string, any>)).filter(row => row.approvalStatus === 'APPROVED').sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')))), () => setPublicFinance([]));
-    const unsubscribeSlides = onSnapshot(firestoreQuery(collection(db, 'ngoHeaderSlides'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => setHeaderSlides(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Record<string, any>)).sort((a,b) => Number(a.order || 0) - Number(b.order || 0)).slice(0,5)), () => setHeaderSlides([]));
     const unsubscribeNgo = onSnapshot(doc(db, 'ngos', ngoId), snapshot => {
       if (!active) return;
       if (!snapshot.exists() || !['LIVE', 'ACTIVE', 'APPROVED'].includes(String(snapshot.data().status || '').toUpperCase())) { setFailed(true); setNgo(null); }
       else { setFailed(false); setNgo({ id: snapshot.id, ...snapshot.data() }); }
       setLoading(false);
     }, () => { if (active) { setFailed(true); setLoading(false); } });
-    return () => { active = false; unsubscribeTeam(); unsubscribeEvents(); unsubscribeDocuments(); unsubscribeFinance(); unsubscribeSlides(); unsubscribeNgo(); };
+    return () => { active = false; unsubscribeTeam(); unsubscribeEvents(); unsubscribeDocuments(); unsubscribeFinance(); unsubscribeNgo(); };
   }, [ngoId]);
   const name = String(ngo?.name || ngo?.ngoName || 'NGO');
   const logo = String(ngo?.imageData || ngo?.registrationFormData?.imageData || '');
@@ -608,30 +606,6 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
   const [registrationMessage, setRegistrationMessage] = useState('');
   const [registrationSuccessMessage, setRegistrationSuccessMessage] = useState('');
   const [paymentQrImage, setPaymentQrImage] = useState('');
-  const imagePaymentBatchId = new URLSearchParams(window.location.search).get('imagePayment') || '';
-  const [imagePaymentPlanId, setImagePaymentPlanId] = useState('');
-  const [imagePaymentUtr, setImagePaymentUtr] = useState('');
-  const [imagePaymentBusy, setImagePaymentBusy] = useState(false);
-  const [imagePaymentMessage, setImagePaymentMessage] = useState('');
-  const [imagePaymentSubmitted, setImagePaymentSubmitted] = useState(false);
-  const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
-  const [publicForm, setPublicForm] = useState({ name: '', contact: '', phone: '', state: '', district: '', mission: '', planId: '', paymentReference: '', imageData: '' });
-  const submitImagePayment = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!authUser || !imagePaymentBatchId) { setImagePaymentMessage(hi ? 'कृपया अपने NGO Admin खाते से लॉगिन करें।' : 'Please sign in with your NGO admin account.'); return; }
-    if (imagePaymentUtr.trim().length < 4) { setImagePaymentMessage(hi ? 'कृपया सही UTR नंबर डालें।' : 'Enter a valid UTR/reference.'); return; }
-    const plan = subscriptionPlans.find(p => p.id === imagePaymentPlanId && p.active);
-    if (!plan) { setImagePaymentMessage(hi ? 'कृपया सक्रिय प्लान चुनें।' : 'Choose an active plan.'); return; }
-    setImagePaymentBusy(true); setImagePaymentMessage('');
-    try {
-      const snap = await getDocs(firestoreQuery(collection(db,'ngoHeaderSlides'), where('batchId','==',imagePaymentBatchId), where('createdBy','==',authUser.uid)));
-      if (snap.empty) throw new Error(hi ? 'तस्वीरों का आवेदन नहीं मिला। दोबारा अपलोड करें।' : 'Image submission not found. Please upload again.');
-      await Promise.all(snap.docs.map(item => updateDoc(doc(db,'ngoHeaderSlides',item.id), { paymentReference:imagePaymentUtr.trim(), paymentStatus:'SUBMITTED_FOR_REVIEW', planId:plan.id, subscriptionPlan:plan.name, planPrice:plan.price, planDurationDays:plan.durationDays, updatedAt:serverTimestamp() })));
-      setImagePaymentSubmitted(true);
-      setImagePaymentMessage(hi ? '✅ UTR सफलतापूर्वक जमा हो गया। Super Admin भुगतान जाँचकर तस्वीरें मंज़ूर करेगा। इस पेज को बंद करने से पहले यह पुष्टि देख लें।' : '✅ UTR submitted successfully. Super Admin will verify the payment and approve the images. Please check this confirmation before closing the page.');
-    } catch (error) { setImagePaymentMessage(error instanceof Error ? error.message : (hi ? 'पेमेंट विवरण सेव नहीं हुए।' : 'Could not save payment details.')); }
-    finally { setImagePaymentBusy(false); }
-  };
   const submitPublicRegistration = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!authUser || !authUser.email) { onLogin(); return; }
@@ -793,7 +767,6 @@ export default function App() {
   const [form, setForm] = useState({ name: '', contact: '', email: '', phone: '', state: '', district: '', mission: '', planId: '' });
   const [ngoImageData, setNgoImageData] = useState('');
   const [pendingRegistrations, setPendingRegistrations] = useState<Array<Record<string, unknown> & { id: string }>>([]);
-  const [ngoImagePayments, setNgoImagePayments] = useState<Array<Record<string, any> & { id: string }>>([]);
   const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
   const [planForm, setPlanForm] = useState({ id: '', name: '', price: '300', durationDays: '30', description: '', active: true });
   const [planSaveBusy, setPlanSaveBusy] = useState(false);
