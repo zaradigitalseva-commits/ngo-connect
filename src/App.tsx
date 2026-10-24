@@ -880,7 +880,7 @@ export default function App() {
     const unsubscribeRegistrations = onSnapshot(collection(db, 'ngoRegistrations'), snapshot => {
       if (active) setPendingRegistrations(snapshot.docs.map(item => ({ id: item.id, ...item.data() })));
     }, () => { if (active) setRegistrationLoadError('रजिस्ट्रेशन लोड नहीं हुए। Firestore rules प्रकाशित हैं या नहीं, जाँचें।'); });
-    const unsubscribeImagePayments = onSnapshot(collection(db, 'ngoHeaderSlides'), snapshot => { if (active) setNgoImagePayments(snapshot.docs.map(item => ({ id:item.id, ...item.data() } as Record<string, any>)).filter(item => item.paymentStatus === 'SUBMITTED_FOR_REVIEW' || item.approvalStatus === 'APPROVED' || item.approvalStatus === 'REJECTED')); }, () => { if (active) setRegistrationLoadError('तस्वीरों की पेमेंट रिक्वेस्ट लोड नहीं हुई। Firestore Rules जाँचें।'); });
+    const unsubscribeImagePayments = onSnapshot(collection(db, 'ngoHeaderSlides'), snapshot => { if (active) setNgoImagePayments(snapshot.docs.map(item => ({ id: item.id, ...item.data() } as Record<string, any> & { id: string })).filter(item => item.paymentStatus === 'SUBMITTED_FOR_REVIEW' || item.approvalStatus === 'APPROVED' || item.approvalStatus === 'REJECTED')); }, () => { if (active) setRegistrationLoadError('तस्वीरों की पेमेंट रिक्वेस्ट लोड नहीं हुई। Firestore Rules जाँचें।'); });
     return () => { active = false; unsubscribeQr(); unsubscribePlans(); unsubscribeRegistrations(); unsubscribeImagePayments(); };
   }, [authUser, section]);
   useEffect(() => {
