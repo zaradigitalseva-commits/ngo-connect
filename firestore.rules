@@ -376,10 +376,11 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
-    // Protect all other collections. NGO transactions are deliberately excluded:
-    // only the owning NGO admin may manage finance records.
+    // Default-deny all collections not explicitly listed above.
+    // Do not use a broad Super Admin catch-all: it can silently grant access to
+    // newly added collections without a deliberate security review.
     match /{document=**} {
-      allow read, write: if isSuperAdmin() && !document.matches('ngoTransactions/.*');
+      allow read, write: if false;
     }
   }
 }
