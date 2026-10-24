@@ -45,10 +45,6 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
   const [settingsWhatsApp, setSettingsWhatsApp] = useState('');
   const [settingsBusy, setSettingsBusy] = useState(false);
   const [settingsMessage, setSettingsMessage] = useState('');
-  const [slideRows, setSlideRows] = useState<RecordRow[]>([]);
-  const [slideBusy, setSlideBusy] = useState(false);
-  const [slideMessage, setSlideMessage] = useState('');
-  const [selectedSlideFiles, setSelectedSlideFiles] = useState<File[]>([]);
   const activeModule = modules.find(m => m.id === kind)!;
   const currentNgo = ngos.find(n => n.id === ngoId);
   const fields = useMemo<Array<{ key: string; label: string; required: boolean; type?: string; options?: Array<{ value: string; label: string }> }>>(() => {
@@ -113,12 +109,6 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
     }, e => setMessage(e instanceof Error ? e.message : 'Records could not be loaded.'));
     return unsubscribe;
   }, [ngoId, kind]);
-  useEffect(() => {
-    if (!ngoId) { setSlideRows([]); return; }
-    const unsubscribe = onSnapshot(query(collection(db, 'ngoHeaderSlides'), where('ngoId', '==', ngoId)), snap => setSlideRows(snap.docs.map(d => ({ id: d.id, ...d.data() } as RecordRow)).sort((a,b) => safe(a.createdAt).localeCompare(safe(b.createdAt)))), e => setSlideMessage(e instanceof Error ? e.message : 'Could not load slideshow images.'));
-    return unsubscribe;
-  }, [ngoId]);
-
   useEffect(() => {
     if (!ngoId) { setMemberApplications([]); return; }
     const unsubscribe = onSnapshot(query(collection(db, 'memberApplications'), where('ngoId', '==', ngoId)), snap => {
