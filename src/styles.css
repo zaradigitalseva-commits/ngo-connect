@@ -2610,3 +2610,12 @@ input, select, textarea, button {
   .ngo-section-nav { order:4; justify-content:flex-start; flex-wrap:nowrap; overflow-x:auto; width:100%; padding:3px 2px 7px; }
   .ngo-section-nav a { flex:0 0 auto; font-size:11px; padding:7px 9px; }
 }
+
+
+/* Force the updated community-service photo on individual NGO headers */
+.public-site.ngo-directory-site header.public-header.ngo-individual-site-header {
+  background-image: linear-gradient(90deg, rgba(255,255,255,.82) 0%, rgba(239,249,255,.64) 55%, rgba(255,255,255,.40) 100%), url("https://images.unsplash.com/photo-1531206715517-5c0ba140b2b8?auto=format&fit=crop&w=2000&q=85") !important;
+  background-position: center, center 42% !important;
+  background-size: cover, cover !important;
+  background-repeat: no-repeat, no-repeat !important;
+}
