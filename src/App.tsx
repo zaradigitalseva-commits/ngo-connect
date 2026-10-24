@@ -111,7 +111,6 @@ function PublicNgoSite({ language, setLanguage, ngoId, authUser, onLogin }: { la
   }, [ngoId]);
   const name = String(ngo?.name || ngo?.ngoName || 'NGO');
   const logo = String(ngo?.imageData || ngo?.registrationFormData?.imageData || '');
-  const location = [ngo?.city, ngo?.district, ngo?.state].filter((v, i, a) => typeof v === 'string' && v.trim() && a.indexOf(v) === i).join(', ');
   const mission = String(ngo?.mission || ngo?.description || '');
   const [memberModalOpen, setMemberModalOpen] = useState(false);
   const [memberBusy, setMemberBusy] = useState(false);
