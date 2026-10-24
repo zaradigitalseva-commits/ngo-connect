@@ -2660,3 +2660,15 @@ input, select, textarea, button {
     background-position: center, center 42% !important;
   }
 }
+
+
+/* Individual NGO public image slideshow directly below the header */
+.ngo-header-image-slider { position:relative; width:100%; height:clamp(180px, 28vw, 330px); overflow:hidden; background:#082f3b; border-bottom:1px solid #b8e1e8; }
+.ngo-header-image-track { display:flex; height:100%; animation:ngo-header-slide-scroll linear infinite; }
+.ngo-header-image-slider:hover .ngo-header-image-track { animation-play-state:paused; }
+.ngo-header-slide { position:relative; flex:0 0 auto; height:100%; margin:0; overflow:hidden; }
+.ngo-header-slide img { display:block; width:100%; height:100%; object-fit:cover; }
+.ngo-header-slide::after { content:''; position:absolute; inset:45% 0 0; background:linear-gradient(transparent,rgba(3,24,32,.55)); pointer-events:none; }
+.ngo-header-slide figcaption { position:absolute; z-index:1; bottom:16px; left:clamp(16px,5vw,60px); color:#fff; font-weight:800; text-shadow:0 2px 6px #000; }
+@keyframes ngo-header-slide-scroll { 0%, 8% { transform:translateX(0); } 90%, 100% { transform:translateX(calc(-100% + 100vw)); } }
+@media (max-width:640px) { .ngo-header-image-slider { height:190px; } .ngo-header-slide figcaption { bottom:10px; left:14px; font-size:13px; } }
