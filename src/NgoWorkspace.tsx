@@ -48,7 +48,6 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
   const [slideRows, setSlideRows] = useState<RecordRow[]>([]);
   const [slideBusy, setSlideBusy] = useState(false);
   const [slideMessage, setSlideMessage] = useState('');
-  const [selectedSlideFiles, setSelectedSlideFiles] = useState<File[]>([]);
   const activeModule = modules.find(m => m.id === kind)!;
   const currentNgo = ngos.find(n => n.id === ngoId);
   const fields = useMemo<Array<{ key: string; label: string; required: boolean; type?: string; options?: Array<{ value: string; label: string }> }>>(() => {
