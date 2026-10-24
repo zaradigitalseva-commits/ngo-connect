@@ -2599,3 +2599,14 @@ input, select, textarea, button {
   .ngo-individual-site-header .public-actions { width:100%; justify-content:flex-start; gap:7px; }
   .ngo-individual-site-header .ngo-header-join-button { padding:8px 10px; font-size:13px; }
 }
+
+
+/* Navigation shortcuts to the sections on each individual NGO page */
+.ngo-section-nav { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:6px; flex:1 1 100%; order:3; }
+.ngo-section-nav a { display:inline-flex; align-items:center; justify-content:center; padding:7px 10px; border-radius:10px; border:1px solid #bae6fd; background:linear-gradient(180deg,#fff 0%,#eff9ff 100%); color:#075985; font-size:12px; font-weight:800; text-decoration:none; box-shadow:0 2px 0 #bae6fd; white-space:nowrap; }
+.ngo-section-nav a:hover { background:#dff4ff; color:#0c4a6e; }
+.ngo-directory-main section[id^="ngo-"] { scroll-margin-top:18px; }
+@media (max-width:700px) {
+  .ngo-section-nav { order:4; justify-content:flex-start; flex-wrap:nowrap; overflow-x:auto; width:100%; padding:3px 2px 7px; }
+  .ngo-section-nav a { flex:0 0 auto; font-size:11px; padding:7px 9px; }
+}
