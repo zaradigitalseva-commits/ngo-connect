@@ -310,7 +310,7 @@ service cloud.firestore {
     }
 
     match /ngoHeaderSlides/{slideId} {
-      allow read: if resource.data.approvalStatus == 'APPROVED' || isSuperAdmin() || ownsNgo(resource.data.ngoId);
+      allow read: if resource.data.approvalStatus == 'APPROVED' || isSuperAdmin() || ownsNgo(resource.data.ngoId) || (request.auth != null && resource.data.createdBy == request.auth.uid);
       allow create: if ownsNgo(request.resource.data.ngoId)
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.imageData is string
