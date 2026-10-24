@@ -131,16 +131,31 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
     finally { setBusy(false); }
   };
   useEffect(() => {
-    const ngoQuery = isPlatformAdmin(authUser)
-      ? collection(db, 'ngos')
-      : query(collection(db, 'ngos'), where('ownerUid', '==', authUser.uid));
-    const unsubscribeNgos = onSnapshot(ngoQuery, snapshot => {
-      const rows = snapshot.docs.map(d => { const x = d.data(); return { id: d.id, name: String(x.name || x.ngoName || 'NGO'), status: String(x.status || ''), memberFee: Number(x.memberFee || 0), adminWhatsApp: String(x.adminWhatsApp || ''), ownerUid: String(x.ownerUid || ''), logoUrl: String(x.logoUrl || '') }; });
+    let active = true;
+    const toNgo = (d: { id: string; data: () => Record<string, any> }): Ngo => {
+      const x = d.data();
+      return { id: d.id, name: String(x.name || x.ngoName || 'NGO'), status: String(x.status || ''), memberFee: Number(x.memberFee || 0), adminWhatsApp: String(x.adminWhatsApp || ''), ownerUid: String(x.ownerUid || ''), logoUrl: String(x.logoUrl || '') };
+    };
+    const publish = (sets: Map<string, Ngo[]>) => {
+      if (!active) return;
+      const rows = [...new Map([...sets.values()].flat().map(n => [n.id, n])).values()];
       setNgos(rows);
       setSelectedId(current => current && rows.some(n => n.id === current) ? current : rows[0]?.id || '');
-    }, e => setMessage(e instanceof Error ? e.message : 'Could not load NGO admin data.'));
-    return unsubscribeNgos;
-  }, [authUser.uid]);
+    };
+    if (isPlatformAdmin(authUser)) {
+      const unsubscribe = onSnapshot(collection(db, 'ngos'), snapshot => publish(new Map([['all', snapshot.docs.map(toNgo)]])), e => setMessage(e instanceof Error ? e.message : 'Could not load NGO admin data.'));
+      return () => { active = false; unsubscribe(); };
+    }
+    // Some older NGO records were activated before ownerUid was consistently saved.
+    // Match both the Firebase UID and the registered contact email so the owner can
+    // still open the member application form with the same verified account.
+    const sets = new Map<string, Ngo[]>();
+    const unsubscribers = [
+      onSnapshot(query(collection(db, 'ngos'), where('ownerUid', '==', authUser.uid)), snapshot => { sets.set('uid', snapshot.docs.map(toNgo)); publish(sets); }, e => { if (active) setMessage(e instanceof Error ? e.message : 'NGO owner lookup failed.'); }),
+      ...(authUser.email ? [onSnapshot(query(collection(db, 'ngos'), where('contactEmail', '==', authUser.email)), snapshot => { sets.set('email', snapshot.docs.map(toNgo)); publish(sets); }, e => { if (active) setMessage(e instanceof Error ? e.message : 'NGO email lookup failed.'); })] : [])
+    ];
+    return () => { active = false; unsubscribers.forEach(unsubscribe => unsubscribe()); };
+  }, [authUser.uid, authUser.email]);
   useEffect(() => {
     if (!ngos.length) { setApplications([]); return; }
     const unsubs = ngos.map(ngo => onSnapshot(query(collection(db, 'memberApplications'), where('ngoId', '==', ngo.id)), snapshot => {
