@@ -48,6 +48,7 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
   const [slideRows, setSlideRows] = useState<RecordRow[]>([]);
   const [slideBusy, setSlideBusy] = useState(false);
   const [slideMessage, setSlideMessage] = useState('');
+  const [selectedSlideFiles, setSelectedSlideFiles] = useState<File[]>([]);
   const activeModule = modules.find(m => m.id === kind)!;
   const currentNgo = ngos.find(n => n.id === ngoId);
   const fields = useMemo<Array<{ key: string; label: string; required: boolean; type?: string; options?: Array<{ value: string; label: string }> }>>(() => {
@@ -200,17 +201,23 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
       <section className="member-form-panel" style={{marginBottom:20}}>
         <h2>{hi ? 'NGO हेडर की स्क्रॉलिंग तस्वीरें' : 'NGO header slideshow images'}</h2>
         <p>{hi ? 'अधिकतम 5 तस्वीरें अपलोड करें। तस्वीरें अपने-आप resize और compress होंगी। सार्वजनिक पेज पर दिखने से पहले Super Admin की मंज़ूरी ज़रूरी है।' : 'Upload up to 5 images. Images are automatically resized and compressed. Super Admin approval is required before they appear publicly.'}</p>
-        {!platformAdminView && <label style={{display:'grid',gap:8,fontWeight:700}}>{hi ? '📤 तस्वीरें चुनें और अपलोड करें (JPG/PNG/WebP, हर फ़ाइल अधिकतम 5 MB)' : '📤 Choose and upload images (JPG/PNG/WebP, max 5 MB each)'}<input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={slideBusy || slideRows.length >= 5} onChange={async e => {
-          const input=e.currentTarget; const files=Array.from(input.files || []).slice(0,Math.max(0,5-slideRows.length)); input.value=''; if(!files.length)return;
-          setSlideBusy(true);setSlideMessage(hi?'⏳ तस्वीरें अपलोड हो रही हैं… कृपया पेज बंद न करें।':'⏳ Uploading images… Please keep this page open.');
-          const batchId = globalThis.crypto?.randomUUID?.() || `batch-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
-          try { for(const [fileIndex,file] of files.entries()) {
-            if(file.size>5*1024*1024) throw new Error(hi?'हर तस्वीर 5 MB से कम होनी चाहिए।':'Each image must be under 5 MB.');
-            if(!['image/jpeg','image/png','image/webp'].includes(file.type)) throw new Error(hi?'केवल JPG, PNG या WebP चुनें।':'Choose JPG, PNG, or WebP images only.');
-            const imageData=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(new Error('Image read failed'));reader.onload=()=>{const img=new Image();img.onerror=()=>reject(new Error('Invalid image'));img.onload=()=>{const canvas=document.createElement('canvas');const scale=Math.min(1,1200/img.naturalWidth,750/img.naturalHeight);canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));const ctx=canvas.getContext('2d');if(!ctx){reject(new Error('Compression failed'));return;}ctx.drawImage(img,0,0,canvas.width,canvas.height);let data=canvas.toDataURL('image/jpeg',.62);if(data.length>450000){canvas.width=Math.round(canvas.width*.75);canvas.height=Math.round(canvas.height*.75);ctx.drawImage(img,0,0,canvas.width,canvas.height);data=canvas.toDataURL('image/jpeg',.42);}if(data.length>500000){reject(new Error(hi?'तस्वीर कम्प्रेस नहीं हुई, दूसरी चुनें।':'Image is too large after compression.'));return;}resolve(data);};img.src=String(reader.result||'');};reader.readAsDataURL(file);});
-            await addDoc(collection(db,'ngoHeaderSlides'),{ngoId,imageData,title:'',batchId,approvalStatus:'PENDING_PAYMENT',paymentStatus:'NOT_SUBMITTED',paymentReference:'',createdBy:authUser.uid,createdAt:serverTimestamp(),updatedAt:serverTimestamp(),order:slideRows.length + fileIndex});
-          } window.location.assign(`/?imagePayment=${encodeURIComponent(batchId)}`); } catch(err){setSlideMessage(err instanceof Error?err.message:'Upload failed.');} finally{setSlideBusy(false);}
-        }}/></label>}
+        {!platformAdminView && <div style={{display:'grid',gap:10}}>
+          <label style={{display:'grid',gap:8,fontWeight:700}}>{hi ? 'तस्वीरें चुनें (JPG/PNG/WebP, हर फ़ाइल अधिकतम 5 MB)' : 'Choose images (JPG/PNG/WebP, max 5 MB each)'}<input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={slideBusy || slideRows.length >= 5} onChange={e => { const files=Array.from(e.currentTarget.files || []).slice(0,Math.max(0,5-slideRows.length)); setSelectedSlideFiles(files); setSlideMessage(files.length ? (hi ? `${files.length} तस्वीर चुनी गई। अब “तस्वीरें सबमिट करें” दबाएँ।` : `${files.length} image(s) selected. Click “Submit images” to continue.`) : ''); e.currentTarget.value=''; }} /></label>
+          <button className="primary-button" type="button" disabled={slideBusy || selectedSlideFiles.length===0 || slideRows.length>=5} onClick={async()=>{
+            const files=selectedSlideFiles.slice(0,Math.max(0,5-slideRows.length)); if(!files.length)return;
+            setSlideBusy(true);setSlideMessage(hi?'⏳ तस्वीरें अपलोड हो रही हैं… कृपया पेज बंद न करें।':'⏳ Uploading images… Please keep this page open.');
+            const batchId = globalThis.crypto?.randomUUID?.() || `batch-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+            try { for(const [fileIndex,file] of files.entries()) {
+              if(file.size>5*1024*1024) throw new Error(hi?'हर तस्वीर 5 MB से कम होनी चाहिए।':'Each image must be under 5 MB.');
+              if(!['image/jpeg','image/png','image/webp'].includes(file.type)) throw new Error(hi?'केवल JPG, PNG या WebP चुनें।':'Choose JPG, PNG, or WebP images only.');
+              const imageData=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(new Error('Image read failed'));reader.onload=()=>{const img=new Image();img.onerror=()=>reject(new Error('Invalid image'));img.onload=()=>{const canvas=document.createElement('canvas');const scale=Math.min(1,1200/img.naturalWidth,750/img.naturalHeight);canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));const ctx=canvas.getContext('2d');if(!ctx){reject(new Error('Compression failed'));return;}ctx.drawImage(img,0,0,canvas.width,canvas.height);let data=canvas.toDataURL('image/jpeg',.62);if(data.length>450000){canvas.width=Math.round(canvas.width*.75);canvas.height=Math.round(canvas.height*.75);ctx.drawImage(img,0,0,canvas.width,canvas.height);data=canvas.toDataURL('image/jpeg',.42);}if(data.length>500000){reject(new Error(hi?'तस्वीर कम्प्रेस नहीं हुई, दूसरी चुनें।':'Image is too large after compression.'));return;}resolve(data);};img.src=String(reader.result||'');};reader.readAsDataURL(file);});
+              await addDoc(collection(db,'ngoHeaderSlides'),{ngoId,imageData,title:'',batchId,approvalStatus:'PENDING_PAYMENT',paymentStatus:'NOT_SUBMITTED',paymentReference:'',createdBy:authUser.uid,createdAt:serverTimestamp(),updatedAt:serverTimestamp(),order:slideRows.length + fileIndex});
+            }
+            setSelectedSlideFiles([]); window.location.assign(`/?imagePayment=${encodeURIComponent(batchId)}`);
+            } catch(err){setSlideMessage(err instanceof Error?err.message:'Upload failed.');} finally{setSlideBusy(false);}
+          }}>{slideBusy ? (hi ? '⏳ अपलोड हो रहा है…' : '⏳ Uploading…') : (hi ? '📤 तस्वीरें सबमिट करें' : '📤 Submit images')}</button>
+          <p style={{margin:0,fontSize:13}}>{hi ? 'सबमिट करने के बाद भुगतान QR पेज खुलेगा। वहाँ भुगतान करके UTR नंबर डालें और भेजें।' : 'After submitting, the payment QR page will open. Pay, enter the UTR number, and send it for review.'}</p>
+        </div>}
         {slideMessage && <p className="member-notice" role="status">{slideMessage}</p>}
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:12,marginTop:14}}>
           {slideRows.map(row=><article key={row.id} style={{border:'1px solid #dbeafe',borderRadius:12,padding:10,background:'#fff'}}><img src={safe(row.imageData)} alt="NGO slideshow" style={{width:'100%',height:100,objectFit:'cover',borderRadius:8}}/><strong style={{display:'block',marginTop:8,fontSize:12}}>{safe(row.approvalStatus)==='APPROVED'?(hi?'लाइव':'Live'):safe(row.approvalStatus)==='REJECTED'?(hi?'अस्वीकृत':'Rejected'):(hi?'Super Admin की मंज़ूरी बाकी':'Pending Super Admin approval')}</strong>
