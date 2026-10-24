@@ -309,6 +309,27 @@ service cloud.firestore {
       allow delete: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
     }
 
+    match /ngoHeaderSlides/{slideId} {
+      allow read: if resource.data.approvalStatus == 'APPROVED' || isSuperAdmin() || ownsNgo(resource.data.ngoId);
+      allow create: if ownsNgo(request.resource.data.ngoId)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.imageData is string
+        && request.resource.data.imageData.size() <= 500000
+        && request.resource.data.approvalStatus == 'PENDING'
+        && request.resource.data.keys().hasOnly(['ngoId','imageData','title','approvalStatus','createdBy','createdAt','updatedAt','order'])
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.order is int && request.resource.data.order >= 0 && request.resource.data.order < 5;
+      allow update: if isSuperAdmin()
+        || (ownsNgo(resource.data.ngoId)
+          && request.resource.data.ngoId == resource.data.ngoId
+          && request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['imageData','title','updatedAt'])
+          && request.resource.data.imageData is string
+          && request.resource.data.imageData.size() <= 500000);
+      allow delete: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
+    }
+
     match /publicTickerMessages/{messageId} {
       allow read: if true;
       allow create: if isSuperAdmin()
