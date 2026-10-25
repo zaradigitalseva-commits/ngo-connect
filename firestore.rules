@@ -329,7 +329,7 @@ service cloud.firestore {
         && request.resource.data.description is string && request.resource.data.description.size() <= 2000
         && request.resource.data.status in ['PLANNED','COMPLETED','CANCELLED']
         && request.resource.data.approvalStatus == 'PENDING'
-        && request.resource.data.updatedAt == request.time;
+        && request.resource.data.updatedAt == request.time);
       allow delete: if ownsNgo(resource.data.ngoId);
     }
 
