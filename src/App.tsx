@@ -243,7 +243,7 @@ function PublicNgoList({ language, setLanguage }: { language: Language; setLangu
       return () => { active = false; };
     }
     // Use separate equality queries so Firestore Rules can safely verify each public status.
-    const statuses = ['LIVE', 'ACTIVE', 'APPROVED'];
+    const statuses = ['LIVE', 'ACTIVE', 'APPROVED', 'Live', 'Active', 'Approved', 'live', 'active', 'approved'];
     const snapshotsByStatus = new Map<string, Array<{ id: string; name: string; category: string; location: string; mission: string; imageData: string; createdAtMs: number }>>();
     const received = new Set<string>();
     const unsubscribers = statuses.map(status => onSnapshot(
