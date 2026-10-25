@@ -4,10 +4,10 @@ import { ArrowLeft, ArrowUpRight, BadgeCheck, Bell, Building2, CalendarDays, Che
 import { auth, db, firebaseConfigured } from './firebase';
 import { MemberIDPortal, MemberVerifyPage, NgoAdminPortal } from './MemberIDPortal';
 import { NgoWorkspacePortal } from './NgoWorkspace';
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, query as firestoreQuery, serverTimestamp, setDoc, where, runTransaction, Timestamp, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, query as firestoreQuery, serverTimestamp, setDoc, where, runTransaction, Timestamp, updateDoc, deleteField, writeBatch } from 'firebase/firestore';
 
 const SUPER_ADMIN_EMAILS = ['ngogrant454@gmail.com', 'zaradigitalseva@gmail.com'];
-const isSuperAdmin = (user: User | null) => Boolean(user?.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase()));
+const isSuperAdmin = (user: User | null) => Boolean(user?.emailVerified === true && user.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase()));
 
 type Language = 'en' | 'hi';
 type Section = 'overview' | 'ngos' | 'members' | 'finance' | 'events' | 'documents' | 'subscriptions';
@@ -27,7 +27,7 @@ type SubscriptionPlan = { id: string; name: string; price: number; durationDays:
 
 
 
-function compressDashboardImage(file: File, maxOutputLength = 300000): Promise<string> {
+function compressDashboardImage(file: File, maxOutputLength = 160000): Promise<string> {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith('image/')) { reject(new Error('कृपया इमेज फ़ाइल चुनें।')); return; }
     if (file.size > 20 * 1024 * 1024) { reject(new Error('मूल इमेज 20 MB से छोटी होनी चाहिए।')); return; }
@@ -58,7 +58,7 @@ function compressDashboardImage(file: File, maxOutputLength = 300000): Promise<s
           width = Math.max(320, Math.round(width * 0.82));
           height = Math.max(180, Math.round(height * 0.82));
         }
-        if (!result || result.length > Math.round(maxOutputLength * 1.4)) {
+        if (!result || result.length > maxOutputLength) {
           reject(new Error('इमेज छोटी नहीं हो पाई। कृपया दूसरी या कम साइज़ की इमेज चुनें।'));
           return;
         }
@@ -96,13 +96,13 @@ function PublicNgoSite({ language, setLanguage, ngoId, authUser, onLogin }: { la
   const [publicFinance, setPublicFinance] = useState<Record<string, any>[]>([]);
   useEffect(() => {
     let active = true;
-    const unsubscribeTeam = onSnapshot(firestoreQuery(collection(db, 'ngoMembers'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => {
+    const unsubscribeTeam = onSnapshot(firestoreQuery(collection(db, 'ngoPublicMembers'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => {
       if (!active) return;
       setTeam(snapshot.docs.map(item => ({ id: item.id, ...item.data() } as Record<string, any>)).filter(person => person.approvalStatus === 'APPROVED' && String(person.status || 'ACTIVE').toUpperCase() === 'ACTIVE').sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))));
     }, () => { if (active) setTeam([]); });
     const unsubscribeEvents = onSnapshot(firestoreQuery(collection(db, 'ngoEvents'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => setPublicEvents(snapshot.docs.map(d => ({id:d.id,...d.data()} as Record<string, any>)).filter(row => row.approvalStatus === 'APPROVED').sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')))), () => setPublicEvents([]));
     const unsubscribeDocuments = onSnapshot(firestoreQuery(collection(db, 'ngoDocuments'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => setPublicDocuments(snapshot.docs.map(d => ({id:d.id,...d.data()} as Record<string, any>)).filter(row => row.approvalStatus === 'APPROVED')), () => setPublicDocuments([]));
-    const unsubscribeFinance = onSnapshot(firestoreQuery(collection(db, 'ngoTransactions'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => setPublicFinance(snapshot.docs.map(d => ({id:d.id,...d.data()} as Record<string, any>)).filter(row => row.approvalStatus === 'APPROVED').sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')))), () => setPublicFinance([]));
+    const unsubscribeFinance = onSnapshot(firestoreQuery(collection(db, 'ngoPublicTransactions'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => setPublicFinance(snapshot.docs.map(d => ({id:d.id,...d.data()} as Record<string, any>)).filter(row => row.approvalStatus === 'APPROVED').sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')))), () => setPublicFinance([]));
     const unsubscribeNgo = onSnapshot(doc(db, 'ngos', ngoId), snapshot => {
       if (!active) return;
       if (!snapshot.exists() || !['LIVE', 'ACTIVE', 'APPROVED'].includes(String(snapshot.data().status || '').toUpperCase())) { setFailed(true); setNgo(null); }
@@ -817,6 +817,44 @@ export default function App() {
     }, () => { if (active) setRegistrationLoadError('रजिस्ट्रेशन लोड नहीं हुए। Firestore rules प्रकाशित हैं या नहीं, जाँचें।'); });
     return () => { active = false; unsubscribeQr(); unsubscribePlans(); unsubscribeRegistrations(); };
   }, [authUser, section]);
+  // One-time safety cleanup when a verified Super Admin opens the workspace.
+  // Private registration details stay in ngoRegistrations; only safe fields remain on public NGO profiles.
+  useEffect(() => {
+    if (!authUser || !isSuperAdmin(authUser) || !firebaseConfigured) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const ngosSnapshot = await getDocs(collection(db, 'ngos'));
+        for (const item of ngosSnapshot.docs) {
+          if (cancelled) return;
+          const data = item.data();
+          const privateFields = ['contactName', 'contactEmail', 'contactPhone', 'email', 'phone', 'registrationFormData', 'paymentReference', 'paymentStatus', 'registrationId'];
+          const fieldsToRemove = privateFields.filter(field => Object.prototype.hasOwnProperty.call(data, field));
+          if (fieldsToRemove.length) {
+            const patch: Record<string, unknown> = { updatedAt: serverTimestamp() };
+            for (const field of fieldsToRemove) patch[field] = deleteField();
+            await updateDoc(doc(db, 'ngos', item.id), patch);
+          }
+        }
+        const membersSnapshot = await getDocs(collection(db, 'ngoMembers'));
+        for (const item of membersSnapshot.docs) {
+          if (cancelled) return;
+          const data = item.data();
+          if (data.approvalStatus !== 'APPROVED') continue;
+          await setDoc(doc(db, 'ngoPublicMembers', item.id), {
+            ngoId: data.ngoId, name: String(data.name || ''), designation: String(data.designation || ''),
+            location: String(data.location || ''), role: String(data.role || 'MEMBER'),
+            status: String(data.status || 'ACTIVE'), approvalStatus: 'APPROVED',
+            createdAt: data.createdAt || serverTimestamp()
+          }, { merge: true });
+        }
+      } catch (error) {
+        console.error('Legacy public-data cleanup needs review', error);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [authUser]);
+
   useEffect(() => {
     if (!authUser || !isSuperAdmin(authUser) || !firebaseConfigured) {
       setDashboardLoading(false);
@@ -850,7 +888,7 @@ export default function App() {
       onSnapshot(collection(db, 'ngoDocuments'), snap => { documents = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord)); refresh(); }, error => { if (active) setDashboardError(`दस्तावेज़ (ngoDocuments): ${error.message}`); }),
       // Super Admin may view only finance records explicitly published by the NGO.
       // Never subscribe to the full private transactions collection.
-      onSnapshot(firestoreQuery(collection(db, 'ngoTransactions'), where('approvalStatus', '==', 'APPROVED')), snap => {
+      onSnapshot(firestoreQuery(collection(db, 'ngoPublicTransactions'), where('approvalStatus', '==', 'APPROVED')), snap => {
         transactions = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord));
         refresh();
       }, error => { if (active) setDashboardError(`स्वीकृत वित्तीय रिकॉर्ड (ngoTransactions): ${error.message}`); }),
@@ -952,11 +990,7 @@ export default function App() {
           city: String(data.district || ''),
           district: String(data.district || ''),
           state: String(data.state || ''),
-          contactName: String(data.contactName || ''),
-          contactEmail: String(data.email || ''),
-          contactPhone: String(data.phone || ''),
           imageData: String(data.imageData || ''),
-          registrationFormData: { name: String(data.name || ''), contactName: String(data.contactName || ''), email: String(data.email || ''), phone: String(data.phone || ''), state: String(data.state || ''), district: String(data.district || ''), mission: String(data.mission || ''), imageData: String(data.imageData || ''), subscriptionPlan: String(data.subscriptionPlan || plan.name || ''), planPrice: Number(data.planPrice || 0), planDurationDays: Number(data.planDurationDays || 0), paymentReference: String(data.paymentReference || '') },
           status: 'LIVE',
           ownerUid: String(data.ownerUid || ''),
           registrationId: registration.id,
