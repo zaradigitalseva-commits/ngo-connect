@@ -261,7 +261,7 @@ service cloud.firestore {
 
     match /ngoEvents/{recordId} {
       // Events are managed by the owning NGO only. Super Admin has no event-management bypass.
-      allow read: if ownsNgo(resource.data.ngoId) || resource.data.approvalStatus == 'APPROVED';
+      allow read: if isSuperAdmin() || ownsNgo(resource.data.ngoId) || resource.data.approvalStatus == 'APPROVED';
       allow create: if ownsNgo(request.resource.data.ngoId)
         && request.resource.data.ngoId is string
         && request.resource.data.createdBy == request.auth.uid
@@ -275,7 +275,14 @@ service cloud.firestore {
         && (!request.resource.data.keys().hasAny(['approvalStatus']) || request.resource.data.approvalStatus in ['PENDING','APPROVED'])
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time;
-      allow update: if ownsNgo(resource.data.ngoId)
+      allow update: if (isSuperAdmin()
+          && request.resource.data.ngoId == resource.data.ngoId
+          && request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['approvalStatus','reviewedBy','reviewedAt','updatedAt'])
+          && request.resource.data.approvalStatus in ['PENDING','APPROVED','REJECTED']
+          && request.resource.data.reviewedBy == request.auth.uid
+          && request.resource.data.updatedAt == request.time)
+        || (ownsNgo(resource.data.ngoId)
         && request.resource.data.ngoId == resource.data.ngoId
         && request.resource.data.createdBy == resource.data.createdBy
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title','date','location','description','status','approvalStatus','updatedAt'])
