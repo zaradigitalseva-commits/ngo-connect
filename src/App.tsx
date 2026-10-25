@@ -841,12 +841,16 @@ export default function App() {
           if (cancelled) return;
           const data = item.data();
           if (data.approvalStatus !== 'APPROVED') continue;
-          await setDoc(doc(db, 'ngoPublicMembers', item.id), {
-            ngoId: data.ngoId, name: String(data.name || ''), designation: String(data.designation || ''),
-            location: String(data.location || ''), role: String(data.role || 'MEMBER'),
-            status: String(data.status || 'ACTIVE'), approvalStatus: 'APPROVED',
-            createdAt: data.createdAt || serverTimestamp()
-          }, { merge: true });
+          const mirrorRef = doc(db, 'ngoPublicMembers', item.id);
+          const mirrorSnap = await getDoc(mirrorRef);
+          if (!mirrorSnap.exists()) {
+            await setDoc(mirrorRef, {
+              ngoId: data.ngoId, name: String(data.name || ''), designation: String(data.designation || ''),
+              location: String(data.location || ''), role: String(data.role || 'MEMBER'),
+              status: String(data.status || 'ACTIVE'), approvalStatus: 'APPROVED',
+              createdAt: data.createdAt || serverTimestamp()
+            });
+          }
         }
       } catch (error) {
         console.error('Legacy public-data cleanup needs review', error);
