@@ -224,7 +224,7 @@ service cloud.firestore {
         && request.resource.data.phone is string
         && request.resource.data.role in ['MEMBER','VOLUNTEER']
         && request.resource.data.status in ['ACTIVE','INACTIVE']
-        && request.resource.data.approvalStatus in ['PENDING', 'APPROVED']
+        && request.resource.data.approvalStatus == 'PENDING'
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time);
       allow update: if isSuperAdmin() || (ownsNgo(resource.data.ngoId)
@@ -283,7 +283,7 @@ service cloud.firestore {
         && request.resource.data.location is string && request.resource.data.location.size() <= 300
         && request.resource.data.description is string && request.resource.data.description.size() <= 2000
         && request.resource.data.status in ['PLANNED','COMPLETED','CANCELLED']
-        && (!request.resource.data.keys().hasAny(['approvalStatus']) || request.resource.data.approvalStatus in ['PENDING','APPROVED'])
+        && (!request.resource.data.keys().hasAny(['approvalStatus']) || request.resource.data.approvalStatus == 'PENDING')
         && request.resource.data.updatedAt == request.time);
       allow delete: if ownsNgo(resource.data.ngoId);
     }
