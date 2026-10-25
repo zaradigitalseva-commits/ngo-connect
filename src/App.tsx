@@ -747,17 +747,21 @@ export default function App() {
       for (const item of ngoSnapshot.docs) {
         if (cancelled) return;
         const data = item.data();
-        const hasLegacyPrivateFields = ['contactName', 'contactEmail', 'contactPhone', 'registrationFormData']
+        const hasLegacyPrivateFields = ['contactName', 'contactEmail', 'contactPhone', 'email', 'phone', 'paymentReference', 'paymentProofData', 'registrationFormData']
           .some(key => Object.prototype.hasOwnProperty.call(data, key));
         if (!hasLegacyPrivateFields) continue;
         const registrationId = String(data.registrationId || '');
         const linkedRegistration = registrationId ? registrationSnapshot.docs.find(reg => reg.id === registrationId) : undefined;
-        const email = String(data.contactEmail || data.registrationFormData?.email || '').toLowerCase();
+        const email = String(data.contactEmail || data.email || data.registrationFormData?.email || '').toLowerCase();
         const ownerUid = String(data.ownerUid || linkedRegistration?.data().ownerUid || ownerByEmail.get(email) || '');
         const patch: Record<string, any> = {
           contactName: deleteField(),
           contactEmail: deleteField(),
           contactPhone: deleteField(),
+          email: deleteField(),
+          phone: deleteField(),
+          paymentReference: deleteField(),
+          paymentProofData: deleteField(),
           registrationFormData: deleteField(),
         };
         if (ownerUid && !data.ownerUid) patch.ownerUid = ownerUid;
