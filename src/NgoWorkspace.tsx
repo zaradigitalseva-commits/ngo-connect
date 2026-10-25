@@ -142,11 +142,11 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
     if (kind === 'finance' && (!Number.isFinite(Number(form.amount)) || Number(form.amount) <= 0)) { setMessage(hi ? 'राशि शून्य से अधिक होनी चाहिए।' : 'Amount must be greater than zero.'); return; }
     if (kind === 'documents' && form.url && !/^https:\/\//i.test(form.url)) { setMessage(hi ? 'फाइल लिंक https:// से शुरू होना चाहिए।' : 'File URL must start with https://.'); return; }
     setBusy(true); setMessage('');
-    const mutable = { ...form, ...(kind === 'finance' ? { amount: Number(form.amount) } : {}), ngoId, approvalStatus: 'PENDING', updatedAt: serverTimestamp() };
+    const mutable = { ...form, ...(kind === 'finance' ? { amount: Number(form.amount) } : {}), ngoId, approvalStatus: kind === 'documents' ? 'APPROVED' : 'PENDING', updatedAt: serverTimestamp() };
     try {
       if (editingId) await updateDoc(doc(db, activeModule.collection, editingId), mutable);
       else await addDoc(collection(db, activeModule.collection), { ...mutable, createdBy: authUser.uid, createdAt: serverTimestamp() });
-      setMessage(hi ? '✅ रिकॉर्ड सेव हो गया। Super Admin की मंज़ूरी के बाद वेबसाइट पर दिखेगा।' : '✅ Record saved. It will appear publicly after Super Admin approval.');
+      setMessage(kind === 'documents' ? (hi ? '✅ रिपोर्ट/प्रमाणपत्र सेव हो गया और अब सार्वजनिक वेबसाइट पर LIVE है।' : '✅ Report/certificate saved and is now LIVE on the public website.') : (hi ? '✅ रिकॉर्ड सेव हो गया। Super Admin की मंज़ूरी के बाद वेबसाइट पर दिखेगा।' : '✅ Record saved. It will appear publicly after Super Admin approval.'));
       setForm(blank(kind)); setEditingId('');
     } catch (e) { setMessage(e instanceof Error ? e.message : (hi ? 'सेव नहीं हुआ। Firestore Rules जाँचें।' : 'Save failed. Check Firestore rules.')); }
     finally { setBusy(false); }
