@@ -126,7 +126,7 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
   const reviewContent = async (record: ModerationRecord, status: 'APPROVED' | 'REJECTED') => {
     if (!isPlatformAdmin(authUser)) return;
     setBusy(true); setMessage('');
-    try { const batch = writeBatch(db); const review = { approvalStatus: status, reviewedBy: authUser.uid, reviewedAt: serverTimestamp(), updatedAt: serverTimestamp() }; batch.update(doc(db, record.collection, record.id), review); if (record.collection === 'ngoMembers') batch.update(doc(db, 'ngoPublicMembers', record.id), review); await batch.commit(); setMessage(status === 'APPROVED' ? 'जानकारी मंज़ूर की गई।' : 'जानकारी अस्वीकार की गई।'); }
+    try { const batch = writeBatch(db); const review = { approvalStatus: status, reviewedBy: authUser.uid, reviewedAt: serverTimestamp(), updatedAt: serverTimestamp() }; batch.update(doc(db, record.collection, record.id), review); if (record.collection === 'ngoMembers') batch.set(doc(db, 'ngoPublicMembers', record.id), { ngoId: record.ngoId, name: String(record.data.name || ''), designation: String(record.data.designation || ''), location: String(record.data.location || ''), role: String(record.data.role || 'MEMBER'), status: String(record.data.status || 'ACTIVE'), ...review }, { merge: true }); await batch.commit(); setMessage(status === 'APPROVED' ? 'जानकारी मंज़ूर की गई।' : 'जानकारी अस्वीकार की गई।'); }
     catch (error) { setMessage(error instanceof Error ? error.message : 'Review failed. Check Firestore rules.'); }
     finally { setBusy(false); }
   };
