@@ -576,6 +576,57 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
   const [registrationMessage, setRegistrationMessage] = useState('');
   const [registrationSuccessMessage, setRegistrationSuccessMessage] = useState('');
   const [paymentQrImage, setPaymentQrImage] = useState('');
+  const [showPaymentPage, setShowPaymentPage] = useState(false);
+  const [paymentRegistrationId, setPaymentRegistrationId] = useState('');
+  const [paymentForm, setPaymentForm] = useState({ paymentReference: '', paymentProofData: '' });
+  const [paymentSaveBusy, setPaymentSaveBusy] = useState(false);
+  const [paymentPageMessage, setPaymentPageMessage] = useState('');
+
+  useEffect(() => {
+    const registrationId = new URLSearchParams(window.location.search).get('paymentRegistration');
+    if (!registrationId || !authUser || !firebaseConfigured) return;
+    let active = true;
+    void getDoc(doc(db, 'ngoRegistrations', registrationId)).then(snapshot => {
+      if (!active || !snapshot.exists()) return;
+      const data = snapshot.data();
+      if (data.ownerUid !== authUser.uid || data.status !== 'PENDING_PAYMENT') return;
+      setPaymentRegistrationId(registrationId);
+      setPaymentForm({ paymentReference: String(data.paymentReference || ''), paymentProofData: String(data.paymentProofData || '') });
+      setShowPaymentPage(true);
+    }).catch(error => {
+      if (active) setPaymentPageMessage(error instanceof Error ? error.message : 'Payment details could not be loaded.');
+    });
+    return () => { active = false; };
+  }, [authUser]);
+
+  const savePaymentDetails = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!authUser || !paymentRegistrationId) { onLogin(); return; }
+    setPaymentSaveBusy(true); setPaymentPageMessage('');
+    const paymentReference = paymentForm.paymentReference.trim();
+    try {
+      await updateDoc(doc(db, 'ngoRegistrations', paymentRegistrationId), {
+        paymentReference,
+        paymentProofData: paymentForm.paymentProofData,
+        paymentStatus: paymentReference || paymentForm.paymentProofData ? 'SUBMITTED_FOR_REVIEW' : 'NOT_SUBMITTED',
+        updatedAt: serverTimestamp()
+      });
+      setPaymentPageMessage(hi
+        ? 'भुगतान विवरण सेव हो गया। Super Admin बैंक/UPI रिकॉर्ड जाँचकर ही NGO सक्रिय करेगा।'
+        : 'Payment details saved. The Super Admin will verify the bank/UPI record before activating the NGO.');
+    } catch (error) {
+      setPaymentPageMessage(error instanceof Error ? error.message : (hi ? 'भुगतान विवरण सेव नहीं हुआ।' : 'Payment details could not be saved.'));
+    } finally { setPaymentSaveBusy(false); }
+  };
+
+  const closePaymentPage = () => {
+    setShowPaymentPage(false);
+    setPaymentRegistrationId('');
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.delete('paymentRegistration');
+    window.history.replaceState({}, '', nextUrl.pathname + nextUrl.search + nextUrl.hash);
+  };
+
   const submitPublicRegistration = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!authUser || !authUser.email) { onLogin(); return; }
@@ -583,26 +634,30 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
     setRegistrationBusy(true);
     setRegistrationMessage('');
     try {
-      await addDoc(collection(db, 'ngoRegistrations'), {
+      const registrationRef = await addDoc(collection(db, 'ngoRegistrations'), {
         name: publicForm.name.trim(), contactName: publicForm.contact.trim(),
         email: authUser.email, phone: publicForm.phone.trim(), state: publicForm.state, district: publicForm.district.trim(),
         mission: publicForm.mission.trim(), imageData: publicForm.imageData, planId: publicForm.planId,
         subscriptionPlan: subscriptionPlans.find(p => p.id === publicForm.planId)?.name || '',
         planPrice: subscriptionPlans.find(p => p.id === publicForm.planId)?.price || 0,
         planDurationDays: subscriptionPlans.find(p => p.id === publicForm.planId)?.durationDays || 0,
-        paymentReference: publicForm.paymentReference.trim(),
-        ...(publicForm.paymentProofData ? { paymentProofData: publicForm.paymentProofData } : {}),
+        paymentReference: '',
         status: 'PENDING_PAYMENT',
-        paymentStatus: (publicForm.paymentReference.trim() || publicForm.paymentProofData) ? 'SUBMITTED_FOR_REVIEW' : 'NOT_SUBMITTED',
+        paymentStatus: 'NOT_SUBMITTED',
         ownerUid: authUser.uid, createdAt: serverTimestamp(),
       });
-      const successMessage = hi ? 'रजिस्ट्रेशन जमा हो गया। भुगतान/UTR की जाँच और एडमिन की मंज़ूरी के बाद ही NGO सक्रिय होगा।' : 'Registration submitted. The NGO will activate only after payment verification and admin approval.';
-      setRegistrationMessage(successMessage);
+      const successMessage = hi ? 'रजिस्ट्रेशन सेव हो गया। अब भुगतान का अगला चरण पूरा करें।' : 'Registration saved. Complete the next payment step.';
+      setRegistrationMessage('');
       setRegistrationSuccessMessage(successMessage);
-      setPublicForm({ name: '', contact: '', phone: '', state: '', district: '', mission: '', planId: subscriptionPlans.find(p => p.active)?.id || '', paymentReference: '', paymentProofData: '', imageData: '' });
+      setPaymentRegistrationId(registrationRef.id);
+      setPaymentForm({ paymentReference: '', paymentProofData: '' });
+      setPaymentPageMessage('');
+      setShowPaymentPage(true);
       setShowPublicRegistration(false);
+      setPublicForm({ name: '', contact: '', phone: '', state: '', district: '', mission: '', planId: subscriptionPlans.find(p => p.active)?.id || '', paymentReference: '', paymentProofData: '', imageData: '' });
       const nextUrl = new URL(window.location.href);
       nextUrl.searchParams.delete('register');
+      nextUrl.searchParams.set('paymentRegistration', registrationRef.id);
       window.history.replaceState({}, '', nextUrl.pathname + nextUrl.search + nextUrl.hash);
     } catch (error) {
       setRegistrationMessage(error instanceof Error ? error.message : (hi ? 'रजिस्ट्रेशन सेव नहीं हुआ। Firebase नियम जाँचें।' : 'Could not save registration. Check Firebase rules.'));
@@ -654,6 +709,23 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
     }, () => { if (active) setPaymentQrImage(''); });
     return () => { active = false; unsubscribePlans(); unsubscribePayment(); };
   }, [hi]);
+  if (showPaymentPage) return <div className="public-site">
+    <header className="public-header"><a className="public-brand" href="/" onClick={event => { event.preventDefault(); closePaymentPage(); }}>All NGO Connect</a><button className="outline-button" onClick={closePaymentPage}>{hi ? 'होम पर वापस जाएँ' : 'Back to home'}</button></header>
+    <main className="payment-step-page" style={{maxWidth:760,margin:'28px auto',padding:'20px'}}>
+      <section className="registration-modal" style={{display:'block',position:'static',maxWidth:680,margin:'0 auto',boxShadow:'0 18px 50px rgba(15,23,42,.14)'}}>
+        <div className="modal-heading"><div><span className="modal-eyebrow">ALL NGO CONNECT · PAYMENT</span><h2>{hi ? 'भुगतान पूरा करें' : 'Complete payment'}</h2><p>{hi ? 'भुगतान QR स्कैन करें। UTR और स्क्रीनशॉट सेव करने के बाद Super Admin भुगतान जाँचेगा।' : 'Scan the payment QR. After saving your UTR and screenshot, the Super Admin will verify the payment.'}</p><small>{hi ? 'रजिस्ट्रेशन नंबर: ' : 'Registration reference: '}{paymentRegistrationId}</small></div></div>
+        {paymentQrImage ? <div className="payment-qr-preview"><h3>{hi ? 'UPI से भुगतान करें' : 'Pay by UPI'}</h3><img src={paymentQrImage} alt={hi ? 'UPI QR कोड' : 'UPI QR code'}/><p>{hi ? 'भुगतान के बाद नीचे UTR नंबर दर्ज करें।' : 'After paying, enter the UTR below.'}</p></div> : <p className="form-note">{hi ? 'UPI QR उपलब्ध नहीं है। कृपया Super Admin से भुगतान निर्देश प्राप्त करें।' : 'No UPI QR is configured yet. Please obtain payment instructions from the Super Admin.'}</p>}
+        <form onSubmit={savePaymentDetails}>
+          <label>{hi ? 'भुगतान UTR / संदर्भ नंबर' : 'Payment UTR / reference'}<input maxLength={80} value={paymentForm.paymentReference} onChange={e => setPaymentForm(current => ({...current,paymentReference:e.target.value}))} placeholder="UTR / transaction reference"/></label>
+          <label>{hi ? 'भुगतान स्क्रीनशॉट (वैकल्पिक, 160 KB तक)' : 'Payment screenshot (optional, up to 160 KB)'}<input type="file" accept="image/png,image/jpeg,image/webp" onChange={async e => { const input=e.currentTarget; const file=input.files?.[0]; if(!file)return; try { const proof=await compressDashboardImage(file,160000); setPaymentForm(current=>({...current,paymentProofData:proof})); setPaymentPageMessage(hi?'स्क्रीनशॉट तैयार है।':'Screenshot is ready.'); } catch(error) { setPaymentPageMessage(error instanceof Error?error.message:(hi?'स्क्रीनशॉट तैयार नहीं हुआ।':'Could not prepare screenshot.')); } input.value=''; }}/></label>
+          {paymentForm.paymentProofData && <img src={paymentForm.paymentProofData} alt={hi?'भुगतान स्क्रीनशॉट पूर्वावलोकन':'Payment screenshot preview'} style={{display:'block',maxWidth:200,maxHeight:200,objectFit:'contain',borderRadius:10,border:'1px solid #ddd'}}/>}
+          {paymentPageMessage && <p role="status" className="public-auth-error">{paymentPageMessage}</p>}
+          <div className="modal-actions"><button type="button" className="outline-button" onClick={closePaymentPage}>{hi?'बाद में करें':'Do this later'}</button><button type="submit" className="primary-button" disabled={paymentSaveBusy}>{paymentSaveBusy?(hi?'सेव हो रहा है…':'Saving…'):(hi?'UTR / प्रमाण सेव करें':'Save UTR / proof')}</button></div>
+        </form>
+      </section>
+    </main>
+  </div>;
+
   return <div className="public-site">
     {registrationSuccessMessage && !showPublicRegistration && <div role="status" className="public-auth-error" style={{ maxWidth: 900, margin: '12px auto', padding: '12px 18px' }}>{registrationSuccessMessage}</div>}
     <header className="public-header" style={{ backgroundImage: "linear-gradient(90deg, rgba(255,255,255,.90), rgba(255,255,255,.60)), url(https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=2000&q=85)", backgroundPosition: "center", backgroundSize: "cover", backgroundRepeat: "no-repeat" }}>
@@ -667,7 +739,7 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
       <PublicHomeNgoCards language={language} />
       <section className="public-features" id="features"><div className="public-section-heading"><span>{hi ? 'एक ही जगह सब कुछ' : 'EVERYTHING IN ONE PLACE'}</span><h2>{hi ? 'समाज सेवा को आसान और व्यवस्थित बनाएँ' : 'Make community work simpler and organized'}</h2></div><div className="public-feature-grid"><article><div className="public-feature-icon"><HeartHandshake size={24}/></div><h3>{hi ? 'NGO प्रोफ़ाइल' : 'NGO profiles'}</h3><p>{hi ? 'संस्था की पहचान, उद्देश्य और सार्वजनिक जानकारी दिखाने के लिए।' : 'Share an organization’s mission and public information.'}</p></article><article><div className="public-feature-icon"><Users size={24}/></div><h3>{hi ? 'सदस्य और स्वयंसेवक' : 'Members & volunteers'}</h3><p>{hi ? 'टीम और स्वयंसेवकों के काम को व्यवस्थित करने की सुविधा।' : 'Organize teams and volunteer activity.'}</p></article><article><div className="public-feature-icon"><HandCoins size={24}/></div><h3>{hi ? 'दान और खर्च' : 'Donations & expenses'}</h3><p>{hi ? 'दान और खर्च का रिकॉर्ड रखने के लिए नियोजित सुविधा।' : 'Planned tools to keep donation and expense records.'}</p></article><article><div className="public-feature-icon"><CalendarDays size={24}/></div><h3>{hi ? 'कार्यक्रम और रिपोर्ट' : 'Events & reports'}</h3><p>{hi ? 'कार्यक्रम, दस्तावेज़, प्रमाणपत्र और रिपोर्ट के लिए।' : 'Tools for events, documents, certificates and reports.'}</p></article></div></section>
       <section className="public-cta" id="contact"><div><span>ALL NGO CONNECT</span><h2>{hi ? 'बेहतर बदलाव के लिए साथ आएँ।' : 'Come together for a better impact.'}</h2>{!registrationAlreadySubmitted && <button className="primary-button" onClick={() => { setRegistrationMessage(''); setShowPublicRegistration(true); }}>{hi ? 'अपना NGO रजिस्टर करें' : 'Register your NGO'} <ArrowUpRight size={17}/></button>}</div></section>
-      {showPublicRegistration && <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget && !registrationBusy) setShowPublicRegistration(false); }}><section className="registration-modal" role="dialog" aria-modal="true" aria-labelledby="public-registration-title"><div className="modal-heading"><div><span className="modal-eyebrow">ALL NGO CONNECT</span><h2 id="public-registration-title">{hi ? 'NGO रजिस्ट्रेशन' : 'NGO registration'}</h2><p>{hi ? 'Google लॉगिन के बाद जानकारी भेजें। भुगतान सत्यापन और एडमिन मंज़ूरी तक NGO सक्रिय नहीं होगा।' : 'Sign in with Google and submit your details. Activation happens only after payment verification and admin approval.'}</p></div><button className="icon-button" onClick={() => setShowPublicRegistration(false)} aria-label={hi ? 'बंद करें' : 'Close'}><X size={20}/></button></div>{!authUser ? <div className="public-profile-gate"><p>{hi ? 'रजिस्ट्रेशन के लिए पहले Google से लॉगिन करें।' : 'Sign in with Google before registering.'}</p><button className="primary-button" onClick={onLogin} disabled={!firebaseConfigured}><Globe2 size={17}/>{hi ? 'Google से लॉगिन' : 'Sign in with Google'}</button></div> : <form onSubmit={submitPublicRegistration}><label>{hi ? 'NGO / संस्था का नाम' : 'NGO / organization name'} *<input required maxLength={120} value={publicForm.name} onChange={e => setPublicForm({...publicForm, name:e.target.value})}/></label><div className="ngo-image-upload-field" style={{ border: '2px dashed #7c3aed', borderRadius: 12, padding: 14, margin: '10px 0', background: 'rgba(124,58,237,0.06)' }}><label style={{ display: 'block', fontWeight: 700 }}>{hi ? '📷 NGO का लोगो अपलोड करें (वैकल्पिक)' : '📷 Upload NGO logo (optional)'}<input type="file" accept="image/png,image/jpeg,image/webp" aria-label={hi ? 'NGO का लोगो चुनें' : 'Choose NGO logo'} onChange={async e => { const file = e.currentTarget.files?.[0]; if (!file) return; try { const imageData = await compressDashboardImage(file, 180000); setPublicForm(current => ({ ...current, imageData })); } catch (error) { setRegistrationMessage(error instanceof Error ? error.message : (hi ? 'लोगो अपलोड नहीं हुआ।' : 'Could not upload logo.')); } }} style={{ display: 'block', width: '100%', boxSizing: 'border-box', marginTop: 10, padding: 12, border: '1px solid #c4b5fd', borderRadius: 8, background: '#fff', color: '#111827' }} /><small style={{ display: 'block', marginTop: 8 }}>{hi ? 'मोबाइल या कंप्यूटर से JPG, PNG या WebP लोगो चुनें।' : 'Choose a JPG, PNG or WebP logo from your phone or computer.'}</small>{publicForm.imageData && <img src={publicForm.imageData} alt={hi ? 'NGO लोगो का पूर्वावलोकन' : 'NGO logo preview'} style={{ display: 'block', width: 120, height: 120, objectFit: 'contain', background: '#fff', borderRadius: 12, padding: 8, marginTop: 10, boxShadow: '0 4px 14px rgba(0,0,0,.12)' }} />}</label></div><label>{hi ? 'संपर्क व्यक्ति' : 'Contact person'} *<input required maxLength={100} value={publicForm.contact} onChange={e => setPublicForm({...publicForm, contact:e.target.value})}/></label><label>{hi ? 'मोबाइल नंबर' : 'Phone number'} *<input required type="tel" maxLength={25} value={publicForm.phone} onChange={e => setPublicForm({...publicForm, phone:e.target.value})}/></label><label>{hi ? 'राज्य' : 'State'} *<select required value={publicForm.state} onChange={e => setPublicForm({...publicForm, state:e.target.value})}><option value="">{hi ? 'राज्य चुनें' : 'Select state'}</option>{INDIA_STATES_AND_UTS.map(s => <option key={s} value={s}>{s}</option>)}</select></label><label>{hi ? 'जिला' : 'District'} *<input required maxLength={100} value={publicForm.district} onChange={e => setPublicForm({...publicForm, district:e.target.value})} placeholder={hi ? 'जिले का नाम लिखें' : 'Enter district name'}/></label><label>{hi ? 'संस्था का उद्देश्य' : 'Mission / purpose'}<textarea rows={3} maxLength={1000} value={publicForm.mission} onChange={e => setPublicForm({...publicForm, mission:e.target.value})}/></label><label>{hi ? 'सब्सक्रिप्शन प्लान' : 'Subscription plan'}<select required value={publicForm.planId} onChange={e => setPublicForm({...publicForm, planId:e.target.value})}><option value="">{hi ? 'प्लान चुनें' : 'Choose a plan'}</option>{subscriptionPlans.filter(plan => plan.active).map(plan => <option key={plan.id} value={plan.id}>{plan.name} — ₹{plan.price} / {plan.durationDays} {hi ? 'दिन' : 'days'}</option>)}</select>{subscriptionPlans.length === 0 && <small>{hi ? 'अभी कोई सक्रिय प्लान उपलब्ध नहीं है। एडमिन से संपर्क करें।' : 'No active plans are available. Contact the administrator.'}</small>}</label>{paymentQrImage && <div className="payment-qr-preview"><h3>{hi ? 'UPI से भुगतान करें' : 'Pay by UPI'}</h3><img src={paymentQrImage} alt={hi ? 'All NGO Connect UPI QR कोड' : 'All NGO Connect UPI QR code'} /><p>{hi ? 'QR स्कैन करके भुगतान करें, फिर नीचे UTR नंबर भरें।' : 'Scan this QR to pay, then enter the UTR below.'}</p></div>}<label>{hi ? 'भुगतान UTR / संदर्भ नंबर (यदि भुगतान कर दिया है)' : 'Payment UTR / reference (if already paid)'}<input maxLength={80} value={publicForm.paymentReference} onChange={e => setPublicForm({...publicForm, paymentReference:e.target.value})} placeholder="UTR / transaction reference"/></label><label>{hi ? 'भुगतान स्क्रीनशॉट (वैकल्पिक, 180 KB तक)' : 'Payment screenshot (optional, up to 180 KB)'}<input type="file" accept="image/png,image/jpeg,image/webp" onChange={async e => { const input = e.currentTarget; const file = input.files?.[0]; if (!file) return; try { const proof = await compressDashboardImage(file, 160000); setPublicForm(current => ({ ...current, paymentProofData: proof })); setRegistrationMessage(hi ? 'भुगतान स्क्रीनशॉट तैयार है।' : 'Payment screenshot is ready.'); } catch (error) { setRegistrationMessage(error instanceof Error ? error.message : (hi ? 'स्क्रीनशॉट तैयार नहीं हुआ।' : 'Could not prepare screenshot.')); } input.value = ''; }}/></label>{publicForm.paymentProofData && <img src={publicForm.paymentProofData} alt={hi ? 'भुगतान स्क्रीनशॉट पूर्वावलोकन' : 'Payment screenshot preview'} style={{maxWidth:180,maxHeight:180,objectFit:'contain',borderRadius:10,border:'1px solid #ddd'}}/>}<div className="form-note"><ShieldCheck size={17}/><span>{hi ? 'UTR भेजना भुगतान का प्रमाण नहीं है। एडमिन बैंक/UPI रिकॉर्ड से सत्यापन करेगा। भुगतान निर्देश एडमिन से प्राप्त करें।' : 'A UTR is not proof by itself. Admin will verify against UPI/bank records. Obtain payment instructions from the administrator.'}</span></div>{registrationMessage && <p role="status" className="public-auth-error">{registrationMessage}</p>}<div className="modal-actions"><button type="button" className="outline-button" disabled={registrationBusy} onClick={() => setShowPublicRegistration(false)}>{hi ? 'बंद करें' : 'Close'}</button><button type="submit" className="primary-button" disabled={registrationBusy || subscriptionPlans.length === 0 || !publicForm.planId}>{registrationBusy ? (hi ? 'सेव हो रहा है…' : 'Saving…') : (hi ? 'रजिस्ट्रेशन जमा करें' : 'Submit registration')}</button></div></form>}</section></div>}
+      {showPublicRegistration && <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget && !registrationBusy) setShowPublicRegistration(false); }}><section className="registration-modal" role="dialog" aria-modal="true" aria-labelledby="public-registration-title"><div className="modal-heading"><div><span className="modal-eyebrow">ALL NGO CONNECT</span><h2 id="public-registration-title">{hi ? 'NGO रजिस्ट्रेशन' : 'NGO registration'}</h2><p>{hi ? 'Google लॉगिन के बाद जानकारी भेजें। भुगतान सत्यापन और एडमिन मंज़ूरी तक NGO सक्रिय नहीं होगा।' : 'Sign in with Google and submit your details. Activation happens only after payment verification and admin approval.'}</p></div><button className="icon-button" onClick={() => setShowPublicRegistration(false)} aria-label={hi ? 'बंद करें' : 'Close'}><X size={20}/></button></div>{!authUser ? <div className="public-profile-gate"><p>{hi ? 'रजिस्ट्रेशन के लिए पहले Google से लॉगिन करें।' : 'Sign in with Google before registering.'}</p><button className="primary-button" onClick={onLogin} disabled={!firebaseConfigured}><Globe2 size={17}/>{hi ? 'Google से लॉगिन' : 'Sign in with Google'}</button></div> : <form onSubmit={submitPublicRegistration}><label>{hi ? 'NGO / संस्था का नाम' : 'NGO / organization name'} *<input required maxLength={120} value={publicForm.name} onChange={e => setPublicForm({...publicForm, name:e.target.value})}/></label><div className="ngo-image-upload-field" style={{ border: '2px dashed #7c3aed', borderRadius: 12, padding: 14, margin: '10px 0', background: 'rgba(124,58,237,0.06)' }}><label style={{ display: 'block', fontWeight: 700 }}>{hi ? '📷 NGO का लोगो अपलोड करें (वैकल्पिक)' : '📷 Upload NGO logo (optional)'}<input type="file" accept="image/png,image/jpeg,image/webp" aria-label={hi ? 'NGO का लोगो चुनें' : 'Choose NGO logo'} onChange={async e => { const file = e.currentTarget.files?.[0]; if (!file) return; try { const imageData = await compressDashboardImage(file, 180000); setPublicForm(current => ({ ...current, imageData })); } catch (error) { setRegistrationMessage(error instanceof Error ? error.message : (hi ? 'लोगो अपलोड नहीं हुआ।' : 'Could not upload logo.')); } }} style={{ display: 'block', width: '100%', boxSizing: 'border-box', marginTop: 10, padding: 12, border: '1px solid #c4b5fd', borderRadius: 8, background: '#fff', color: '#111827' }} /><small style={{ display: 'block', marginTop: 8 }}>{hi ? 'मोबाइल या कंप्यूटर से JPG, PNG या WebP लोगो चुनें।' : 'Choose a JPG, PNG or WebP logo from your phone or computer.'}</small>{publicForm.imageData && <img src={publicForm.imageData} alt={hi ? 'NGO लोगो का पूर्वावलोकन' : 'NGO logo preview'} style={{ display: 'block', width: 120, height: 120, objectFit: 'contain', background: '#fff', borderRadius: 12, padding: 8, marginTop: 10, boxShadow: '0 4px 14px rgba(0,0,0,.12)' }} />}</label></div><label>{hi ? 'संपर्क व्यक्ति' : 'Contact person'} *<input required maxLength={100} value={publicForm.contact} onChange={e => setPublicForm({...publicForm, contact:e.target.value})}/></label><label>{hi ? 'मोबाइल नंबर' : 'Phone number'} *<input required type="tel" maxLength={25} value={publicForm.phone} onChange={e => setPublicForm({...publicForm, phone:e.target.value})}/></label><label>{hi ? 'राज्य' : 'State'} *<select required value={publicForm.state} onChange={e => setPublicForm({...publicForm, state:e.target.value})}><option value="">{hi ? 'राज्य चुनें' : 'Select state'}</option>{INDIA_STATES_AND_UTS.map(s => <option key={s} value={s}>{s}</option>)}</select></label><label>{hi ? 'जिला' : 'District'} *<input required maxLength={100} value={publicForm.district} onChange={e => setPublicForm({...publicForm, district:e.target.value})} placeholder={hi ? 'जिले का नाम लिखें' : 'Enter district name'}/></label><label>{hi ? 'संस्था का उद्देश्य' : 'Mission / purpose'}<textarea rows={3} maxLength={1000} value={publicForm.mission} onChange={e => setPublicForm({...publicForm, mission:e.target.value})}/></label><label>{hi ? 'सब्सक्रिप्शन प्लान' : 'Subscription plan'}<select required value={publicForm.planId} onChange={e => setPublicForm({...publicForm, planId:e.target.value})}><option value="">{hi ? 'प्लान चुनें' : 'Choose a plan'}</option>{subscriptionPlans.filter(plan => plan.active).map(plan => <option key={plan.id} value={plan.id}>{plan.name} — ₹{plan.price} / {plan.durationDays} {hi ? 'दिन' : 'days'}</option>)}</select>{subscriptionPlans.length === 0 && <small>{hi ? 'अभी कोई सक्रिय प्लान उपलब्ध नहीं है। एडमिन से संपर्क करें।' : 'No active plans are available. Contact the administrator.'}</small>}</label><div className="form-note"><ShieldCheck size={17}/><span>{hi ? 'NGO जानकारी जमा करने के बाद अगला पेज भुगतान QR, UTR और स्क्रीनशॉट के लिए खुलेगा। भुगतान सत्यापन के बाद ही NGO सक्रिय होगा।' : 'After submitting NGO details, the next page opens for the payment QR, UTR and screenshot. The NGO activates only after payment verification.'}</span></div>{registrationMessage && <p role="status" className="public-auth-error">{registrationMessage}</p>}<div className="modal-actions"><button type="button" className="outline-button" disabled={registrationBusy} onClick={() => setShowPublicRegistration(false)}>{hi ? 'बंद करें' : 'Close'}</button><button type="submit" className="primary-button" disabled={registrationBusy || subscriptionPlans.length === 0 || !publicForm.planId}>{registrationBusy ? (hi ? 'सेव हो रहा है…' : 'Saving…') : (hi ? 'रजिस्ट्रेशन जमा करें' : 'Submit registration')}</button></div></form>}</section></div>}
       {authError && <p className="public-auth-error">{authError}</p>}
     </main><footer className="public-footer"><span>© 2026 All NGO Connect</span></footer>
     {!appInstalled && <div className="app-install-float-wrap">
