@@ -66,5 +66,5 @@ firebase deploy --only firestore:rules --project ngo-connect-4cfc0
 
 - `ngoMembers` and `ngoTransactions` are private source records. Public pages use `ngoPublicMembers` and `ngoPublicTransactions`, which intentionally omit phone/email/photo and donor/payee/private notes.
 - Approved legacy team/finance summaries are backfilled by the respective admin workspace after the new rules are published.
-- Registration/payment details remain in the restricted `ngoRegistrations` collection; payment screenshot images are compressed and capped before saving.
+- Registration/payment details remain in the restricted `ngoRegistrations` collection; the registration form opens a dedicated payment step where the owner can save a UTR and compressed screenshot proof.
 - Super Admin approval is required before new team members, events, and documents appear publicly.
