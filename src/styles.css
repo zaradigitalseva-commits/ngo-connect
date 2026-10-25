@@ -190,46 +190,6 @@ body{background:radial-gradient(ellipse at 85% 0%,#e3dcff 0,transparent 33%),rad
 @media(prefers-reduced-motion:reduce){.ngo-list-3d-button,.ngo-directory-card{transition:none}.directory-loader{animation:none}}
 
 
-/* Super-admin dashboard image slider */
-.dashboard-slider-panel{position:relative;min-height:218px;height:218px;border-radius:18px;overflow:hidden;margin-bottom:17px;background:linear-gradient(120deg,#5836c7,#bd4bc7 55%,#f16db4);color:#fff;box-shadow:0 10px 22px #5c43c326;isolation:isolate}
-.dashboard-slide-image{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center;background:linear-gradient(135deg,#e9e7ff,#fce7f3 52%,#dbeafe);z-index:-2}
-.dashboard-slide-shade{position:absolute;inset:0;background:linear-gradient(90deg,#1d174bd9 0%,#32215a9c 42%,#28164b1c 100%);z-index:-1}
-.dashboard-slide-caption{position:absolute;left:28px;top:25px;right:245px;z-index:1}
-.dashboard-slide-kicker{display:inline-flex;align-items:center;gap:7px;border:1px solid #ffffff70;background:#ffffff20;border-radius:20px;padding:6px 10px;font-size:10px;font-weight:800;letter-spacing:.5px}
-.dashboard-slide-caption h2{font:800 25px Manrope,sans-serif;line-height:1.25;margin:16px 0 7px;text-shadow:0 2px 10px #0003}
-.dashboard-slide-caption p{font-size:12px;margin:0;color:#ffffffdc}
-.dashboard-slide-empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:18px 22px 72px}
-.dashboard-slide-empty-icon{display:grid;place-items:center;width:54px;height:54px;border-radius:17px;background:#ffffff22;border:1px solid #ffffff55;margin-bottom:8px}
-.dashboard-slide-empty h2{font-size:20px;margin:0 0 5px}
-.dashboard-slide-empty p{font-size:12px;margin:0;color:#ffffffd9}
-.dashboard-slide-arrow{position:absolute;top:calc(50% - 19px);z-index:3;width:38px;height:38px;border:1px solid #ffffff65;border-radius:50%;display:grid;place-items:center;color:#fff;background:#1f174e66;cursor:pointer;backdrop-filter:blur(8px)}
-.dashboard-slide-arrow:hover{background:#1f174ecc}.slide-prev{right:57px}.slide-next{right:13px}
-.dashboard-slide-dots{position:absolute;right:18px;bottom:15px;display:flex;gap:6px;z-index:3}.dashboard-slide-dots button{width:7px;height:7px;padding:0;border:0;border-radius:50%;background:#ffffff8c;cursor:pointer}.dashboard-slide-dots button.active{width:21px;border-radius:8px;background:#fff}
-.dashboard-slide-admin{position:absolute;left:20px;right:20px;bottom:13px;z-index:4;display:flex;align-items:end;gap:12px;flex-wrap:wrap}
-.dashboard-slide-upload-form{display:flex;align-items:end;gap:8px;flex-wrap:wrap}
-.dashboard-slide-title-label{display:grid;gap:4px;font-size:9px;font-weight:700;color:#ffffffe8}.dashboard-slide-title-label input{width:180px;max-width:100%;border:1px solid #ffffff6b;border-radius:8px;padding:8px 10px;background:#ffffffed;color:#233047;font:inherit;font-size:11px;outline:none}
-.dashboard-slide-file-button,.dashboard-slide-save-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid #ffffff8a;border-radius:8px;padding:9px 11px;background:#ffffffed;color:#423078;font-size:10px;font-weight:800;cursor:pointer;white-space:nowrap}
-.dashboard-slide-file-button input{display:none}.dashboard-slide-save-button{background:#fff;color:#4b32b4}.dashboard-slide-save-button:disabled{opacity:.55;cursor:not-allowed}
-.dashboard-slide-message{font-size:10px;color:#fff;margin:0 0 2px;text-shadow:0 1px 5px #0008}
-.dashboard-slide-manage-list{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:9px;color:#fff}.dashboard-slide-manage-list>span{font-weight:800}.dashboard-slide-manage-list>div{display:flex;align-items:center;border:1px solid #ffffff60;border-radius:8px;overflow:hidden;background:#ffffff20}.dashboard-slide-manage-list button{border:0;background:transparent;color:#fff;padding:6px 8px;font-size:9px;cursor:pointer}.dashboard-slide-manage-list button.selected{background:#ffffff3b}.dashboard-slide-manage-list button+button{border-left:1px solid #ffffff50;padding:6px}
-@media(max-width:700px){.dashboard-slider-panel{height:300px;min-height:300px}.dashboard-slide-caption{left:17px;top:16px;right:70px}.dashboard-slide-caption h2{font-size:19px;margin-top:10px}.dashboard-slide-caption p{font-size:10px}.dashboard-slide-arrow{top:18px;width:32px;height:32px}.slide-prev{right:50px}.slide-next{right:11px}.dashboard-slide-admin{left:12px;right:12px;bottom:10px;gap:6px;align-items:stretch}.dashboard-slide-upload-form{gap:6px}.dashboard-slide-title-label{width:100%}.dashboard-slide-title-label input{width:100%;box-sizing:border-box}.dashboard-slide-file-button,.dashboard-slide-save-button{font-size:9px;padding:8px}.dashboard-slide-manage-list{max-height:40px;overflow:auto}.dashboard-slide-empty{padding-bottom:130px}.dashboard-slide-empty h2{font-size:17px}}
-@media(min-width:701px) and (max-width:1050px){.dashboard-slider-panel{height:250px}.dashboard-slide-admin{gap:7px}.dashboard-slide-title-label input{width:140px}.dashboard-slide-manage-list{max-width:45%}}
-
-
-/* Public homepage slideshow populated by Super Admin dashboard slides */
-.home-dashboard-slider{width:min(1120px,calc(100% - 40px));margin:34px auto 56px}
-.home-dashboard-slider-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px}
-.home-dashboard-slider-heading .public-kicker{margin:0}
-.home-dashboard-slider-heading h2{margin:0;color:#163b36;font-size:clamp(20px,3vw,30px)}
-.home-dashboard-slider-frame{position:relative;overflow:hidden;border-radius:24px;background:linear-gradient(135deg,#e8f5ef,#e8edff);box-shadow:0 18px 48px #183e321a;min-height:180px;aspect-ratio:16/7;display:flex;align-items:center;justify-content:center}
-.home-dashboard-slider-frame>img{display:block;width:100%;height:100%;max-height:490px;object-fit:contain;object-position:center}
-.home-slider-arrow{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border:1px solid #ffffff80;border-radius:50%;display:grid;place-items:center;color:#fff;background:#122f2cb8;cursor:pointer;backdrop-filter:blur(8px)}
-.home-slider-prev{left:16px}.home-slider-next{right:16px}
-.home-slider-dots{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:8px;padding:8px 12px;border-radius:30px;background:#102e2bb8}
-.home-slider-dots button{width:8px;height:8px;border:0;border-radius:50%;padding:0;background:#ffffff9c;cursor:pointer}
-.home-slider-dots button.active{width:23px;border-radius:8px;background:#fff}
-@media(max-width:700px){.home-dashboard-slider{width:calc(100% - 28px);margin:24px auto 38px}.home-dashboard-slider-frame{border-radius:16px;aspect-ratio:4/3;min-height:0}.home-dashboard-slider-frame>img{height:100%;max-height:360px}.home-slider-arrow{width:36px;height:36px}.home-slider-prev{left:9px}.home-slider-next{right:9px}.home-slider-dots{bottom:9px}}
-
 /* Colorful 3D brand treatment for All NGO Connect */
 .brand-name,
 .public-brand > span:last-child,
@@ -2659,23 +2619,4 @@ input, select, textarea, button {
   .public-site.ngo-directory-site header.public-header.ngo-individual-site-header {
     background-position: center, center 42% !important;
   }
-}
-
-
-/* Individual NGO public image slideshow directly below the header */
-.ngo-header-image-slider { position:relative; width:100%; height:clamp(180px, 28vw, 330px); overflow:hidden; background:#082f3b; border-bottom:1px solid #b8e1e8; }
-.ngo-header-image-track { display:flex; height:100%; animation:ngo-header-slide-scroll linear infinite; }
-.ngo-header-image-slider:hover .ngo-header-image-track { animation-play-state:paused; }
-.ngo-header-slide { position:relative; flex:0 0 auto; height:100%; margin:0; overflow:hidden; }
-.ngo-header-slide img { display:block; width:100%; height:100%; object-fit:cover; }
-.ngo-header-slide::after { content:''; position:absolute; inset:45% 0 0; background:linear-gradient(transparent,rgba(3,24,32,.55)); pointer-events:none; }
-.ngo-header-slide figcaption { position:absolute; z-index:1; bottom:16px; left:clamp(16px,5vw,60px); color:#fff; font-weight:800; text-shadow:0 2px 6px #000; }
-@keyframes ngo-header-slide-scroll { 0%, 8% { transform:translateX(0); } 90%, 100% { transform:translateX(calc(-100% + 100vw)); } }
-@media (max-width:640px) { .ngo-header-image-slider { height:190px; } .ngo-header-slide figcaption { bottom:10px; left:14px; font-size:13px; } }
-
-/* User-requested: remove image slider sections across the site. Keep NGO logos/cards intact. */
-.dashboard-slider-panel,
-.home-dashboard-slider,
-.ngo-header-image-slider {
-  display: none !important;
 }
