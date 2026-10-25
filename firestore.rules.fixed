@@ -307,14 +307,14 @@ service cloud.firestore {
         && request.resource.data.title is string && request.resource.data.title.size() > 0
         && request.resource.data.type in ['REPORT','CERTIFICATE','OTHER']
         && request.resource.data.url is string
-        && request.resource.data.approvalStatus == 'PENDING'
+        && request.resource.data.approvalStatus == 'APPROVED'
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time);
       allow update: if isSuperAdmin() || (ownsNgo(resource.data.ngoId)
         && request.resource.data.ngoId == resource.data.ngoId
         && request.resource.data.createdBy == resource.data.createdBy
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title','type','url','notes','approvalStatus','updatedAt'])
-        && request.resource.data.approvalStatus == 'PENDING'
+        && request.resource.data.approvalStatus == 'APPROVED'
         && request.resource.data.updatedAt == request.time);
       allow delete: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
     }
