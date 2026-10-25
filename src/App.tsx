@@ -24,7 +24,6 @@ const nav = [
 type DashboardNgo = { id: string; name: string; type: string; city: string; status: string; ownerUid: string; people: number; imageData?: string; mission?: string; state?: string };
 type DashboardRecord = Record<string, any> & { id: string };
 type SubscriptionPlan = { id: string; name: string; price: number; durationDays: number; description: string; active: boolean };
-type DashboardSlide = { id: string; title: string; imageData: string; createdAt?: unknown };
 
 function compressDashboardImage(file: File, maxOutputLength = 160000): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -289,41 +288,6 @@ function PublicNgoList({ language, setLanguage }: { language: Language; setLangu
   </div>;
 }
 
-function PublicDashboardSlider({ language }: { language: Language }) {
-  const hi = language === 'hi';
-  const [slides, setSlides] = useState<DashboardSlide[]>([]);
-  const [activeIndex, setActiveIndex] = useState(0);
-  useEffect(() => {
-    let active = true;
-    const unsubscribeSlides = onSnapshot(collection(db, 'dashboardSlides'), snapshot => {
-      if (!active) return;
-      const records = snapshot.docs.map(item => { const data = item.data(); return { id: item.id, title: String(data.title || ''), imageData: String(data.imageData || '') }; }).filter(item => item.imageData);
-      setSlides(records); setActiveIndex(0);
-    }, () => { if (active) setSlides([]); });
-    return () => { active = false; unsubscribeSlides(); };
-  }, []);
-  useEffect(() => {
-    if (slides.length < 2) return;
-    const timer = window.setInterval(() => setActiveIndex(index => (index + 1) % slides.length), 5000);
-    return () => window.clearInterval(timer);
-  }, [slides.length]);
-  if (slides.length === 0) return null;
-  const slide = slides[activeIndex % slides.length];
-  const move = (direction: number) => setActiveIndex(index => (index + direction + slides.length) % slides.length);
-  return <section className="home-dashboard-slider" aria-label={hi ? 'मुख्य पेज इमेज स्लाइडर' : 'Homepage image slider'}>
-    <div className="home-dashboard-slider-heading"><span className="public-kicker"><ImagePlus size={15}/>{hi ? 'ALL NGO CONNECT · विशेष झलक' : 'ALL NGO CONNECT · FEATURED'}</span>{slide.title && <h2>{slide.title}</h2>}</div>
-    <div className="home-dashboard-slider-frame">
-      <img src={slide.imageData} alt={slide.title || (hi ? 'All NGO Connect की विशेष तस्वीर' : 'All NGO Connect featured image')} />
-      {slides.length > 1 && <>
-        <button className="home-slider-arrow home-slider-prev" type="button" onClick={() => move(-1)} aria-label={hi ? 'पिछली तस्वीर' : 'Previous image'}><ChevronLeft size={24}/></button>
-        <button className="home-slider-arrow home-slider-next" type="button" onClick={() => move(1)} aria-label={hi ? 'अगली तस्वीर' : 'Next image'}><ChevronRight size={24}/></button>
-        <div className="home-slider-dots">{slides.map((item, index) => <button key={item.id} type="button" className={index === activeIndex ? 'active' : ''} onClick={() => setActiveIndex(index)} aria-label={hi ? 'तस्वीर ' + (index + 1) : 'Image ' + (index + 1)} />)}</div>
-      </>}
-    </div>
-  </section>;
-}
-
-
 function PublicTickerBanner({ language }: { language: Language }) {
   const hi = language === 'hi';
   const [messages, setMessages] = useState<Array<{ id: string; text: string; color: string; createdAt?: unknown }>>([]);
@@ -584,7 +548,6 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
     <main>
       <section className="public-hero" id="about"><div className="public-hero-copy"><span className="public-kicker"><HeartHandshake size={15}/>{hi ? 'सामाजिक बदलाव के लिए एक मंच' : 'A platform for social impact'}</span><h1 key={showCompassionQuote ? 'compassion-quote' : 'smile-quote'} className="public-hero-rotating-quote">{showCompassionQuote ? (hi ? <>तुम ज़मीन वालों पर रहम करो,<br/><em>आसमान वाला तुम पर रहम करेगा। ❤️</em></> : <>Show mercy to those on earth,<br/><em>and the One above will show mercy to you. ❤️</em></>) : (hi ? <>आपकी छोटी-सी मदद,<br/><em>किसी की मुस्कान बन सकती है।</em></> : <>Your small act of kindness<br/><em>can bring a smile to someone.</em></>)}</h1></div></section>
       <PublicHomeNgoCards language={language} />
-      <PublicDashboardSlider language={language} />
       <section className="public-features" id="features"><div className="public-section-heading"><span>{hi ? 'एक ही जगह सब कुछ' : 'EVERYTHING IN ONE PLACE'}</span><h2>{hi ? 'समाज सेवा को आसान और व्यवस्थित बनाएँ' : 'Make community work simpler and organized'}</h2></div><div className="public-feature-grid"><article><div className="public-feature-icon"><HeartHandshake size={24}/></div><h3>{hi ? 'NGO प्रोफ़ाइल' : 'NGO profiles'}</h3><p>{hi ? 'संस्था की पहचान, उद्देश्य और सार्वजनिक जानकारी दिखाने के लिए।' : 'Share an organization’s mission and public information.'}</p></article><article><div className="public-feature-icon"><Users size={24}/></div><h3>{hi ? 'सदस्य और स्वयंसेवक' : 'Members & volunteers'}</h3><p>{hi ? 'टीम और स्वयंसेवकों के काम को व्यवस्थित करने की सुविधा।' : 'Organize teams and volunteer activity.'}</p></article><article><div className="public-feature-icon"><HandCoins size={24}/></div><h3>{hi ? 'दान और खर्च' : 'Donations & expenses'}</h3><p>{hi ? 'दान और खर्च का रिकॉर्ड रखने के लिए नियोजित सुविधा।' : 'Planned tools to keep donation and expense records.'}</p></article><article><div className="public-feature-icon"><CalendarDays size={24}/></div><h3>{hi ? 'कार्यक्रम और रिपोर्ट' : 'Events & reports'}</h3><p>{hi ? 'कार्यक्रम, दस्तावेज़, प्रमाणपत्र और रिपोर्ट के लिए।' : 'Tools for events, documents, certificates and reports.'}</p></article></div></section>
       <section className="public-cta" id="contact"><div><span>ALL NGO CONNECT</span><h2>{hi ? 'बेहतर बदलाव के लिए साथ आएँ।' : 'Come together for a better impact.'}</h2>{!registrationAlreadySubmitted && <button className="primary-button" onClick={() => { setRegistrationMessage(''); setShowPublicRegistration(true); }}>{hi ? 'अपना NGO रजिस्टर करें' : 'Register your NGO'} <ArrowUpRight size={17}/></button>}</div></section>
       {showPublicRegistration && <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget && !registrationBusy) setShowPublicRegistration(false); }}><section className="registration-modal" role="dialog" aria-modal="true" aria-labelledby="public-registration-title"><div className="modal-heading"><div><span className="modal-eyebrow">ALL NGO CONNECT</span><h2 id="public-registration-title">{hi ? 'NGO रजिस्ट्रेशन' : 'NGO registration'}</h2><p>{hi ? 'Google लॉगिन के बाद जानकारी भेजें। भुगतान सत्यापन और एडमिन मंज़ूरी तक NGO सक्रिय नहीं होगा।' : 'Sign in with Google and submit your details. Activation happens only after payment verification and admin approval.'}</p></div><button className="icon-button" onClick={() => setShowPublicRegistration(false)} aria-label={hi ? 'बंद करें' : 'Close'}><X size={20}/></button></div>{!authUser ? <div className="public-profile-gate"><p>{hi ? 'रजिस्ट्रेशन के लिए पहले Google से लॉगिन करें।' : 'Sign in with Google before registering.'}</p><button className="primary-button" onClick={onLogin} disabled={!firebaseConfigured}><Globe2 size={17}/>{hi ? 'Google से लॉगिन' : 'Sign in with Google'}</button></div> : <form onSubmit={submitPublicRegistration}><label>{hi ? 'NGO / संस्था का नाम' : 'NGO / organization name'} *<input required maxLength={120} value={publicForm.name} onChange={e => setPublicForm({...publicForm, name:e.target.value})}/></label><div className="ngo-image-upload-field" style={{ border: '2px dashed #7c3aed', borderRadius: 12, padding: 14, margin: '10px 0', background: 'rgba(124,58,237,0.06)' }}><label style={{ display: 'block', fontWeight: 700 }}>{hi ? '📷 NGO का लोगो अपलोड करें (वैकल्पिक)' : '📷 Upload NGO logo (optional)'}<input type="file" accept="image/png,image/jpeg,image/webp" aria-label={hi ? 'NGO का लोगो चुनें' : 'Choose NGO logo'} onChange={async e => { const file = e.currentTarget.files?.[0]; if (!file) return; try { const imageData = await compressDashboardImage(file, 180000); setPublicForm(current => ({ ...current, imageData })); } catch (error) { setRegistrationMessage(error instanceof Error ? error.message : (hi ? 'लोगो अपलोड नहीं हुआ।' : 'Could not upload logo.')); } }} style={{ display: 'block', width: '100%', boxSizing: 'border-box', marginTop: 10, padding: 12, border: '1px solid #c4b5fd', borderRadius: 8, background: '#fff', color: '#111827' }} /><small style={{ display: 'block', marginTop: 8 }}>{hi ? 'मोबाइल या कंप्यूटर से JPG, PNG या WebP लोगो चुनें।' : 'Choose a JPG, PNG or WebP logo from your phone or computer.'}</small>{publicForm.imageData && <img src={publicForm.imageData} alt={hi ? 'NGO लोगो का पूर्वावलोकन' : 'NGO logo preview'} style={{ display: 'block', width: 120, height: 120, objectFit: 'contain', background: '#fff', borderRadius: 12, padding: 8, marginTop: 10, boxShadow: '0 4px 14px rgba(0,0,0,.12)' }} />}</label></div><label>{hi ? 'संपर्क व्यक्ति' : 'Contact person'} *<input required maxLength={100} value={publicForm.contact} onChange={e => setPublicForm({...publicForm, contact:e.target.value})}/></label><label>{hi ? 'मोबाइल नंबर' : 'Phone number'} *<input required type="tel" maxLength={25} value={publicForm.phone} onChange={e => setPublicForm({...publicForm, phone:e.target.value})}/></label><label>{hi ? 'राज्य' : 'State'} *<select required value={publicForm.state} onChange={e => setPublicForm({...publicForm, state:e.target.value})}><option value="">{hi ? 'राज्य चुनें' : 'Select state'}</option>{INDIA_STATES_AND_UTS.map(s => <option key={s} value={s}>{s}</option>)}</select></label><label>{hi ? 'जिला' : 'District'} *<input required maxLength={100} value={publicForm.district} onChange={e => setPublicForm({...publicForm, district:e.target.value})} placeholder={hi ? 'जिले का नाम लिखें' : 'Enter district name'}/></label><label>{hi ? 'संस्था का उद्देश्य' : 'Mission / purpose'}<textarea rows={3} maxLength={1000} value={publicForm.mission} onChange={e => setPublicForm({...publicForm, mission:e.target.value})}/></label><label>{hi ? 'सब्सक्रिप्शन प्लान' : 'Subscription plan'}<select required value={publicForm.planId} onChange={e => setPublicForm({...publicForm, planId:e.target.value})}><option value="">{hi ? 'प्लान चुनें' : 'Choose a plan'}</option>{subscriptionPlans.filter(plan => plan.active).map(plan => <option key={plan.id} value={plan.id}>{plan.name} — ₹{plan.price} / {plan.durationDays} {hi ? 'दिन' : 'days'}</option>)}</select>{subscriptionPlans.length === 0 && <small>{hi ? 'अभी कोई सक्रिय प्लान उपलब्ध नहीं है। एडमिन से संपर्क करें।' : 'No active plans are available. Contact the administrator.'}</small>}</label>{paymentQrImage && <div className="payment-qr-preview"><h3>{hi ? 'UPI से भुगतान करें' : 'Pay by UPI'}</h3><img src={paymentQrImage} alt={hi ? 'All NGO Connect UPI QR कोड' : 'All NGO Connect UPI QR code'} /><p>{hi ? 'QR स्कैन करके भुगतान करें, फिर नीचे UTR नंबर भरें।' : 'Scan this QR to pay, then enter the UTR below.'}</p></div>}<label>{hi ? 'भुगतान UTR / संदर्भ नंबर (यदि भुगतान कर दिया है)' : 'Payment UTR / reference (if already paid)'}<input maxLength={80} value={publicForm.paymentReference} onChange={e => setPublicForm({...publicForm, paymentReference:e.target.value})} placeholder="UTR / transaction reference"/></label><div className="form-note"><ShieldCheck size={17}/><span>{hi ? 'UTR भेजना भुगतान का प्रमाण नहीं है। एडमिन बैंक/UPI रिकॉर्ड से सत्यापन करेगा। भुगतान निर्देश एडमिन से प्राप्त करें।' : 'A UTR is not proof by itself. Admin will verify against UPI/bank records. Obtain payment instructions from the administrator.'}</span></div>{registrationMessage && <p role="status" className="public-auth-error">{registrationMessage}</p>}<div className="modal-actions"><button type="button" className="outline-button" disabled={registrationBusy} onClick={() => setShowPublicRegistration(false)}>{hi ? 'बंद करें' : 'Close'}</button><button type="submit" className="primary-button" disabled={registrationBusy || subscriptionPlans.length === 0 || !publicForm.planId}>{registrationBusy ? (hi ? 'सेव हो रहा है…' : 'Saving…') : (hi ? 'रजिस्ट्रेशन जमा करें' : 'Submit registration')}</button></div></form>}</section></div>}
@@ -718,12 +681,6 @@ export default function App() {
   const [adminQrImage, setAdminQrImage] = useState('');
   const [qrSaveBusy, setQrSaveBusy] = useState(false);
   const [qrSaveMessage, setQrSaveMessage] = useState('');
-  const [dashboardSlides, setDashboardSlides] = useState<DashboardSlide[]>([]);
-  const [dashboardSlideIndex, setDashboardSlideIndex] = useState(0);
-  const [slideTitle, setSlideTitle] = useState('');
-  const [slideImageData, setSlideImageData] = useState('');
-  const [slideSaveBusy, setSlideSaveBusy] = useState(false);
-  const [slideMessage, setSlideMessage] = useState('');
   const [tickerMessages, setTickerMessages] = useState<Array<{ id: string; text: string; color: string; createdAt?: unknown }>>([]);
   const [tickerDraft, setTickerDraft] = useState('');
   const [tickerColor, setTickerColor] = useState('rainbow');
@@ -747,20 +704,6 @@ export default function App() {
   useEffect(() => {
     if (!authUser || !isSuperAdmin(authUser) || !firebaseConfigured) return;
     let active = true;
-    const unsubscribeSlides = onSnapshot(collection(db, 'dashboardSlides'), snapshot => {
-      if (!active) return;
-      const slides = snapshot.docs.map(item => ({ id: item.id, title: String(item.data().title || ''), imageData: String(item.data().imageData || ''), createdAt: item.data().createdAt } as DashboardSlide)).filter(item => item.imageData).sort((a, b) => {
-        const at = a.createdAt && typeof (a.createdAt as { toMillis?: () => number }).toMillis === 'function' ? (a.createdAt as { toMillis: () => number }).toMillis() : 0;
-        const bt = b.createdAt && typeof (b.createdAt as { toMillis?: () => number }).toMillis === 'function' ? (b.createdAt as { toMillis: () => number }).toMillis() : 0;
-        return at - bt;
-      });
-      setDashboardSlides(slides);
-    }, error => { if (active) setSlideMessage(error instanceof Error ? error.message : 'स्लाइड लोड नहीं हुए। Firestore Rules जाँचें।'); });
-    return () => { active = false; unsubscribeSlides(); };
-  }, [authUser]);
-  useEffect(() => {
-    if (!authUser || !isSuperAdmin(authUser) || !firebaseConfigured) return;
-    let active = true;
     const unsubscribeTicker = onSnapshot(collection(db, 'publicTickerMessages'), snapshot => {
       if (!active) return;
       const rows = snapshot.docs.map(item => ({ id: item.id, text: String(item.data().text || ''), color: String(item.data().color || 'rainbow'), createdAt: item.data().createdAt }));
@@ -773,12 +716,6 @@ export default function App() {
     }, () => { if (active) setTickerMessage('सूचना लोड नहीं हुई। Firestore Rules जाँचें।') });
     return () => { active = false; unsubscribeTicker(); };
   }, [authUser]);
-  useEffect(() => {
-    if (dashboardSlides.length < 2) return;
-    const timer = window.setInterval(() => setDashboardSlideIndex(index => (index + 1) % dashboardSlides.length), 5000);
-    return () => window.clearInterval(timer);
-  }, [dashboardSlides.length]);
-
   useEffect(() => {
     if (!authUser || !isSuperAdmin(authUser) || !firebaseConfigured) {
       setDashboardLoading(false);
@@ -1098,45 +1035,6 @@ export default function App() {
       setTickerMessage('सूचना हटा दी गई।');
     } catch (error) { setTickerMessage(error instanceof Error ? error.message : 'सूचना हटाई नहीं जा सकी।'); }
   };
-  const saveDashboardSlide = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!authUser || !isSuperAdmin(authUser) || !slideImageData) { setSlideMessage('पहले इमेज चुनें।'); return; }
-    setSlideSaveBusy(true);
-    setSlideMessage('');
-    try {
-      const ref = await addDoc(collection(db, 'dashboardSlides'), { title: slideTitle.trim(), imageData: slideImageData, createdAt: serverTimestamp(), createdBy: authUser.email || '' });
-      setDashboardSlides(current => [...current, { id: ref.id, title: slideTitle.trim(), imageData: slideImageData }]);
-      setDashboardSlideIndex(dashboardSlides.length);
-      setSlideTitle('');
-      setSlideImageData('');
-      setSlideMessage('इमेज स्लाइडर में सेव हो गई।');
-    } catch (error) { setSlideMessage(error instanceof Error ? error.message : 'इमेज सेव नहीं हुई। Firestore Rules जाँचें।'); }
-    finally { setSlideSaveBusy(false); }
-  };
-  const deleteDashboardSlide = async (slide: DashboardSlide) => {
-    if (!authUser || !isSuperAdmin(authUser)) {
-      setSlideMessage('केवल Super Admin स्लाइड हटा सकता है।');
-      return;
-    }
-    const label = slide.title.trim() || 'यह इमेज';
-    if (!window.confirm(`“${label}” स्लाइड हटाएँ? यह कार्रवाई वापस नहीं होगी।`)) return;
-    try {
-      await deleteDoc(doc(db, 'dashboardSlides', slide.id));
-      setDashboardSlides(current => {
-        const removedIndex = current.findIndex(item => item.id === slide.id);
-        const remaining = current.filter(item => item.id !== slide.id);
-        setDashboardSlideIndex(index => {
-          if (remaining.length === 0) return 0;
-          if (removedIndex >= 0 && index > removedIndex) return index - 1;
-          return Math.min(index, remaining.length - 1);
-        });
-        return remaining;
-      });
-      setSlideMessage(`“${label}” स्लाइड हटा दी गई।`);
-    } catch (error) {
-      setSlideMessage(error instanceof Error ? error.message : 'स्लाइड हटाई नहीं जा सकी। Firestore Rules जाँचें।');
-    }
-  };
   const pageTitle = nav.find(item => item.id === section)?.key ?? 'overview';
 
   if (window.location.pathname.startsWith('/privacy-policy')) return <PrivacyPolicyPage language={language} setLanguage={setLanguage} />;
@@ -1192,10 +1090,6 @@ export default function App() {
         {section === 'overview' && <>
           {dashboardError && <div className="setup-banner" role="alert"><div className="setup-icon"><ShieldCheck size={20}/></div><div className="setup-copy"><strong>Firebase डेटा लोड नहीं हुआ</strong><p>{dashboardError}</p></div></div>}
           {dashboardLoading && <div className="empty-state">Firebase से असली डेटा लोड हो रहा है…</div>}
-          {!dashboardLoading && !dashboardError && <section className="dashboard-slider-panel" aria-label="Dashboard image slider">
-            {dashboardSlides.length > 0 ? <><img className="dashboard-slide-image" src={dashboardSlides[dashboardSlideIndex % dashboardSlides.length].imageData} alt={dashboardSlides[dashboardSlideIndex % dashboardSlides.length].title || 'All NGO Connect banner'} /><div className="dashboard-slide-shade"/><div className="dashboard-slide-caption"><span className="dashboard-slide-kicker"><HeartHandshake size={15}/> ALL NGO CONNECT</span>{dashboardSlides[dashboardSlideIndex % dashboardSlides.length].title && <h2>{dashboardSlides[dashboardSlideIndex % dashboardSlides.length].title}</h2>}<p>{language === 'hi' ? 'बेहतर बदलाव के लिए साथ आएँ।' : 'Together for better impact.'}</p></div>{dashboardSlides.length > 1 && <><button className="dashboard-slide-arrow slide-prev" aria-label="Previous slide" onClick={() => setDashboardSlideIndex(index => (index - 1 + dashboardSlides.length) % dashboardSlides.length)}><ChevronLeft size={23}/></button><button className="dashboard-slide-arrow slide-next" aria-label="Next slide" onClick={() => setDashboardSlideIndex(index => (index + 1) % dashboardSlides.length)}><ChevronRight size={23}/></button><div className="dashboard-slide-dots">{dashboardSlides.map((slide, index) => <button key={slide.id} aria-label={`Slide ${index + 1}`} className={index === dashboardSlideIndex ? 'active' : ''} onClick={() => setDashboardSlideIndex(index)}/>)}</div></>}</> : <div className="dashboard-slide-empty"><div className="dashboard-slide-empty-icon"><ImagePlus size={36}/></div><h2>{language === 'hi' ? 'अपनी NGO की कहानी दिखाएँ' : 'Show your NGO story'}</h2><p>{language === 'hi' ? 'सुपर एडमिन यहाँ अपनी पसंद की तस्वीरें जोड़ सकता है।' : 'The Super Admin can add any images here.'}</p></div>}
-            <div className="dashboard-slide-admin"><form onSubmit={saveDashboardSlide} className="dashboard-slide-upload-form"><label className="dashboard-slide-title-label"><span>{language === 'hi' ? 'स्लाइड का शीर्षक (वैकल्पिक)' : 'Slide title (optional)'}</span><input value={slideTitle} maxLength={100} onChange={event => setSlideTitle(event.target.value)} placeholder={language === 'hi' ? 'जैसे: हमारी नई पहल' : 'e.g. Our latest initiative'}/></label><label className="dashboard-slide-file-button"><ImagePlus size={17}/><span>{slideImageData ? (language === 'hi' ? 'इमेज चुनी गई' : 'Image selected') : (language === 'hi' ? 'इमेज चुनें' : 'Choose image')}</span><input type="file" accept="image/*" onChange={async event => { const input = event.currentTarget; const file = input.files?.[0]; if (!file) return; setSlideMessage('इमेज तैयार हो रही है…'); try { setSlideImageData(await compressDashboardImage(file)); setSlideMessage('इमेज तैयार है। सेव करें।'); } catch (error) { setSlideMessage(error instanceof Error ? error.message : 'इमेज तैयार नहीं हुई।'); } input.value = ''; }}/></label><button type="submit" className="dashboard-slide-save-button" disabled={slideSaveBusy || !slideImageData}>{slideSaveBusy ? (language === 'hi' ? 'सेव हो रहा है…' : 'Saving…') : (language === 'hi' ? 'स्लाइड जोड़ें' : 'Add slide')}<Plus size={16}/></button></form>{slideMessage && <p className="dashboard-slide-message" role="status">{slideMessage}</p>}{dashboardSlides.length > 0 && <div className="dashboard-slide-manage-list"><span>{language === 'hi' ? `कुल ${dashboardSlides.length} स्लाइड` : `${dashboardSlides.length} slides total`}</span>{dashboardSlides.map((slide, index) => <div key={slide.id}><button type="button" className={index === dashboardSlideIndex ? 'selected' : ''} onClick={() => setDashboardSlideIndex(index)}>{slide.title || (language === 'hi' ? `इमेज ${index + 1}` : `Image ${index + 1}`)}</button><button type="button" aria-label="Delete slide" onClick={() => void deleteDashboardSlide(slide)}><Trash2 size={14}/></button></div>)}</div>}</div>
-          </section>}
           <section className="ticker-admin-panel">
             <div className="ticker-admin-heading"><div><span className="modal-eyebrow">HOMEPAGE MESSAGE BAR</span><h2>रंगीन स्क्रॉलिंग टेक्स्ट</h2><p>यह सूचना होम पेज पर हेडिंग के नीचे अपने-आप चलेगी। इसे केवल Super Admin जोड़ या हटा सकता है।</p></div></div>
             <form className="ticker-admin-form" onSubmit={saveTickerMessage}>
