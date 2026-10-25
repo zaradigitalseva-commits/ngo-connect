@@ -7,7 +7,7 @@ import { NgoWorkspacePortal } from './NgoWorkspace';
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, query as firestoreQuery, serverTimestamp, setDoc, where, runTransaction, Timestamp, updateDoc } from 'firebase/firestore';
 
 const SUPER_ADMIN_EMAILS = ['ngogrant454@gmail.com', 'zaradigitalseva@gmail.com'];
-const isSuperAdmin = (user: User | null) => Boolean(user?.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase()));
+const isSuperAdmin = (user: User | null) => Boolean(user?.emailVerified && user.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase()));
 
 type Language = 'en' | 'hi';
 type Section = 'overview' | 'ngos' | 'members' | 'finance' | 'events' | 'documents' | 'subscriptions';
@@ -27,7 +27,7 @@ type SubscriptionPlan = { id: string; name: string; price: number; durationDays:
 
 
 
-function compressDashboardImage(file: File, maxOutputLength = 300000): Promise<string> {
+function compressDashboardImage(file: File, maxOutputLength = 150000): Promise<string> {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith('image/')) { reject(new Error('कृपया इमेज फ़ाइल चुनें।')); return; }
     if (file.size > 20 * 1024 * 1024) { reject(new Error('मूल इमेज 20 MB से छोटी होनी चाहिए।')); return; }
@@ -952,11 +952,9 @@ export default function App() {
           city: String(data.district || ''),
           district: String(data.district || ''),
           state: String(data.state || ''),
-          contactName: String(data.contactName || ''),
-          contactEmail: String(data.email || ''),
-          contactPhone: String(data.phone || ''),
+          // Keep private contact/payment details only in ngoRegistrations.
+          // The public NGO document contains only directory-safe fields.
           imageData: String(data.imageData || ''),
-          registrationFormData: { name: String(data.name || ''), contactName: String(data.contactName || ''), email: String(data.email || ''), phone: String(data.phone || ''), state: String(data.state || ''), district: String(data.district || ''), mission: String(data.mission || ''), imageData: String(data.imageData || ''), subscriptionPlan: String(data.subscriptionPlan || plan.name || ''), planPrice: Number(data.planPrice || 0), planDurationDays: Number(data.planDurationDays || 0), paymentReference: String(data.paymentReference || '') },
           status: 'LIVE',
           ownerUid: String(data.ownerUid || ''),
           registrationId: registration.id,
