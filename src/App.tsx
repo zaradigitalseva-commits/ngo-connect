@@ -492,6 +492,16 @@ function PublicHomeNgoCards({ language }: { language: Language }) {
 
 function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authError }: PublicHomeProps) {
   const hi = language === 'hi';
+  const [mainHeaderSlideIndex, setMainHeaderSlideIndex] = useState(0);
+  const mainHeaderSlides = [
+    'https://images.unsplash.com/photo-1531206715517-5c0ba140b2b8?auto=format&fit=crop&w=1600&q=75',
+    'https://images.unsplash.com/photo-1559027615-cd4628902d4a?auto=format&fit=crop&w=1600&q=75',
+    'https://images.unsplash.com/photo-1469571486292-0ba58a3f068b?auto=format&fit=crop&w=1600&q=75'
+  ];
+  useEffect(() => {
+    const timer = window.setInterval(() => setMainHeaderSlideIndex(index => (index + 1) % mainHeaderSlides.length), 5000);
+    return () => window.clearInterval(timer);
+  }, []);
   const [installPromptEvent, setInstallPromptEvent] = useState<any>(null);
   const [appInstalled, setAppInstalled] = useState(false);
   useEffect(() => {
@@ -665,7 +675,7 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
   }, [hi]);
   return <div className="public-site">
     {registrationSuccessMessage && !showPublicRegistration && <div role="status" className="public-auth-error" style={{ maxWidth: 900, margin: '12px auto', padding: '12px 18px' }}>{registrationSuccessMessage}</div>}
-    <header className="public-header" style={{ backgroundImage: "linear-gradient(90deg, rgba(255,255,255,.90), rgba(255,255,255,.60)), url(https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=2000&q=85)", backgroundPosition: "center", backgroundSize: "cover", backgroundRepeat: "no-repeat" }}>
+    <header className="public-header main-site-header" style={{ position: "relative", overflow: "hidden", isolation: "isolate" }}><img className="main-header-slider-image" src={mainHeaderSlides[mainHeaderSlideIndex]} alt="" aria-hidden="true" />
       <a className="public-brand" href="/" aria-label="All NGO Connect home"><span className="brand-mark"><Leaf size={23}/></span><span className="brand-name-stack"><span className="brand-name-banner"><span>All NGO</span><span>Connect</span></span><small>{hi ? 'मजबूत समुदाय। बेहतर बदलाव।' : 'Stronger communities. Better impact.'}</small></span></a>
       <nav className="public-nav"><a className="nav-3d nav-3d-green" href="/ngo-list">{hi ? "NGO सूची" : "NGO List"}</a><a className="nav-3d nav-3d-blue" href="/about">{hi ? 'हमारे बारे में' : 'About'}</a><a className="nav-3d nav-3d-orange" href="/features">{hi ? 'सुविधाएँ' : 'Features'}</a><a className="nav-3d nav-3d-purple" href="/contact">{hi ? 'संपर्क' : 'Contact'}</a><a className="nav-3d nav-3d-pink" href="/privacy-policy">{hi ? 'प्राइवेसी पॉलिसी' : 'Privacy Policy'}</a></nav>
       <div className="public-actions"><button className="language-button" onClick={() => setLanguage(hi ? 'en' : 'hi')}>{hi ? 'English' : 'हिन्दी'}</button>{!registrationAlreadySubmitted && <button className="outline-button" onClick={() => { setRegistrationMessage(''); setShowPublicRegistration(true); }}>Register</button>}{authUser ? <div className="public-user"><button className="outline-button" onClick={onLogout}>{hi ? 'लॉगआउट' : 'Sign out'}</button></div> : <button className="primary-button" onClick={onLogin} disabled={!firebaseConfigured}><Globe2 size={17}/>Login</button>}</div>
