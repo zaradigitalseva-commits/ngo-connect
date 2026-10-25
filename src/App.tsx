@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { GoogleAuthProvider, getRedirectResult, onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut, type User } from 'firebase/auth';
-import { ArrowLeft, ArrowUpRight, BadgeCheck, Bell, Building2, CalendarDays, CheckCircle2, ChevronDown, CircleHelp, ClipboardList, FileBadge, FileText, Globe2, HandCoins, HeartHandshake, LayoutDashboard, Leaf, LogOut, MapPin, Menu, Plus, Search, ShieldCheck, Trash2, Users, Wallet, X } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, BadgeCheck, Bell, Building2, CalendarDays, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, ClipboardList, FileBadge, FileText, Globe2, HandCoins, HeartHandshake, ImagePlus, LayoutDashboard, Leaf, LogOut, MapPin, Menu, Plus, Search, ShieldCheck, Trash2, Users, Wallet, X } from 'lucide-react';
 import { auth, db, firebaseConfigured } from './firebase';
 import { MemberIDPortal, MemberVerifyPage, NgoAdminPortal } from './MemberIDPortal';
 import { NgoWorkspacePortal } from './NgoWorkspace';
@@ -25,6 +25,207 @@ type DashboardNgo = { id: string; name: string; type: string; city: string; stat
 type DashboardRecord = Record<string, any> & { id: string };
 type SubscriptionPlan = { id: string; name: string; price: number; durationDays: number; description: string; active: boolean };
 
+
+
+function compressDashboardImage(file: File, maxOutputLength = 300000): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) { reject(new Error('कृपया इमेज फ़ाइल चुनें।')); return; }
+    if (file.size > 20 * 1024 * 1024) { reject(new Error('मूल इमेज 20 MB से छोटी होनी चाहिए।')); return; }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('इमेज पढ़ी नहीं जा सकी।'));
+    reader.onload = () => {
+      const image = new Image();
+      image.onerror = () => reject(new Error('इमेज फ़ाइल खुल नहीं सकी।'));
+      image.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxWidth = 1000;
+        const maxHeight = 560;
+        const scale = Math.min(1, maxWidth / image.naturalWidth, maxHeight / image.naturalHeight);
+        let width = Math.max(1, Math.round(image.naturalWidth * scale));
+        let height = Math.max(1, Math.round(image.naturalHeight * scale));
+        const context = canvas.getContext('2d');
+        if (!context) { reject(new Error('इमेज प्रोसेस नहीं हो सकी।')); return; }
+        let result = '';
+        // Resize and compress until the stored data is small enough for Firestore.
+        for (let attempt = 0; attempt < 8; attempt++) {
+          canvas.width = width;
+          canvas.height = height;
+          context.clearRect(0, 0, width, height);
+          context.drawImage(image, 0, 0, width, height);
+          const quality = [0.72, 0.64, 0.56, 0.48, 0.42, 0.38, 0.34, 0.3][attempt];
+          result = canvas.toDataURL('image/jpeg', quality);
+          if (result.length <= maxOutputLength) break;
+          width = Math.max(320, Math.round(width * 0.82));
+          height = Math.max(180, Math.round(height * 0.82));
+        }
+        if (!result || result.length > Math.round(maxOutputLength * 1.4)) {
+          reject(new Error('इमेज छोटी नहीं हो पाई। कृपया दूसरी या कम साइज़ की इमेज चुनें।'));
+          return;
+        }
+        resolve(result);
+      };
+      image.src = String(reader.result || '');
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+
+const INDIA_STATES_AND_UTS = [
+  'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal',
+  'Andaman and Nicobar Islands','Chandigarh','Dadra and Nagar Haveli and Daman and Diu','Delhi','Jammu and Kashmir','Ladakh','Lakshadweep','Puducherry'
+] as const;
+
+type PublicHomeProps = {
+  language: Language;
+  setLanguage: (language: Language) => void;
+  authUser: User | null;
+  onLogin: () => void;
+  onLogout: () => void;
+  authError: string;
+};
+
+function PublicNgoSite({ language, setLanguage, ngoId, authUser, onLogin }: { language: Language; setLanguage: (language: Language) => void; ngoId: string; authUser: User | null; onLogin: () => void }) {
+  const hi = language === 'hi';
+  const [ngo, setNgo] = useState<Record<string, any> | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [team, setTeam] = useState<Record<string, any>[]>([]);
+  const [publicEvents, setPublicEvents] = useState<Record<string, any>[]>([]);
+  const [publicDocuments, setPublicDocuments] = useState<Record<string, any>[]>([]);
+  const [publicFinance, setPublicFinance] = useState<Record<string, any>[]>([]);
+  useEffect(() => {
+    let active = true;
+    const unsubscribeTeam = onSnapshot(firestoreQuery(collection(db, 'ngoMembers'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => {
+      if (!active) return;
+      setTeam(snapshot.docs.map(item => ({ id: item.id, ...item.data() } as Record<string, any>)).filter(person => person.approvalStatus === 'APPROVED' && String(person.status || 'ACTIVE').toUpperCase() === 'ACTIVE').sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))));
+    }, () => { if (active) setTeam([]); });
+    const unsubscribeEvents = onSnapshot(firestoreQuery(collection(db, 'ngoEvents'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => setPublicEvents(snapshot.docs.map(d => ({id:d.id,...d.data()} as Record<string, any>)).filter(row => row.approvalStatus === 'APPROVED').sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')))), () => setPublicEvents([]));
+    const unsubscribeDocuments = onSnapshot(firestoreQuery(collection(db, 'ngoDocuments'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => setPublicDocuments(snapshot.docs.map(d => ({id:d.id,...d.data()} as Record<string, any>)).filter(row => row.approvalStatus === 'APPROVED')), () => setPublicDocuments([]));
+    const unsubscribeFinance = onSnapshot(firestoreQuery(collection(db, 'ngoTransactions'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => setPublicFinance(snapshot.docs.map(d => ({id:d.id,...d.data()} as Record<string, any>)).filter(row => row.approvalStatus === 'APPROVED').sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')))), () => setPublicFinance([]));
+    const unsubscribeNgo = onSnapshot(doc(db, 'ngos', ngoId), snapshot => {
+      if (!active) return;
+      if (!snapshot.exists() || !['LIVE', 'ACTIVE', 'APPROVED'].includes(String(snapshot.data().status || '').toUpperCase())) { setFailed(true); setNgo(null); }
+      else { setFailed(false); setNgo({ id: snapshot.id, ...snapshot.data() }); }
+      setLoading(false);
+    }, () => { if (active) { setFailed(true); setLoading(false); } });
+    return () => { active = false; unsubscribeTeam(); unsubscribeEvents(); unsubscribeDocuments(); unsubscribeFinance(); unsubscribeNgo(); };
+  }, [ngoId]);
+  const name = String(ngo?.name || ngo?.ngoName || 'NGO');
+  const logo = String(ngo?.imageData || ngo?.registrationFormData?.imageData || '');
+  const mission = String(ngo?.mission || ngo?.description || '');
+  const [memberModalOpen, setMemberModalOpen] = useState(false);
+  const [memberBusy, setMemberBusy] = useState(false);
+  const [memberMessage, setMemberMessage] = useState('');
+  const [memberPhoto, setMemberPhoto] = useState('');
+  const [memberForm, setMemberForm] = useState({ name: '', fatherName: '', phone: '', address: '' });
+  const submitMemberRequest = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!authUser) { setMemberMessage(hi ? 'आवेदन देने के लिए पहले Google से लॉगिन करें।' : 'Please sign in with Google before applying.'); onLogin(); return; }
+    if (!firebaseConfigured) { setMemberMessage(hi ? 'Firebase सेटअप उपलब्ध नहीं है।' : 'Firebase is not configured.'); return; }
+    if (!memberPhoto) { setMemberMessage(hi ? 'कृपया अपनी फोटो चुनें।' : 'Please choose your photo.'); return; }
+    const adminWhatsApp = String(ngo?.adminWhatsApp || '').replace(/\D/g, '');
+    const fee = Number(ngo?.memberFee || 0);
+    if (!/^\d{10,15}$/.test(adminWhatsApp)) { setMemberMessage(hi ? 'इस NGO Admin ने सही WhatsApp नंबर सेट नहीं किया है।' : 'This NGO admin has not configured a valid WhatsApp number.'); return; }
+    const applicantPhone = memberForm.phone.replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
+    const adminPhone = adminWhatsApp.replace(/^91(?=\d{10}$)/, '');
+    if (applicantPhone.length < 10 || applicantPhone.length > 15) { setMemberMessage(hi ? 'अपना सही मोबाइल नंबर डालें।' : 'Enter your own valid mobile number.'); return; }
+    if (applicantPhone === adminPhone) { setMemberMessage(hi ? 'आपने NGO Admin का नंबर डाला है। कृपया सदस्य का अपना मोबाइल नंबर डालें।' : 'That is the NGO admin number. Please enter the member’s own mobile number.'); return; }
+    if (!Number.isFinite(fee) || fee < 1) { setMemberMessage(hi ? 'इस NGO ने सदस्यता फीस सेट नहीं की है।' : 'This NGO has not set a membership fee.'); return; }
+    setMemberBusy(true); setMemberMessage('');
+    try {
+      const ref = await addDoc(collection(db, 'memberApplications'), {
+        ngoId, ngoName: name, applicantUid: authUser.uid, applicantEmail: authUser.email || '',
+        name: memberForm.name.trim(), fatherName: memberForm.fatherName.trim(),
+        phone: memberForm.phone.trim(), address: memberForm.address.trim(), photoData: memberPhoto,
+        feeAmount: fee, status: 'PENDING_PAYMENT', createdAt: serverTimestamp()
+      });
+      const message = (hi ? 'नया सदस्य आवेदन आया है।\nNGO: ' : 'New membership application received.\nNGO: ') + name +
+        '\n' + (hi ? 'नाम: ' : 'Name: ') + memberForm.name.trim() +
+        '\n' + (hi ? 'पिता/अभिभावक: ' : 'Father/guardian: ') + memberForm.fatherName.trim() +
+        '\n' + (hi ? 'मोबाइल: ' : 'Mobile: ') + memberForm.phone.trim() +
+        '\n' + (hi ? 'पता: ' : 'Address: ') + memberForm.address.trim() +
+        '\n' + (hi ? 'सदस्यता फीस: ₹' : 'Membership fee: ₹') + fee +
+        '\n' + (hi ? 'आवेदन नंबर: ' : 'Application ID: ') + ref.id +
+        '\n' + (hi ? 'भुगतान प्राप्त होने पर NGO Admin पोर्टल में फीस जाँचकर Approve करें।' : 'After receiving payment, verify the fee and approve in the NGO Admin portal.');
+      setMemberMessage(hi ? 'आवेदन जमा हो गया। WhatsApp खुलेगा; संदेश भेजने के लिए WhatsApp में Send दबाएँ। फीस मिलने के बाद NGO Admin मंज़ूर करेगा।' : 'Application submitted. WhatsApp will open; press Send in WhatsApp to deliver the message. The NGO admin will approve after receiving the fee.');
+      window.location.href = 'https://wa.me/' + adminWhatsApp + '?text=' + encodeURIComponent(message);
+      setMemberForm({ name: '', fatherName: '', phone: '', address: '' }); setMemberPhoto('');
+    } catch (error) {
+      setMemberMessage(error instanceof Error ? error.message : (hi ? 'आवेदन सेव नहीं हुआ। Firebase Rules जाँचें।' : 'Could not save the application. Check Firebase rules.'));
+    } finally { setMemberBusy(false); }
+  };
+  return <div className="public-site ngo-directory-site" style={{ minHeight: '100vh', background: 'linear-gradient(145deg,#eef2ff 0%,#fdf2f8 48%,#ecfeff 100%)' }}>
+    <header className="public-header ngo-individual-site-header" style={{ backgroundImage: "linear-gradient(90deg, rgba(255,255,255,.94), rgba(239,249,255,.86)), url(https://images.unsplash.com/photo-1531206715517-5c0ba140b2b8?auto=format&fit=crop&w=2000&q=85)", backgroundPosition: "center", backgroundSize: "cover", backgroundRepeat: "no-repeat" }}><a className="public-brand ngo-individual-brand" href="/ngo-list" aria-label={name + ' home'}>{logo ? <img src={logo} alt={name + ' logo'} style={{ width: 54, height: 54, objectFit: 'contain', background: '#fff', borderRadius: 12, padding: 4, boxShadow: '0 3px 10px rgba(2,132,199,.18)' }}/> : <span className="brand-mark">{name.slice(0,2).toUpperCase()}</span>}<span className="brand-name-stack"><span className="brand-name-banner"><span>{name}</span></span></span></a><div className="public-actions"><button className="language-button" onClick={() => setLanguage(hi ? 'en' : 'hi')}>{hi ? 'English' : 'हिन्दी'}</button><a className="outline-button" href="/ngo-list">{hi ? 'सभी NGO' : 'All NGOs'}</a><a className="primary-button" href="/">{hi ? 'मुख्य पेज' : 'Home'} <ArrowUpRight size={17}/></a><nav className="ngo-section-nav" aria-label={hi ? 'NGO अनुभाग' : 'NGO sections'}><a href="#ngo-about">{hi ? 'हमारे बारे में' : 'About'}</a><a href="#ngo-team">{hi ? 'टीम' : 'Team'}</a><a href="#ngo-events">{hi ? 'कार्यक्रम' : 'Events'}</a><a href="#ngo-reports">{hi ? 'रिपोर्ट' : 'Reports'}</a><a href="#ngo-finance">{hi ? 'दान/खर्च' : 'Finance'}</a></nav>{!loading && !failed && ngo && <button type="button" className="primary-button ngo-header-join-button" onClick={() => { setMemberMessage(''); setMemberModalOpen(true); }}><Users size={17}/>{hi ? 'सदस्य बनें' : 'Become a Member'} <ArrowUpRight size={16}/></button>}</div></header>
+    <main className="ngo-directory-main" style={{ maxWidth: 1050 }}><a className="directory-back-link" href="/ngo-list"><ArrowLeft size={17}/>{hi ? 'सभी NGO की सूची पर वापस जाएँ' : 'Back to all NGOs'}</a>
+      {loading ? <div className="ngo-directory-empty"><span className="directory-loader"/><p>{hi ? 'NGO की साइट खुल रही है…' : 'Opening NGO website…'}</p></div> : failed || !ngo ? <div className="ngo-directory-empty"><Building2 size={34}/><strong>{hi ? 'यह NGO साइट उपलब्ध नहीं है' : 'This NGO site is unavailable'}</strong><p>{hi ? 'संभव है NGO अभी सक्रिय न हो।' : 'This NGO may not be active yet.'}</p><a className="primary-button" href="/ngo-list">{hi ? 'NGO सूची देखें' : 'Browse NGOs'}</a></div> : <>
+        {memberModalOpen && <div className="modal-backdrop ngo-member-modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget && !memberBusy) setMemberModalOpen(false); }}><section className="registration-modal ngo-member-modal" role="dialog" aria-modal="true" aria-labelledby="ngo-member-form-title"><div className="modal-heading"><div><span className="modal-eyebrow">{name}</span><h2 id="ngo-member-form-title">{hi ? 'सदस्य बनने का फॉर्म' : 'Membership form'}</h2><p>{hi ? 'जानकारी भरें और आवेदन जमा करें।' : 'Enter your details and submit your membership request.'}</p></div><button className="icon-button" type="button" onClick={() => setMemberModalOpen(false)} aria-label={hi ? 'बंद करें' : 'Close'}><X size={20}/></button></div><form onSubmit={submitMemberRequest}><label>{hi ? 'पूरा नाम' : 'Full name'} *<input required maxLength={100} autoComplete="name" value={memberForm.name} onChange={e => setMemberForm({...memberForm,name:e.target.value})}/></label><label>{hi ? 'पिता / अभिभावक का नाम' : 'Father / guardian name'} *<input required maxLength={100} value={memberForm.fatherName} onChange={e => setMemberForm({...memberForm,fatherName:e.target.value})}/></label><label>{hi ? 'सदस्य का अपना मोबाइल नंबर (Admin का नहीं)' : 'Member’s own mobile number (not the admin number)'} *<input required type="tel" minLength={7} maxLength={20} autoComplete="tel" value={memberForm.phone} onChange={e => setMemberForm({...memberForm,phone:e.target.value})}/></label><label>{hi ? 'पूरा पता' : 'Full address'} *<textarea required maxLength={300} rows={3} value={memberForm.address} onChange={e => setMemberForm({...memberForm,address:e.target.value})}/></label><label>{hi ? 'अपनी फोटो चुनें (JPG/PNG/WebP, अधिकतम 5 MB)' : 'Your photo (JPG/PNG/WebP, max 5 MB)'} *<input required type="file" accept="image/jpeg,image/png,image/webp" onChange={async e => { const file=e.currentTarget.files?.[0]; if(!file) return; if(file.size>5*1024*1024){setMemberMessage(hi?'फोटो 5 MB से कम होनी चाहिए।':'Photo must be under 5 MB.');e.currentTarget.value='';return;} try { const data=await compressDashboardImage(file,180000); setMemberPhoto(data); setMemberMessage(''); } catch(err){setMemberMessage(err instanceof Error?err.message:(hi?'फोटो पढ़ी नहीं गई।':'Could not read photo.'));} }}/></label>{memberPhoto && <img src={memberPhoto} alt={hi?'फोटो प्रीव्यू':'Photo preview'} style={{ width:100,height:100,objectFit:'cover',borderRadius:16,border:'2px solid #a7f3d0' }}/>}<p className="ngo-aadhaar-privacy">{hi ? 'आवेदन निजी रहेगा। NGO Admin WhatsApp पर जानकारी देखकर भुगतान लेगा और फिर सदस्य ID मंज़ूर करेगा।' : 'Your application stays private. The NGO admin will review it, collect payment over WhatsApp, and approve your member ID.'}</p>{memberMessage && <p className="member-notice" role="status">{memberMessage}</p>}<button className="primary-button" type="submit" disabled={memberBusy || !firebaseConfigured}>{memberBusy ? (hi?'सेव हो रहा है…':'Saving…') : (hi?'आवेदन जमा करें और WhatsApp खोलें':'Submit application & open WhatsApp')}</button>{!authUser && <p>{hi ? 'आवेदन देने के लिए Google लॉगिन आवश्यक है।' : 'Google sign-in is required to apply.'}</p>}</form></section></div>}
+        <section id="ngo-about" style={{ marginTop: 24, padding: 'clamp(22px,4vw,38px)', background: '#fff', borderRadius: 24, boxShadow: '0 14px 35px rgba(15,23,42,.08)', border: '1px solid rgba(99,102,241,.12)' }}><span className="public-kicker"><HeartHandshake size={15}/>{hi ? 'हमारे बारे में' : 'ABOUT US'}</span><h2 style={{ color: '#312e81', fontSize: 'clamp(24px,3vw,34px)', margin: '12px 0' }}>{hi ? 'हमारा उद्देश्य' : 'Our mission'}</h2><p style={{ fontSize: 17, lineHeight: 1.9, color: '#475569', whiteSpace: 'pre-wrap' }}>{mission || (hi ? 'यह संस्था समुदाय की सहायता और सामाजिक बदलाव के लिए काम करती है।' : 'This organization works to support its community and create positive social impact.')}</p></section>
+        <section id="ngo-team" style={{ marginTop: 22, padding: 'clamp(22px,4vw,34px)', background: '#fff', borderRadius: 24, boxShadow: '0 14px 35px rgba(15,23,42,.08)', border: '1px solid rgba(16,185,129,.18)' }}>
+          <span className="public-kicker"><Users size={15}/>{hi ? 'हमारी टीम' : 'OUR TEAM'}</span>
+          <h2 style={{ color: '#065f46', fontSize: 'clamp(24px,3vw,34px)', margin: '12px 0 8px' }}>{hi ? 'इस NGO में काम करने वाले लोग' : 'People working with this NGO'}</h2>
+          <p style={{ color: '#64748b', marginTop: 0 }}>{hi ? 'टीम के सदस्य, उनका पद और कार्यक्षेत्र।' : 'Meet the team, their roles and the areas they serve.'}</p>
+          {team.length ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,230px),1fr))', gap: 16, marginTop: 20 }}>
+            {team.map(person => {
+              const canManageTeam = Boolean(authUser && ngo && (authUser.uid === ngo.ownerUid || isSuperAdmin(authUser)));
+              const editTeamMember = async () => {
+                const nextName = window.prompt(hi ? 'सदस्य का नाम बदलें:' : 'Edit member name:', String(person.name || ''));
+                if (nextName === null) return;
+                const nextDesignation = window.prompt(hi ? 'पद बदलें:' : 'Edit designation:', String(person.designation || person.position || 'सदस्य'));
+                if (nextDesignation === null) return;
+                const nextLocation = window.prompt(hi ? 'कार्य क्षेत्र / स्थान बदलें:' : 'Edit work area / location:', String(person.location || person.workArea || ''));
+                if (nextLocation === null) return;
+                if (!nextName.trim()) { window.alert(hi ? 'नाम खाली नहीं हो सकता।' : 'Name cannot be empty.'); return; }
+                try {
+                  await updateDoc(doc(db, 'ngoMembers', person.id), {
+                    name: nextName.trim(), designation: nextDesignation.trim(),
+                    location: nextLocation.trim(), updatedAt: serverTimestamp()
+                  });
+                  window.alert(hi ? 'टीम सदस्य की जानकारी अपडेट हो गई।' : 'Team member updated.');
+                } catch (error) {
+                  window.alert(error instanceof Error ? error.message : (hi ? 'अपडेट नहीं हुआ। अनुमति जाँचें।' : 'Update failed. Check permissions.'));
+                }
+              };
+              const deleteTeamMember = async () => {
+                if (!window.confirm(hi ? 'क्या इस सदस्य को NGO की सार्वजनिक टीम सूची से हटाना है? यह रिकॉर्ड स्थायी रूप से हट जाएगा।' : 'Remove this member from the public NGO team? This permanently deletes the record.')) return;
+                try {
+                  await deleteDoc(doc(db, 'ngoMembers', person.id));
+                  window.alert(hi ? 'टीम सदस्य हटा दिया गया।' : 'Team member deleted.');
+                } catch (error) {
+                  window.alert(error instanceof Error ? error.message : (hi ? 'डिलीट नहीं हुआ। अनुमति जाँचें।' : 'Delete failed. Check permissions.'));
+                }
+              };
+              return <article key={person.id} style={{ borderRadius: 18, padding: 18, background: 'linear-gradient(145deg,#ecfdf5,#eff6ff)', border: '1px solid #bbf7d0', boxShadow: '0 8px 20px rgba(16,185,129,.09)' }}>
+                <div style={{ width: 54, height: 54, borderRadius: 17, display: 'grid', placeItems: 'center', color: '#fff', fontSize: 20, fontWeight: 900, background: 'linear-gradient(135deg,#059669,#4f46e5)', marginBottom: 12 }}>{person.photoData ? <img src={String(person.photoData)} alt={String(person.name || 'Team member')} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} onError={e => { e.currentTarget.style.display = 'none'; }}/> : String(person.name || 'T').trim().slice(0,1).toUpperCase()}</div>
+                <h3 style={{ margin: '0 0 6px', color: '#0f172a', fontSize: 19 }}>{String(person.name || (hi ? 'टीम सदस्य' : 'Team member'))}</h3>
+                <p style={{ margin: '0 0 7px', color: '#4338ca', fontWeight: 800 }}>{String(person.designation || person.position || (String(person.role || '').toUpperCase() === 'VOLUNTEER' ? (hi ? 'स्वयंसेवक' : 'Volunteer') : (hi ? 'सदस्य' : 'Member')))}</p>
+                {(person.location || person.workArea) && <p style={{ margin: 0, color: '#475569', display: 'flex', alignItems: 'flex-start', gap: 7 }}><MapPin size={16} style={{ flexShrink: 0, marginTop: 3 }}/>{String(person.location || person.workArea)}</p>}
+                {canManageTeam && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14, paddingTop: 12, borderTop: '1px solid #d1fae5' }}>
+                  <button type="button" onClick={() => void editTeamMember()} style={{ flex: '1 1 90px', border: '1px solid #a5b4fc', borderRadius: 10, padding: '9px 12px', background: '#eef2ff', color: '#3730a3', fontWeight: 800, cursor: 'pointer' }}>✏️ {hi ? 'Edit करें' : 'Edit'}</button>
+                  <button type="button" onClick={() => void deleteTeamMember()} style={{ flex: '1 1 90px', border: '1px solid #fecaca', borderRadius: 10, padding: '9px 12px', background: '#fff1f2', color: '#b91c1c', fontWeight: 800, cursor: 'pointer' }}>🗑️ {hi ? 'Delete करें' : 'Delete'}</button>
+                </div>}
+              </article>;
+            })}
+          </div> : <div style={{ marginTop: 16, borderRadius: 16, padding: 20, background: '#f8fafc', color: '#64748b', textAlign: 'center' }}>{hi ? 'NGO Admin ने अभी टीम की जानकारी नहीं जोड़ी है।' : 'The NGO admin has not added team information yet.'}</div>}
+        </section>
+        <section id="ngo-events" style={{ marginTop: 22, padding: 'clamp(22px,4vw,34px)', background: '#fff', borderRadius: 24, boxShadow: '0 14px 35px rgba(15,23,42,.08)', border: '1px solid #dbeafe' }}>
+          <span className="public-kicker"><CalendarDays size={15}/>{hi ? 'कार्यक्रम और इवेंट' : 'EVENTS & ACTIVITIES'}</span><h2 style={{color:'#1d4ed8',fontSize:'clamp(24px,3vw,32px)',margin:'12px 0'}}> {hi ? 'हमारे कार्यक्रम' : 'Our events'}</h2>
+          {publicEvents.length ? <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,230px),1fr))',gap:14}}>{publicEvents.map(item=><article key={item.id} style={{padding:16,borderRadius:16,background:'#eff6ff',border:'1px solid #bfdbfe'}}><h3 style={{margin:'0 0 8px'}}>{String(item.title||'')}</h3><p style={{margin:'0 0 6px',color:'#475569'}}>{String(item.date||'')} {item.location ? ' · '+String(item.location):''}</p><p style={{margin:0,color:'#64748b',whiteSpace:'pre-wrap'}}>{String(item.description||'')}</p></article>)}</div> : <p style={{color:'#64748b'}}>{hi ? 'अभी कोई मंज़ूर कार्यक्रम नहीं है।' : 'No approved events yet.'}</p>}
+        </section>
+        <section id="ngo-reports" style={{ marginTop: 22, padding: 'clamp(22px,4vw,34px)', background: '#fff', borderRadius: 24, boxShadow: '0 14px 35px rgba(15,23,42,.08)', border: '1px solid #ddd6fe' }}>
+          <span className="public-kicker"><FileText size={15}/>{hi ? 'रिपोर्ट और दस्तावेज़' : 'REPORTS & DOCUMENTS'}</span><h2 style={{color:'#4338ca',fontSize:'clamp(24px,3vw,32px)',margin:'12px 0'}}>{hi ? 'हमारी रिपोर्ट' : 'Our reports'}</h2>
+          {publicDocuments.length ? <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,230px),1fr))',gap:14}}>{publicDocuments.map(item=><article key={item.id} style={{padding:16,borderRadius:16,background:'#f5f3ff',border:'1px solid #ddd6fe'}}><h3 style={{margin:'0 0 8px'}}>{String(item.title||'')}</h3><p style={{color:'#64748b'}}>{String(item.type||'REPORT')} {item.notes ? ' · '+String(item.notes):''}</p>{String(item.url||'').startsWith('https://') && <a href={String(item.url)} target="_blank" rel="noreferrer">{hi ? 'दस्तावेज़ खोलें' : 'Open document'} ↗</a>}</article>)}</div> : <p style={{color:'#64748b'}}>{hi ? 'अभी कोई मंज़ूर रिपोर्ट नहीं है।' : 'No approved reports yet.'}</p>}
+        </section>
+        <section id="ngo-finance" style={{ marginTop: 22, padding: 'clamp(22px,4vw,34px)', background: '#fff', borderRadius: 24, boxShadow: '0 14px 35px rgba(15,23,42,.08)', border: '1px solid #bbf7d0' }}>
+          <span className="public-kicker"><HeartHandshake size={15}/>{hi ? 'मंज़ूर दान और खर्च' : 'APPROVED DONATIONS & EXPENSES'}</span><h2 style={{color:'#047857',fontSize:'clamp(24px,3vw,32px)',margin:'12px 0'}}>{hi ? 'वित्तीय पारदर्शिता' : 'Financial transparency'}</h2>
+          {publicFinance.length ? <div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse',fontSize:14}}><thead><tr><th style={{textAlign:'left',padding:10}}>{hi?'प्रकार':'Type'}</th><th style={{textAlign:'left',padding:10}}>{hi?'श्रेणी':'Category'}</th><th style={{textAlign:'left',padding:10}}>{hi?'तारीख':'Date'}</th><th style={{textAlign:'right',padding:10}}>{hi?'राशि':'Amount'}</th></tr></thead><tbody>{publicFinance.map(item=><tr key={item.id} style={{borderTop:'1px solid #e2e8f0'}}><td style={{padding:10}}>{String(item.type)==='DONATION'?(hi?'दान':'Donation'):(hi?'खर्च':'Expense')}</td><td style={{padding:10}}>{String(item.category||'')}</td><td style={{padding:10}}>{String(item.date||'')}</td><td style={{padding:10,textAlign:'right',fontWeight:800}}>₹{Number(item.amount||0).toLocaleString('en-IN')}</td></tr>)}</tbody></table></div> : <p style={{color:'#64748b'}}>{hi ? 'अभी कोई मंज़ूर वित्तीय रिकॉर्ड नहीं है।' : 'No approved financial records yet.'}</p>}
+        </section>
+        <section style={{ marginTop: 22, padding: 24, textAlign: 'center', borderRadius: 24, background: 'linear-gradient(135deg,#fff,#f5f3ff)', border: '1px solid #ddd6fe' }}><h2 style={{ color: '#4338ca', marginTop: 0 }}>{hi ? 'बेहतर बदलाव के लिए साथ आएँ' : 'Join us for better impact'}</h2><p style={{ color: '#64748b' }}>{hi ? 'इस NGO की जानकारी अपने परिवार और समुदाय के साथ साझा करें।' : 'Share this organization with your family and community.'}</p><button className="primary-button" onClick={() => { void navigator.clipboard?.writeText(window.location.href).then(() => window.alert(hi ? 'NGO साइट का लिंक कॉपी हो गया।' : 'NGO website link copied.')).catch(() => window.prompt(hi ? 'इस लिंक को कॉपी करें:' : 'Copy this link:', window.location.href)); }}>{hi ? 'इस NGO साइट का लिंक साझा करें' : 'Share this NGO website'} <ArrowUpRight size={17}/></button></section>
+      </>}
+      <footer className="ngo-directory-footer">© 2026 All NGO Connect</footer>
+    </main>
+  </div>;
+}
 
 
 function PublicNgoList({ language, setLanguage }: { language: Language; setLanguage: (language: Language) => void }) {
