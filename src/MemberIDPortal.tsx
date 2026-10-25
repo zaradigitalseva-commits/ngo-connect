@@ -117,7 +117,7 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
   const getMemberIdDraft = (a: Application) => memberIdDrafts[a.id] || { name: a.name || '', fatherName: a.fatherName || '', phone: a.phone || '', address: a.address || '', designation: 'सदस्य' };
   useEffect(() => {
     if (!isPlatformAdmin(authUser)) { setModerationRecords([]); return; }
-    const sources = [{ collection: 'ngoMembers', kind: 'सदस्य' }, { collection: 'ngoTransactions', kind: 'दान / खर्च' }, { collection: 'ngoEvents', kind: 'कार्यक्रम' }, { collection: 'ngoDocuments', kind: 'दस्तावेज़' }];
+    const sources = [{ collection: 'ngoMembers', kind: 'सदस्य' }, { collection: 'ngoEvents', kind: 'कार्यक्रम' }, { collection: 'ngoDocuments', kind: 'दस्तावेज़' }];
     const unsubscribers = sources.map(source => onSnapshot(query(collection(db, source.collection), where('approvalStatus', '==', 'PENDING')), snap => {
       setModerationRecords(current => [...current.filter(item => item.collection !== source.collection), ...snap.docs.map(d => { const data = d.data() as Record<string, unknown>; return { id: d.id, collection: source.collection, kind: source.kind, ngoId: String(data.ngoId || ''), title: String(data.name || data.title || data.category || data.type || 'रिकॉर्ड'), approvalStatus: String(data.approvalStatus || 'PENDING'), data }; })]);
     }, error => setMessage(error instanceof Error ? error.message : 'Moderation queue load failed.')));
