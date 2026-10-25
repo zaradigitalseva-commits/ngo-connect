@@ -269,7 +269,9 @@ service cloud.firestore {
         && request.resource.data.approvalStatus == 'APPROVED'
         && getAfter(/databases/$(database)/documents/ngoTransactions/$(recordId)).data.ngoId == request.resource.data.ngoId
         && getAfter(/databases/$(database)/documents/ngoTransactions/$(recordId)).data.type == request.resource.data.type
-        && getAfter(/databases/$(database)/documents/ngoTransactions/$(recordId)).data.amount == request.resource.data.amount;
+        && getAfter(/databases/$(database)/documents/ngoTransactions/$(recordId)).data.amount == request.resource.data.amount
+        && getAfter(/databases/$(database)/documents/ngoTransactions/$(recordId)).data.category == request.resource.data.category
+        && getAfter(/databases/$(database)/documents/ngoTransactions/$(recordId)).data.date == request.resource.data.date;
       allow delete: if ownsNgo(resource.data.ngoId);
     }
 
@@ -334,7 +336,7 @@ service cloud.firestore {
     }
 
     match /ngoDocuments/{recordId} {
-      allow read: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
+      allow read: if isSuperAdmin() || ownsNgo(resource.data.ngoId) || resource.data.approvalStatus == 'APPROVED';
       allow create: if isSuperAdmin() || (ownsNgo(request.resource.data.ngoId)
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.ngoId is string
