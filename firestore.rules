@@ -66,8 +66,7 @@ service cloud.firestore {
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.email == request.auth.token.email
         && request.resource.data.status == 'PENDING_PAYMENT'
-        && request.resource.data.paymentStatus
-          in ['NOT_SUBMITTED', 'SUBMITTED_FOR_REVIEW']
+        && request.resource.data.paymentStatus == 'SUBMITTED_FOR_REVIEW'
         && request.resource.data.name is string
         && request.resource.data.name.size() > 1
         && request.resource.data.name.size() <= 120
@@ -94,6 +93,7 @@ service cloud.firestore {
         && request.resource.data.planPrice is number && request.resource.data.planPrice > 0
         && request.resource.data.planDurationDays is int && request.resource.data.planDurationDays >= 1
         && request.resource.data.paymentReference is string
+        && request.resource.data.paymentReference.size() >= 4
         && request.resource.data.paymentReference.size() <= 80
         && request.resource.data.createdAt == request.time;
 
