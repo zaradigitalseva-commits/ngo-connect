@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import type { User } from 'firebase/auth';
 import { signOut } from 'firebase/auth';
-import { addDoc, collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
+import { collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, updateDoc, where, writeBatch, getDocs, setDoc } from 'firebase/firestore';
 import { CalendarDays, FileText, Pencil, Plus, Trash2, Users, Wallet } from 'lucide-react';
 import { auth, db } from './firebase';
 
@@ -109,6 +109,30 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
     }, e => setMessage(e instanceof Error ? e.message : 'Records could not be loaded.'));
     return unsubscribe;
   }, [ngoId, kind]);
+  // Backfill public-safe summaries for this NGO's existing approved finance records.
+  // The source collection stays private; this mirror omits donor/payee and notes.
+  useEffect(() => {
+    if (!ngoId || platformAdminView) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const snapshot = await getDocs(query(collection(db, 'ngoTransactions'), where('ngoId', '==', ngoId)));
+        for (const item of snapshot.docs) {
+          if (cancelled) return;
+          const data = item.data();
+          if (data.approvalStatus !== 'APPROVED') continue;
+          await setDoc(doc(db, 'ngoPublicTransactions', item.id), {
+            ngoId, type: data.type, amount: Number(data.amount), category: String(data.category || ''),
+            date: String(data.date || ''), approvalStatus: 'APPROVED', createdAt: data.createdAt || serverTimestamp()
+          }, { merge: true });
+        }
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : (hi ? 'वित्तीय सार्वजनिक सारांश अपडेट नहीं हुआ।' : 'Could not update public finance summaries.'));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [ngoId, platformAdminView]);
+
   useEffect(() => {
     if (!ngoId) { setMemberApplications([]); return; }
     const unsubscribe = onSnapshot(query(collection(db, 'memberApplications'), where('ngoId', '==', ngoId)), snap => {
@@ -142,11 +166,33 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
     if (kind === 'finance' && (!Number.isFinite(Number(form.amount)) || Number(form.amount) <= 0)) { setMessage(hi ? 'राशि शून्य से अधिक होनी चाहिए।' : 'Amount must be greater than zero.'); return; }
     if (kind === 'documents' && form.url && !/^https:\/\//i.test(form.url)) { setMessage(hi ? 'फाइल लिंक https:// से शुरू होना चाहिए।' : 'File URL must start with https://.'); return; }
     setBusy(true); setMessage('');
-    const mutable = { ...form, ...(kind === 'finance' ? { amount: Number(form.amount) } : {}), ngoId, approvalStatus: 'APPROVED', updatedAt: serverTimestamp() };
+    const mutable = { ...form, ...(kind === 'finance' ? { amount: Number(form.amount) } : {}), ngoId, approvalStatus: kind === 'finance' ? 'APPROVED' : 'PENDING', updatedAt: serverTimestamp() };
     try {
-      if (editingId) await updateDoc(doc(db, activeModule.collection, editingId), mutable);
-      else await addDoc(collection(db, activeModule.collection), { ...mutable, createdBy: authUser.uid, createdAt: serverTimestamp() });
-      setMessage(hi ? '✅ रिकॉर्ड सेव हो गया और आपके NGO पेज पर प्रकाशित है।' : '✅ Record saved and published on your NGO page.');
+      const batch = writeBatch(db);
+      if (editingId) {
+        batch.update(doc(db, activeModule.collection, editingId), mutable);
+        if (kind === 'members') batch.set(doc(db, 'ngoPublicMembers', editingId), {
+          ngoId, name: form.name.trim(), designation: form.designation.trim(), location: form.location.trim(),
+          role: form.role, status: form.status, approvalStatus: 'PENDING'
+        }, { merge: true });
+        if (kind === 'finance') batch.set(doc(db, 'ngoPublicTransactions', editingId), {
+          ngoId, type: form.type, amount: Number(form.amount), category: form.category.trim(),
+          date: form.date, approvalStatus: 'APPROVED', createdAt: serverTimestamp()
+        }, { merge: true });
+      } else {
+        const recordRef = doc(collection(db, activeModule.collection));
+        batch.set(recordRef, { ...mutable, createdBy: authUser.uid, createdAt: serverTimestamp() });
+        if (kind === 'members') batch.set(doc(db, 'ngoPublicMembers', recordRef.id), {
+          ngoId, name: form.name.trim(), designation: form.designation.trim(), location: form.location.trim(),
+          role: form.role, status: form.status, approvalStatus: 'PENDING', createdAt: serverTimestamp()
+        });
+        if (kind === 'finance') batch.set(doc(db, 'ngoPublicTransactions', recordRef.id), {
+          ngoId, type: form.type, amount: Number(form.amount), category: form.category.trim(),
+          date: form.date, approvalStatus: 'APPROVED', createdAt: serverTimestamp()
+        });
+      }
+      await batch.commit();
+      setMessage(kind === 'finance' ? (hi ? '✅ वित्तीय रिकॉर्ड सेव हो गया।' : '✅ Finance record saved.') : (hi ? '✅ रिकॉर्ड सेव हो गया। Super Admin की मंज़ूरी के बाद प्रकाशित होगा।' : '✅ Record saved. It will be published after Super Admin approval.'));
       setForm(blank(kind)); setEditingId('');
     } catch (e) { setMessage(e instanceof Error ? e.message : (hi ? 'सेव नहीं हुआ। Firestore Rules जाँचें।' : 'Save failed. Check Firestore rules.')); }
     finally { setBusy(false); }
@@ -154,7 +200,7 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
   const remove = async (row: RecordRow) => {
     if (!window.confirm(hi ? 'क्या आप यह रिकॉर्ड हमेशा के लिए हटाना चाहते हैं?' : 'Delete this record permanently?')) return;
     setBusy(true); setMessage('');
-    try { await deleteDoc(doc(db, activeModule.collection, row.id)); setMessage(hi ? 'रिकॉर्ड हटा दिया गया।' : 'Record deleted.'); }
+    try { const batch = writeBatch(db); batch.delete(doc(db, activeModule.collection, row.id)); if (kind === 'members') batch.delete(doc(db, 'ngoPublicMembers', row.id)); if (kind === 'finance') batch.delete(doc(db, 'ngoPublicTransactions', row.id)); await batch.commit(); setMessage(hi ? 'रिकॉर्ड हटा दिया गया।' : 'Record deleted.'); }
     catch (e) { setMessage(e instanceof Error ? e.message : 'Delete failed.'); }
     finally { setBusy(false); }
   };

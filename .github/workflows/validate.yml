@@ -1,0 +1,29 @@
+name: Validate All NGO Connect
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install
+      - name: Build application
+        run: npm run build
+      - name: Set up Java for Firestore Emulator
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Validate Firestore Rules with Emulator
+        run: npx --yes firebase-tools emulators:exec --only firestore --project ngo-connect-4cfc0 --non-interactive "echo Firestore Rules parsed successfully"

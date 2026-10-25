@@ -45,3 +45,26 @@ All NGO Connect is a separate bilingual (Hindi/English) NGO platform built with 
 - Member ID card printing uses the browser's print dialog.
 - A successful Vercel build does not replace end-to-end testing against the live Firebase project.
 - Never store UPI PINs, passwords, or bank credentials.
+
+
+## Firestore Rules deployment
+
+The canonical rules are in `firestore.rules` (the compatibility copy `firestore.rules.fixed` is kept synchronized). The Firebase project alias is `ngo-connect-4cfc0`.
+
+**Publish rules before merging the privacy-mirror code**, otherwise public team/finance pages and NGO Admin writes will be denied by the old deployed rules.
+
+Option A — Firebase Console: open Firebase Console → project `ngo-connect-4cfc0` → Firestore Database → Rules, paste the complete contents of `firestore.rules`, then click Publish.
+
+Option B — Firebase CLI, from the repository root after installing the Firebase CLI and signing in:
+
+```bash
+firebase login
+firebase deploy --only firestore:rules --project ngo-connect-4cfc0
+```
+
+## Privacy and moderation notes
+
+- `ngoMembers` and `ngoTransactions` are private source records. Public pages use `ngoPublicMembers` and `ngoPublicTransactions`, which intentionally omit phone/email/photo and donor/payee/private notes.
+- Approved legacy team/finance summaries are backfilled by the respective admin workspace after the new rules are published.
+- Registration/payment details remain in the restricted `ngoRegistrations` collection; the registration form opens a dedicated payment step where the owner can save a UTR and compressed screenshot proof.
+- Super Admin approval is required before new team members, events, and documents appear publicly.
