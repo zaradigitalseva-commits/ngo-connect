@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import type { User } from 'firebase/auth';
 import { signOut } from 'firebase/auth';
-import { addDoc, collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, updateDoc, where, writeBatch } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, updateDoc, where, writeBatch, getDocs, setDoc } from 'firebase/firestore';
 import { CalendarDays, FileText, Pencil, Plus, Trash2, Users, Wallet } from 'lucide-react';
 import { auth, db } from './firebase';
 
@@ -109,6 +109,30 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
     }, e => setMessage(e instanceof Error ? e.message : 'Records could not be loaded.'));
     return unsubscribe;
   }, [ngoId, kind]);
+  // Backfill public-safe summaries for this NGO's existing approved finance records.
+  // The source collection stays private; this mirror omits donor/payee and notes.
+  useEffect(() => {
+    if (!ngoId || platformAdminView) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const snapshot = await getDocs(query(collection(db, 'ngoTransactions'), where('ngoId', '==', ngoId)));
+        for (const item of snapshot.docs) {
+          if (cancelled) return;
+          const data = item.data();
+          if (data.approvalStatus !== 'APPROVED') continue;
+          await setDoc(doc(db, 'ngoPublicTransactions', item.id), {
+            ngoId, type: data.type, amount: Number(data.amount), category: String(data.category || ''),
+            date: String(data.date || ''), approvalStatus: 'APPROVED', createdAt: data.createdAt || serverTimestamp()
+          }, { merge: true });
+        }
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : (hi ? 'वित्तीय सार्वजनिक सारांश अपडेट नहीं हुआ।' : 'Could not update public finance summaries.'));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [ngoId, platformAdminView]);
+
   useEffect(() => {
     if (!ngoId) { setMemberApplications([]); return; }
     const unsubscribe = onSnapshot(query(collection(db, 'memberApplications'), where('ngoId', '==', ngoId)), snap => {
