@@ -237,7 +237,7 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['ngoId','name','designation','location','role','status','approvalStatus','createdAt','reviewedBy','reviewedAt','updatedAt'])
         && request.resource.data.keys().hasAll(['ngoId','name','designation','location','role','status','approvalStatus'])
         && request.resource.data.name is string && request.resource.data.name.size() > 0
-        && request.resource.data.designation is string && request.resource.data.designation.size() <= 160
+        && request.resource.data.designation is string && request.resource.data.designation.size() <= 200
         && request.resource.data.location is string && request.resource.data.location.size() <= 200
         && request.resource.data.role in ['MEMBER','VOLUNTEER']
         && request.resource.data.status in ['ACTIVE','INACTIVE']
