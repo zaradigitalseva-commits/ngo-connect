@@ -620,11 +620,8 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
   };
 
   const closePaymentPage = () => {
+    // Keep the registration reference in the URL and in state so the owner can resume the payment step.
     setShowPaymentPage(false);
-    setPaymentRegistrationId('');
-    const nextUrl = new URL(window.location.href);
-    nextUrl.searchParams.delete('paymentRegistration');
-    window.history.replaceState({}, '', nextUrl.pathname + nextUrl.search + nextUrl.hash);
   };
 
   const submitPublicRegistration = async (event: FormEvent<HTMLFormElement>) => {
@@ -727,6 +724,7 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
   </div>;
 
   return <div className="public-site">
+    {paymentRegistrationId && !showPaymentPage && <div role="status" className="public-auth-error" style={{maxWidth:900,margin:'12px auto',padding:'12px 18px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}><span>{hi ? 'आपका NGO रजिस्ट्रेशन भुगतान सत्यापन की प्रतीक्षा में है।' : 'Your NGO registration is waiting for payment verification.'}</span><button type="button" className="primary-button" onClick={() => setShowPaymentPage(true)}>{hi ? 'भुगतान जारी रखें' : 'Continue payment'}</button></div>}
     {registrationSuccessMessage && !showPublicRegistration && <div role="status" className="public-auth-error" style={{ maxWidth: 900, margin: '12px auto', padding: '12px 18px' }}>{registrationSuccessMessage}</div>}
     <header className="public-header" style={{ backgroundImage: "linear-gradient(90deg, rgba(255,255,255,.90), rgba(255,255,255,.60)), url(https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=2000&q=85)", backgroundPosition: "center", backgroundSize: "cover", backgroundRepeat: "no-repeat" }}>
       <a className="public-brand" href="/" aria-label="All NGO Connect home"><span className="brand-mark"><Leaf size={23}/></span><span className="brand-name-stack"><span className="brand-name-banner"><span>All NGO</span><span>Connect</span></span><small>{hi ? 'मजबूत समुदाय। बेहतर बदलाव।' : 'Stronger communities. Better impact.'}</small></span></a>
