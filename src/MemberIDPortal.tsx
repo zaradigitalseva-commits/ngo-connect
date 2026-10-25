@@ -31,7 +31,7 @@ export function MemberIDPortal({ authUser, onLogin, language }: { authUser: User
   const [form, setForm] = useState({ ngoId: '', name: '', fatherName: '', phone: '', address: '' });
   const selectedNgo = ngos.find(n => n.id === form.ngoId);
   useEffect(() => {
-    const unsubscribe = onSnapshot(query(collection(db, 'ngos'), where('status', 'in', ['LIVE', 'ACTIVE', 'APPROVED'])), snapshot => {
+    const unsubscribe = onSnapshot(query(collection(db, 'ngos'), where('status', 'in', ['LIVE', 'ACTIVE', 'APPROVED', 'Live', 'Active', 'Approved', 'live', 'active', 'approved'])), snapshot => {
       setNgos(snapshot.docs.map(d => { const x = d.data(); return { id: d.id, name: String(x.name || x.ngoName || 'NGO'), status: String(x.status || ''), memberFee: Number(x.memberFee || 0), adminWhatsApp: String(x.adminWhatsApp || ''), ownerUid: String(x.ownerUid || ''), logoUrl: String(x.logoUrl || '') }; }));
     }, e => setMessage(e instanceof Error ? e.message : 'NGO list load failed.'));
     return unsubscribe;
