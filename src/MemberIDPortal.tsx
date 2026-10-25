@@ -126,7 +126,7 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
   const reviewContent = async (record: ModerationRecord, status: 'APPROVED' | 'REJECTED') => {
     if (!isPlatformAdmin(authUser)) return;
     setBusy(true); setMessage('');
-    try { await updateDoc(doc(db, record.collection, record.id), { approvalStatus: status, reviewedBy: authUser.uid, reviewedAt: serverTimestamp(), updatedAt: serverTimestamp() }); setMessage(status === 'APPROVED' ? 'जानकारी मंज़ूर की गई।' : 'जानकारी अस्वीकार की गई।'); }
+    try { const batch = writeBatch(db); const review = { approvalStatus: status, reviewedBy: authUser.uid, reviewedAt: serverTimestamp(), updatedAt: serverTimestamp() }; batch.update(doc(db, record.collection, record.id), review); if (record.collection === 'ngoMembers') batch.update(doc(db, 'ngoPublicMembers', record.id), review); await batch.commit(); setMessage(status === 'APPROVED' ? 'जानकारी मंज़ूर की गई।' : 'जानकारी अस्वीकार की गई।'); }
     catch (error) { setMessage(error instanceof Error ? error.message : 'Review failed. Check Firestore rules.'); }
     finally { setBusy(false); }
   };
@@ -170,7 +170,7 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
   useEffect(() => {
     if (!selectedId) { setContentRecords([]); setNgoMission(''); return; }
     const unsubNgo = onSnapshot(doc(db, 'ngos', selectedId), snap => setNgoMission(String(snap.data()?.mission || snap.data()?.description || '')));
-    const sources = ['ngoEvents', 'ngoDocuments', 'ngoTransactions'];
+    const sources = ['ngoEvents', 'ngoDocuments'];
     const unsubs = sources.map(collectionName => onSnapshot(query(collection(db, collectionName), where('ngoId', '==', selectedId)), snap => {
       setContentRecords(current => [...current.filter(item => item.collectionName !== collectionName), ...snap.docs.map(d => ({id:d.id, collectionName, ...d.data()} as Record<string, any>))]);
     }, error => setMessage(error instanceof Error ? error.message : 'जानकारी लोड नहीं हुई।')));
