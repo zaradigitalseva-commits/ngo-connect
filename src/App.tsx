@@ -24,7 +24,6 @@ const nav = [
 type DashboardNgo = { id: string; name: string; type: string; city: string; status: string; ownerUid: string; people: number; imageData?: string; mission?: string; state?: string };
 type DashboardRecord = Record<string, any> & { id: string };
 type SubscriptionPlan = { id: string; name: string; price: number; durationDays: number; description: string; active: boolean };
-};
 
 
 
