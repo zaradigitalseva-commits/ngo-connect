@@ -215,8 +215,8 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
     if (!title.trim()) { setMessage('शीर्षक खाली नहीं हो सकता।'); return; }
     setBusy(true); setMessage('');
     try {
-      if (existing?.id) await updateDoc(doc(db, collectionName, existing.id), { ...payload, updatedAt: serverTimestamp(), approvalStatus: 'APPROVED' });
-      else await addDoc(collection(db, collectionName), { ...payload, ngoId: currentNgo.id, createdBy: authUser.uid, approvalStatus: 'APPROVED', createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      if (existing?.id) await updateDoc(doc(db, collectionName, existing.id), { ...payload, updatedAt: serverTimestamp(), approvalStatus: 'PENDING' });
+      else await addDoc(collection(db, collectionName), { ...payload, ngoId: currentNgo.id, createdBy: authUser.uid, approvalStatus: 'PENDING', createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
       setMessage('जानकारी सेव होकर आपकी NGO वेबसाइट पर प्रकाशित हो गई।');
     } catch (e) { setMessage(e instanceof Error ? e.message : 'जानकारी सेव नहीं हुई। Firestore Rules जाँचें।'); }
     finally { setBusy(false); }
