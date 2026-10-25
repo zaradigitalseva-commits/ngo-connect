@@ -146,7 +146,7 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
     try {
       if (editingId) await updateDoc(doc(db, activeModule.collection, editingId), mutable);
       else await addDoc(collection(db, activeModule.collection), { ...mutable, createdBy: authUser.uid, createdAt: serverTimestamp() });
-      setMessage(hi ? '✅ रिकॉर्ड सेव हो गया और आपके NGO पेज पर प्रकाशित है।' : '✅ Record saved and published on your NGO page.');
+      setMessage(kind === 'finance' ? (hi ? '✅ वित्तीय रिकॉर्ड सेव हो गया।' : '✅ Finance record saved.') : (hi ? '✅ रिकॉर्ड सेव हो गया। Super Admin की मंज़ूरी के बाद प्रकाशित होगा।' : '✅ Record saved. It will be published after Super Admin approval.'));
       setForm(blank(kind)); setEditingId('');
     } catch (e) { setMessage(e instanceof Error ? e.message : (hi ? 'सेव नहीं हुआ। Firestore Rules जाँचें।' : 'Save failed. Check Firestore rules.')); }
     finally { setBusy(false); }
