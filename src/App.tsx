@@ -25,6 +25,50 @@ type DashboardNgo = { id: string; name: string; type: string; city: string; stat
 type DashboardRecord = Record<string, any> & { id: string };
 type SubscriptionPlan = { id: string; name: string; price: number; durationDays: number; description: string; active: boolean };
 
+function compressDashboardImage(file: File, maxOutputLength = 160000): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) { reject(new Error('कृपया इमेज फ़ाइल चुनें।')); return; }
+    if (file.size > 20 * 1024 * 1024) { reject(new Error('मूल इमेज 20 MB से छोटी होनी चाहिए।')); return; }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('इमेज पढ़ी नहीं जा सकी।'));
+    reader.onload = () => {
+      const image = new Image();
+      image.onerror = () => reject(new Error('इमेज फ़ाइल खुल नहीं सकी।'));
+      image.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxWidth = 1000;
+        const maxHeight = 560;
+        const scale = Math.min(1, maxWidth / image.naturalWidth, maxHeight / image.naturalHeight);
+        let width = Math.max(1, Math.round(image.naturalWidth * scale));
+        let height = Math.max(1, Math.round(image.naturalHeight * scale));
+        const context = canvas.getContext('2d');
+        if (!context) { reject(new Error('इमेज प्रोसेस नहीं हो सकी।')); return; }
+        let result = '';
+        // Resize and compress until the stored data is small enough for Firestore.
+        for (let attempt = 0; attempt < 8; attempt++) {
+          canvas.width = width;
+          canvas.height = height;
+          context.clearRect(0, 0, width, height);
+          context.drawImage(image, 0, 0, width, height);
+          const quality = [0.72, 0.64, 0.56, 0.48, 0.42, 0.38, 0.34, 0.3][attempt];
+          result = canvas.toDataURL('image/jpeg', quality);
+          if (result.length <= maxOutputLength) break;
+          width = Math.max(320, Math.round(width * 0.82));
+          height = Math.max(180, Math.round(height * 0.82));
+        }
+        if (!result || result.length > maxOutputLength) {
+          reject(new Error('इमेज छोटी नहीं हो पाई। कृपया दूसरी या कम साइज़ की इमेज चुनें।'));
+          return;
+        }
+        resolve(result);
+      };
+      image.src = String(reader.result || '');
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+
 const INDIA_STATES_AND_UTS = [
   'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal',
   'Andaman and Nicobar Islands','Chandigarh','Dadra and Nagar Haveli and Daman and Diu','Delhi','Jammu and Kashmir','Ladakh','Lakshadweep','Puducherry'
