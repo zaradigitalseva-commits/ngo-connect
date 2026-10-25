@@ -604,6 +604,8 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
     if (!authUser || !paymentRegistrationId) { onLogin(); return; }
     setPaymentSaveBusy(true); setPaymentPageMessage('');
     const paymentReference = paymentForm.paymentReference.trim();
+    if (!paymentReference && !paymentForm.paymentProofData) { setPaymentPageMessage(hi ? 'भुगतान का UTR लिखें या स्क्रीनशॉट अपलोड करें।' : 'Enter a UTR or upload a payment screenshot before saving.'); return; }
+    if (paymentReference && paymentReference.length < 4) { setPaymentPageMessage(hi ? 'UTR कम से कम 4 अक्षरों का होना चाहिए।' : 'UTR must be at least 4 characters.'); return; }
     try {
       await updateDoc(doc(db, 'ngoRegistrations', paymentRegistrationId), {
         paymentReference,
