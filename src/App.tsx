@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowUpRight, BadgeCheck, Bell, Building2, CalendarDays, Che
 import { auth, db, firebaseConfigured } from './firebase';
 import { MemberIDPortal, MemberVerifyPage, NgoAdminPortal } from './MemberIDPortal';
 import { NgoWorkspacePortal } from './NgoWorkspace';
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, query as firestoreQuery, serverTimestamp, setDoc, where, runTransaction, Timestamp, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, query as firestoreQuery, serverTimestamp, setDoc, where, runTransaction, Timestamp, updateDoc, deleteField } from 'firebase/firestore';
 
 const SUPER_ADMIN_EMAILS = ['ngogrant454@gmail.com', 'zaradigitalseva@gmail.com'];
 const isSuperAdmin = (user: User | null) => Boolean(user?.emailVerified && user.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase()));
@@ -728,6 +728,47 @@ export default function App() {
   const [language, setLanguage] = useState<Language>('hi');
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [authError, setAuthError] = useState('');
+
+  // One-time, admin-only privacy cleanup for legacy public NGO documents.
+  // Preserve/restore ownerUid before removing old public contact and payment-form fields.
+  useEffect(() => {
+    if (!authUser || !isSuperAdmin(authUser) || !firebaseConfigured) return;
+    let cancelled = false;
+    const cleanupLegacyPublicProfiles = async () => {
+      const [ngoSnapshot, registrationSnapshot] = await Promise.all([
+        getDocs(collection(db, 'ngos')),
+        getDocs(collection(db, 'ngoRegistrations')),
+      ]);
+      const ownerByEmail = new Map<string, string>();
+      registrationSnapshot.docs.forEach(item => {
+        const data = item.data();
+        if (data.email && data.ownerUid) ownerByEmail.set(String(data.email).toLowerCase(), String(data.ownerUid));
+      });
+      for (const item of ngoSnapshot.docs) {
+        if (cancelled) return;
+        const data = item.data();
+        const hasLegacyPrivateFields = ['contactName', 'contactEmail', 'contactPhone', 'registrationFormData']
+          .some(key => Object.prototype.hasOwnProperty.call(data, key));
+        if (!hasLegacyPrivateFields) continue;
+        const registrationId = String(data.registrationId || '');
+        const linkedRegistration = registrationId ? registrationSnapshot.docs.find(reg => reg.id === registrationId) : undefined;
+        const email = String(data.contactEmail || data.registrationFormData?.email || '').toLowerCase();
+        const ownerUid = String(data.ownerUid || linkedRegistration?.data().ownerUid || ownerByEmail.get(email) || '');
+        const patch: Record<string, any> = {
+          contactName: deleteField(),
+          contactEmail: deleteField(),
+          contactPhone: deleteField(),
+          registrationFormData: deleteField(),
+        };
+        if (ownerUid && !data.ownerUid) patch.ownerUid = ownerUid;
+        await updateDoc(item.ref, patch);
+      }
+    };
+    void cleanupLegacyPublicProfiles().catch(error => {
+      console.warn('Legacy public NGO privacy cleanup could not complete. Check Firestore Rules and admin verification.', error);
+    });
+    return () => { cancelled = true; };
+  }, [authUser?.uid, authUser?.emailVerified]);
   const [section, setSection] = useState<Section>('overview');
   const [showRegistration, setShowRegistration] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
