@@ -829,7 +829,7 @@ export default function App() {
         for (const item of ngosSnapshot.docs) {
           if (cancelled) return;
           const data = item.data();
-          const privateFields = ['contactName', 'contactEmail', 'contactPhone', 'email', 'phone', 'registrationFormData', 'paymentReference', 'paymentStatus', 'registrationId'];
+          const privateFields = ['contactName', 'contactEmail', 'contactPhone', 'email', 'phone', 'registrationFormData', 'paymentReference', 'paymentProofData', 'paymentStatus', 'registrationId', 'utr'];
           const fieldsToRemove = privateFields.filter(field => Object.prototype.hasOwnProperty.call(data, field));
           if (fieldsToRemove.length) {
             const patch: Record<string, unknown> = { updatedAt: serverTimestamp() };
@@ -998,7 +998,6 @@ export default function App() {
           imageData: String(data.imageData || ''),
           status: 'LIVE',
           ownerUid: String(data.ownerUid || ''),
-          registrationId: registration.id,
           subscriptionPlanId: planId,
           subscriptionPlanName: String(plan.name || data.subscriptionPlan || ''),
           subscriptionPrice: price,
