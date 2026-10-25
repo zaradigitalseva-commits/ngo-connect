@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowUpRight, BadgeCheck, Bell, Building2, CalendarDays, Che
 import { auth, db, firebaseConfigured } from './firebase';
 import { MemberIDPortal, MemberVerifyPage, NgoAdminPortal } from './MemberIDPortal';
 import { NgoWorkspacePortal } from './NgoWorkspace';
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, query as firestoreQuery, serverTimestamp, setDoc, where, runTransaction, Timestamp, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, query as firestoreQuery, serverTimestamp, setDoc, where, runTransaction, Timestamp, updateDoc, deleteField } from 'firebase/firestore';
 
 const SUPER_ADMIN_EMAILS = ['ngogrant454@gmail.com', 'zaradigitalseva@gmail.com'];
 const isSuperAdmin = (user: User | null) => Boolean(user?.emailVerified === true && user.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase()));
@@ -716,6 +716,32 @@ export default function App() {
     }, () => { if (active) setTickerMessage('सूचना लोड नहीं हुई। Firestore Rules जाँचें।') });
     return () => { active = false; unsubscribeTicker(); };
   }, [authUser]);
+  // Remove private registration/payment details from older public NGO documents.
+  // Full registration details remain in the restricted ngoRegistrations collection.
+  useEffect(() => {
+    if (!authUser || !isSuperAdmin(authUser) || !firebaseConfigured) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const snapshot = await getDocs(collection(db, 'ngos'));
+        for (const item of snapshot.docs) {
+          if (cancelled) return;
+          const data = item.data();
+          const privateFields = ['contactName', 'contactEmail', 'contactPhone', 'registrationFormData', 'paymentReference', 'paymentStatus', 'registrationId'];
+          const fieldsToRemove = privateFields.filter(field => Object.prototype.hasOwnProperty.call(data, field));
+          if (!fieldsToRemove.length) continue;
+          const patch: Record<string, unknown> = { updatedAt: serverTimestamp() };
+          for (const field of fieldsToRemove) patch[field] = deleteField();
+          await updateDoc(doc(db, 'ngos', item.id), patch);
+        }
+      } catch (error) {
+        // Do not block the dashboard; the admin can inspect Firebase Rules if cleanup is denied.
+        console.error('Could not sanitize legacy public NGO fields', error);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [authUser]);
+
   useEffect(() => {
     if (!authUser || !isSuperAdmin(authUser) || !firebaseConfigured) {
       setDashboardLoading(false);
