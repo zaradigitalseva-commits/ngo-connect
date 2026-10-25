@@ -212,7 +212,7 @@ service cloud.firestore {
     }
 
     match /ngoMembers/{recordId} {
-      allow read: if isSuperAdmin() || ownsNgo(resource.data.ngoId) || resource.data.approvalStatus == 'APPROVED';
+      allow read: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
       allow create: if isSuperAdmin() || (ownsNgo(request.resource.data.ngoId)
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.ngoId is string
@@ -249,7 +249,7 @@ service cloud.firestore {
 
     match /ngoTransactions/{recordId} {
       // Super Admin can review pending records; public sees only approved finance summaries.
-      allow read: if isSuperAdmin() || ownsNgo(resource.data.ngoId) || resource.data.approvalStatus == 'APPROVED';
+      allow read: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
       allow create: if ownsNgo(request.resource.data.ngoId)
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.ngoId is string
