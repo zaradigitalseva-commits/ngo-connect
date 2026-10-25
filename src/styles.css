@@ -2582,6 +2582,44 @@ input, select, textarea, button {
 }
 
 
+/* Real image layer for the rotating photo on each individual NGO header. */
+.public-site.ngo-directory-site header.public-header.ngo-individual-site-header {
+  position: relative !important;
+  isolation: isolate;
+  overflow: hidden;
+  background-color: #0b3b46 !important;
+}
+.public-site.ngo-directory-site header.public-header.ngo-individual-site-header .ngo-header-slider-image {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 104px;
+  object-fit: cover !important;
+  object-position: center 42% !important;
+  opacity: 1;
+  transition: opacity .7s ease;
+  pointer-events: none;
+}
+.public-site.ngo-directory-site header.public-header.ngo-individual-site-header::before {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  background: linear-gradient(110deg, rgba(5,43,54,.58) 0%, rgba(9,78,91,.38) 48%, rgba(16,105,112,.24) 100%) !important;
+  pointer-events: none;
+}
+.public-site.ngo-directory-site header.public-header.ngo-individual-site-header > a,
+.public-site.ngo-directory-site header.public-header.ngo-individual-site-header > div,
+.public-site.ngo-directory-site header.public-header.ngo-individual-site-header > button,
+.public-site.ngo-directory-site header.public-header.ngo-individual-site-header > nav {
+  position: relative;
+  z-index: 1;
+}
+
 /* Refined individual NGO header: elegant teal-blue overlay with warm, readable contrast */
 .public-site.ngo-directory-site header.public-header.ngo-individual-site-header {
   background-color: #0b3b46 !important;
