@@ -56,7 +56,7 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly([
           'name', 'contactName', 'email', 'phone', 'state', 'district', 'mission', 'imageData',
           'planId', 'subscriptionPlan', 'planPrice', 'planDurationDays',
-          'paymentReference', 'status', 'paymentStatus', 'ownerUid', 'createdAt'
+          'paymentReference', 'paymentProofData', 'status', 'paymentStatus', 'ownerUid', 'createdAt'
         ])
         && request.resource.data.keys().hasAll([
           'name', 'contactName', 'email', 'phone', 'state', 'district', 'mission', 'imageData',
@@ -92,6 +92,7 @@ service cloud.firestore {
         && request.resource.data.planDurationDays is int && request.resource.data.planDurationDays >= 1
         && request.resource.data.paymentReference is string
         && request.resource.data.paymentReference.size() <= 80
+        && (!request.resource.data.keys().hasAny(['paymentProofData']) || (request.resource.data.paymentProofData is string && request.resource.data.paymentProofData.size() <= 180000))
         && request.resource.data.createdAt == request.time;
 
       allow update, delete: if isSuperAdmin();
