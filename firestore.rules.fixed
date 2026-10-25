@@ -242,7 +242,8 @@ service cloud.firestore {
         && request.resource.data.status in ['ACTIVE','INACTIVE']
         && request.resource.data.approvalStatus in ['PENDING','APPROVED','REJECTED']
         && getAfter(/databases/$(database)/documents/ngoMembers/$(recordId)).data.ngoId == request.resource.data.ngoId
-        && getAfter(/databases/$(database)/documents/ngoMembers/$(recordId)).data.name == request.resource.data.name;
+        && getAfter(/databases/$(database)/documents/ngoMembers/$(recordId)).data.name == request.resource.data.name
+        && getAfter(/databases/$(database)/documents/ngoMembers/$(recordId)).data.approvalStatus == request.resource.data.approvalStatus;
       allow update: if (isSuperAdmin()
           && request.resource.data.ngoId == resource.data.ngoId
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['approvalStatus','reviewedBy','reviewedAt','updatedAt'])
@@ -252,7 +253,8 @@ service cloud.firestore {
           && request.resource.data.ngoId == resource.data.ngoId
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','designation','location','role','status','approvalStatus','updatedAt'])
           && request.resource.data.approvalStatus == 'PENDING'
-          && getAfter(/databases/$(database)/documents/ngoMembers/$(recordId)).data.name == request.resource.data.name);
+          && getAfter(/databases/$(database)/documents/ngoMembers/$(recordId)).data.name == request.resource.data.name
+          && getAfter(/databases/$(database)/documents/ngoMembers/$(recordId)).data.approvalStatus == request.resource.data.approvalStatus);
       allow delete: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
     }
 
@@ -270,6 +272,7 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/ngoTransactions/$(recordId)).data.ngoId == request.resource.data.ngoId
         && getAfter(/databases/$(database)/documents/ngoTransactions/$(recordId)).data.type == request.resource.data.type
         && getAfter(/databases/$(database)/documents/ngoTransactions/$(recordId)).data.amount == request.resource.data.amount
+        && getAfter(/databases/$(database)/documents/ngoTransactions/$(recordId)).data.approvalStatus == 'APPROVED'
         && getAfter(/databases/$(database)/documents/ngoTransactions/$(recordId)).data.category == request.resource.data.category
         && getAfter(/databases/$(database)/documents/ngoTransactions/$(recordId)).data.date == request.resource.data.date;
       allow delete: if ownsNgo(resource.data.ngoId);
