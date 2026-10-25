@@ -104,6 +104,7 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['paymentReference','paymentProofData','paymentStatus','updatedAt'])
           && request.resource.data.paymentReference is string
           && request.resource.data.paymentReference.size() <= 80
+          && (request.resource.data.paymentReference.size() == 0 || request.resource.data.paymentReference.size() >= 4)
           && (!request.resource.data.keys().hasAny(['paymentProofData']) || (request.resource.data.paymentProofData is string && request.resource.data.paymentProofData.size() <= 180000))
           && request.resource.data.paymentStatus in ['NOT_SUBMITTED','SUBMITTED_FOR_REVIEW']
           && request.resource.data.updatedAt == request.time);
