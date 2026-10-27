@@ -319,6 +319,22 @@ service cloud.firestore {
       allow delete: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
     }
 
+    match /homepagePosts/{postId} {
+      allow read: if true;
+      allow create: if isSuperAdmin()
+        && request.resource.data.keys().hasOnly(['text', 'imageData', 'createdAt', 'createdBy'])
+        && request.resource.data.keys().hasAll(['text', 'imageData', 'createdAt', 'createdBy'])
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 3000
+        && request.resource.data.imageData is string
+        && request.resource.data.imageData.size() <= 180000
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.createdBy == request.auth.token.email;
+      allow update: if false;
+      allow delete: if isSuperAdmin();
+    }
+
     match /publicTickerMessages/{messageId} {
       allow read: if true;
       allow create: if isSuperAdmin()
