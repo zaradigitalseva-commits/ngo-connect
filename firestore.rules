@@ -328,7 +328,7 @@ service cloud.firestore {
         && request.resource.data.text.size() > 0
         && request.resource.data.text.size() <= 3000
         && request.resource.data.imageData is string
-        && request.resource.data.imageData.size() <= 180000
+        && request.resource.data.imageData.size() <= 250000
         && request.resource.data.createdAt == request.time
         && request.resource.data.createdBy == request.auth.token.email;
       allow update: if false;
