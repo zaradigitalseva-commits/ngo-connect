@@ -2702,3 +2702,63 @@ input, select, textarea, button {
     object-position: center center !important;
   }
 }
+
+/* Home page announcement posts: restrained, responsive social-feed layout */
+.public-site main .homepage-posts {
+  width: min(100% - 32px, 760px);
+  margin: 18px auto 26px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  box-sizing: border-box;
+}
+.public-site main .homepage-post-card {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 3px 14px rgba(15, 23, 42, 0.08);
+}
+.public-site main .homepage-post-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 360px;
+  object-fit: contain;
+  object-position: center;
+  background: #f8fafc;
+}
+.public-site main .homepage-post-text {
+  padding: 14px 18px;
+  color: #1f2937;
+  font-size: 16px;
+  line-height: 1.55;
+  font-weight: 400;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  box-sizing: border-box;
+}
+@media (max-width: 600px) {
+  .public-site main .homepage-posts {
+    width: calc(100% - 20px);
+    margin: 10px auto 18px;
+    gap: 12px;
+  }
+  .public-site main .homepage-post-card {
+    border-radius: 11px;
+  }
+  .public-site main .homepage-post-image {
+    max-height: 230px;
+  }
+  .public-site main .homepage-post-text {
+    padding: 11px 13px;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+}
