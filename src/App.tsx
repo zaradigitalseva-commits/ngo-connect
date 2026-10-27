@@ -336,6 +336,15 @@ function PublicNgoList({ language, setLanguage }: { language: Language; setLangu
 
 function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authError }: PublicHomeProps) {
   const hi = language === 'hi';
+  const [homepagePosts, setHomepagePosts] = useState<Array<{ id: string; text: string; imageData?: string; createdAt?: any }>>([]);
+  useEffect(() => {
+    const unsubscribe = onSnapshot(firestoreQuery(collection(db, 'homepagePosts')), snapshot => {
+      const posts = snapshot.docs.map(item => ({ id: item.id, text: String(item.data().text || ''), imageData: String(item.data().imageData || ''), createdAt: item.data().createdAt }));
+      posts.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+      setHomepagePosts(posts);
+    }, () => setHomepagePosts([]));
+    return unsubscribe;
+  }, []);
   const [mainHeaderSlideIndex, setMainHeaderSlideIndex] = useState(0);
   const mainHeaderSlides = [
     'https://images.unsplash.com/photo-1531206715517-5c0ba140b2b8?auto=format&fit=crop&w=1600&q=75',
@@ -520,7 +529,12 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
       <div className="public-actions"><button className="language-button" onClick={() => setLanguage(hi ? 'en' : 'hi')}>{hi ? 'English' : 'हिन्दी'}</button>{!registrationAlreadySubmitted && <button className="outline-button" onClick={() => { setRegistrationMessage(''); setShowPublicRegistration(true); }}>Register</button>}{authUser ? <div className="public-user"><button className="outline-button" onClick={onLogout}>{hi ? 'लॉगआउट' : 'Sign out'}</button></div> : <button className="primary-button" onClick={onLogin} disabled={!firebaseConfigured}><Globe2 size={17}/>Login</button>}</div>
     </header>
     <main>
-      {/* Homepage content area intentionally left clear for Super Admin announcements/posts. */}
+      <section className="homepage-posts" style={{ maxWidth: 1100, margin: '24px auto', padding: '0 18px', display: 'grid', gap: 22 }}>
+        {homepagePosts.map(post => <article key={post.id} style={{ background: 'linear-gradient(135deg,#fff 0%,#f5f3ff 100%)', border: '1px solid #ddd6fe', borderRadius: 22, overflow: 'hidden', boxShadow: '0 12px 30px rgba(79,70,229,.12)' }}>
+          {post.imageData && <img src={post.imageData} alt="" loading="lazy" style={{ display: 'block', width: '100%', maxHeight: 520, objectFit: 'cover' }} />}
+          <div style={{ padding: 'clamp(18px,3vw,30px)', color: '#1e1b4b', fontSize: 'clamp(17px,2.2vw,23px)', lineHeight: 1.65, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{post.text}</div>
+        </article>)}
+      </section>
       {showPublicRegistration && <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget && !registrationBusy) setShowPublicRegistration(false); }}><section className="registration-modal" role="dialog" aria-modal="true" aria-labelledby="public-registration-title"><div className="modal-heading"><div><span className="modal-eyebrow">ALL NGO CONNECT</span><h2 id="public-registration-title">{hi ? 'NGO रजिस्ट्रेशन' : 'NGO registration'}</h2><p>{hi ? 'Google लॉगिन के बाद जानकारी भेजें। भुगतान सत्यापन और एडमिन मंज़ूरी तक NGO सक्रिय नहीं होगा।' : 'Sign in with Google and submit your details. Activation happens only after payment verification and admin approval.'}</p></div><button className="icon-button" onClick={() => setShowPublicRegistration(false)} aria-label={hi ? 'बंद करें' : 'Close'}><X size={20}/></button></div>{!authUser ? <div className="public-profile-gate"><p>{hi ? 'रजिस्ट्रेशन के लिए पहले Google से लॉगिन करें।' : 'Sign in with Google before registering.'}</p><button className="primary-button" onClick={onLogin} disabled={!firebaseConfigured}><Globe2 size={17}/>{hi ? 'Google से लॉगिन' : 'Sign in with Google'}</button></div> : <form onSubmit={submitPublicRegistration}><label>{hi ? 'NGO / संस्था का नाम' : 'NGO / organization name'} *<input required maxLength={120} value={publicForm.name} onChange={e => setPublicForm({...publicForm, name:e.target.value})}/></label><div className="ngo-image-upload-field" style={{ border: '2px dashed #7c3aed', borderRadius: 12, padding: 14, margin: '10px 0', background: 'rgba(124,58,237,0.06)' }}><label style={{ display: 'block', fontWeight: 700 }}>{hi ? '📷 NGO का लोगो अपलोड करें (वैकल्पिक)' : '📷 Upload NGO logo (optional)'}<input type="file" accept="image/png,image/jpeg,image/webp" aria-label={hi ? 'NGO का लोगो चुनें' : 'Choose NGO logo'} onChange={async e => { const file = e.currentTarget.files?.[0]; if (!file) return; try { const imageData = await compressDashboardImage(file, 150000); setPublicForm(current => ({ ...current, imageData })); } catch (error) { setRegistrationMessage(error instanceof Error ? error.message : (hi ? 'लोगो अपलोड नहीं हुआ।' : 'Could not upload logo.')); } }} style={{ display: 'block', width: '100%', boxSizing: 'border-box', marginTop: 10, padding: 12, border: '1px solid #c4b5fd', borderRadius: 8, background: '#fff', color: '#111827' }} /><small style={{ display: 'block', marginTop: 8 }}>{hi ? 'मोबाइल या कंप्यूटर से JPG, PNG या WebP लोगो चुनें।' : 'Choose a JPG, PNG or WebP logo from your phone or computer.'}</small>{publicForm.imageData && <img src={publicForm.imageData} alt={hi ? 'NGO लोगो का पूर्वावलोकन' : 'NGO logo preview'} style={{ display: 'block', width: 120, height: 120, objectFit: 'contain', background: '#fff', borderRadius: 12, padding: 8, marginTop: 10, boxShadow: '0 4px 14px rgba(0,0,0,.12)' }} />}</label></div><label>{hi ? 'संपर्क व्यक्ति' : 'Contact person'} *<input required maxLength={100} value={publicForm.contact} onChange={e => setPublicForm({...publicForm, contact:e.target.value})}/></label><label>{hi ? 'मोबाइल नंबर' : 'Phone number'} *<input required type="tel" maxLength={25} value={publicForm.phone} onChange={e => setPublicForm({...publicForm, phone:e.target.value})}/></label><label>{hi ? 'राज्य' : 'State'} *<select required value={publicForm.state} onChange={e => setPublicForm({...publicForm, state:e.target.value})}><option value="">{hi ? 'राज्य चुनें' : 'Select state'}</option>{INDIA_STATES_AND_UTS.map(s => <option key={s} value={s}>{s}</option>)}</select></label><label>{hi ? 'जिला' : 'District'} *<input required maxLength={100} value={publicForm.district} onChange={e => setPublicForm({...publicForm, district:e.target.value})} placeholder={hi ? 'जिले का नाम लिखें' : 'Enter district name'}/></label><label>{hi ? 'संस्था का उद्देश्य' : 'Mission / purpose'}<textarea rows={3} maxLength={1000} value={publicForm.mission} onChange={e => setPublicForm({...publicForm, mission:e.target.value})}/></label><label>{hi ? 'सब्सक्रिप्शन प्लान' : 'Subscription plan'}<select required value={publicForm.planId} onChange={e => setPublicForm({...publicForm, planId:e.target.value})}><option value="">{hi ? 'प्लान चुनें' : 'Choose a plan'}</option>{subscriptionPlans.filter(plan => plan.active).map(plan => <option key={plan.id} value={plan.id}>{plan.name} — ₹{plan.price} / {plan.durationDays} {hi ? 'दिन' : 'days'}</option>)}</select>{subscriptionPlans.length === 0 && <small>{hi ? 'अभी कोई सक्रिय प्लान उपलब्ध नहीं है। एडमिन से संपर्क करें।' : 'No active plans are available. Contact the administrator.'}</small>}</label>{paymentQrImage && <div className="payment-qr-preview"><h3>{hi ? 'UPI से भुगतान करें' : 'Pay by UPI'}</h3><img src={paymentQrImage} alt={hi ? 'All NGO Connect UPI QR कोड' : 'All NGO Connect UPI QR code'} /><p>{hi ? 'QR स्कैन करके भुगतान करें, फिर नीचे UTR नंबर भरें।' : 'Scan this QR to pay, then enter the UTR below.'}</p></div>}<label>{hi ? 'भुगतान UTR / संदर्भ नंबर (भुगतान के बाद जरूरी)' : 'Payment UTR / reference (required after payment)'}<input required minLength={4} maxLength={80} value={publicForm.paymentReference} onChange={e => setPublicForm({...publicForm, paymentReference:e.target.value})} placeholder="UTR / transaction reference"/></label><label style={{ display: 'block', border: '1px dashed #94a3b8', borderRadius: 10, padding: 12 }}>{hi ? 'भुगतान का स्क्रीनशॉट (वैकल्पिक)' : 'Payment screenshot (optional)'}<input type="file" accept="image/png,image/jpeg,image/webp" onChange={async e => { const file = e.currentTarget.files?.[0]; if (!file) return; try { const paymentProofData = await compressDashboardImage(file, 150000); setPublicForm(current => ({ ...current, paymentProofData })); setRegistrationMessage(''); } catch (error) { setRegistrationMessage(error instanceof Error ? error.message : (hi ? 'स्क्रीनशॉट अपलोड नहीं हुआ।' : 'Could not upload screenshot.')); } }} style={{ display: 'block', width: '100%', marginTop: 8 }} />{publicForm.paymentProofData && <><small>{hi ? 'भुगतान स्क्रीनशॉट जोड़ दिया गया है।' : 'Payment screenshot attached.'}</small><img src={publicForm.paymentProofData} alt={hi ? 'भुगतान स्क्रीनशॉट पूर्वावलोकन' : 'Payment screenshot preview'} style={{ display: 'block', maxWidth: 180, maxHeight: 180, objectFit: 'contain', marginTop: 8, borderRadius: 8 }} /></>}</label><div className="form-note"><ShieldCheck size={17}/><span>{hi ? 'UTR भेजना भुगतान का प्रमाण नहीं है। एडमिन बैंक/UPI रिकॉर्ड से सत्यापन करेगा। भुगतान निर्देश एडमिन से प्राप्त करें।' : 'A UTR is not proof by itself. Admin will verify against UPI/bank records. Obtain payment instructions from the administrator.'}</span></div>{registrationMessage && <p role="status" className="public-auth-error">{registrationMessage}</p>}<div className="modal-actions"><button type="button" className="outline-button" disabled={registrationBusy} onClick={() => setShowPublicRegistration(false)}>{hi ? 'बंद करें' : 'Close'}</button><button type="submit" className="primary-button" disabled={registrationBusy || subscriptionPlans.length === 0 || !publicForm.planId}>{registrationBusy ? (hi ? 'सेव हो रहा है…' : 'Saving…') : (hi ? 'रजिस्ट्रेशन जमा करें' : 'Submit registration')}</button></div></form>}</section></div>}
       {authError && <p className="public-auth-error">{authError}</p>}
     </main><footer className="public-footer"><span>© 2026 All NGO Connect</span></footer>
@@ -702,6 +716,11 @@ export default function App() {
   const [tickerColor, setTickerColor] = useState('rainbow');
   const [tickerBusy, setTickerBusy] = useState(false);
   const [tickerMessage, setTickerMessage] = useState('');
+  const [homepagePosts, setHomepagePosts] = useState<Array<{ id: string; text: string; imageData?: string }>>([]);
+  const [homepagePostText, setHomepagePostText] = useState('');
+  const [homepagePostImage, setHomepagePostImage] = useState('');
+  const [homepagePostBusy, setHomepagePostBusy] = useState(false);
+  const [homepagePostMessage, setHomepagePostMessage] = useState('');
 
   useEffect(() => {
     if (!authUser || !isSuperAdmin(authUser) || section !== 'subscriptions') return;
@@ -1015,6 +1034,29 @@ export default function App() {
       notify(error instanceof Error ? error.message : (language === 'hi' ? 'रजिस्ट्रेशन सेव नहीं हुआ। Firestore Rules जाँचें।' : 'Registration failed. Check Firestore rules.'));
     }
   };
+  useEffect(() => {
+    if (!authUser || !isSuperAdmin(authUser) || section !== 'overview' || !firebaseConfigured) return;
+    const unsubscribe = onSnapshot(collection(db, 'homepagePosts'), snapshot => {
+      setHomepagePosts(snapshot.docs.map(item => ({ id: item.id, text: String(item.data().text || ''), imageData: String(item.data().imageData || '') })));
+    }, error => setHomepagePostMessage('पोस्ट लोड नहीं हुई: ' + error.message));
+    return unsubscribe;
+  }, [authUser, section]);
+  const saveHomepagePost = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!authUser || !isSuperAdmin(authUser) || !homepagePostText.trim()) return;
+    setHomepagePostBusy(true); setHomepagePostMessage('');
+    try {
+      await addDoc(collection(db, 'homepagePosts'), { text: homepagePostText.trim().slice(0, 3000), imageData: homepagePostImage, createdAt: serverTimestamp(), createdBy: authUser.email || '' });
+      setHomepagePostText(''); setHomepagePostImage('');
+      setHomepagePostMessage('पोस्ट होम पेज पर प्रकाशित हो गई।');
+    } catch (error) { setHomepagePostMessage(error instanceof Error ? error.message : 'पोस्ट सेव नहीं हुई। Firestore Rules जाँचें।'); }
+    finally { setHomepagePostBusy(false); }
+  };
+  const deleteHomepagePost = async (item: { id: string; text: string }) => {
+    if (!authUser || !isSuperAdmin(authUser) || !window.confirm('यह पोस्ट होम पेज से हटाएँ?')) return;
+    try { await deleteDoc(doc(db, 'homepagePosts', item.id)); setHomepagePostMessage('पोस्ट हटा दी गई।'); }
+    catch (error) { setHomepagePostMessage(error instanceof Error ? error.message : 'पोस्ट हटाई नहीं जा सकी।'); }
+  };
   const saveTickerMessage = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!authUser || !isSuperAdmin(authUser) || !tickerDraft.trim()) { setTickerMessage('पहले सूचना का टेक्स्ट लिखें।'); return; }
@@ -1093,6 +1135,17 @@ export default function App() {
         {section === 'overview' && <>
           {dashboardError && <div className="setup-banner" role="alert"><div className="setup-icon"><ShieldCheck size={20}/></div><div className="setup-copy"><strong>Firebase डेटा लोड नहीं हुआ</strong><p>{dashboardError}</p></div></div>}
           {dashboardLoading && <div className="empty-state">Firebase से असली डेटा लोड हो रहा है…</div>}
+          <section className="ticker-admin-panel" style={{ marginBottom: 22 }}>
+            <div className="ticker-admin-heading"><div><span className="modal-eyebrow">HOMEPAGE POSTS</span><h2>होम पेज पर टेक्स्ट और इमेज पोस्ट करें</h2><p>यह पोस्ट सभी वेबसाइट विज़िटर को होम पेज पर दिखेगी। केवल Super Admin पोस्ट जोड़ या हटा सकता है।</p></div></div>
+            <form className="ticker-admin-form" onSubmit={saveHomepagePost} style={{ display: 'grid', gap: 12 }}>
+              <label>पोस्ट का टेक्स्ट<textarea value={homepagePostText} onChange={event => setHomepagePostText(event.target.value)} maxLength={3000} rows={4} placeholder="यहाँ अपनी सूचना, घोषणा या संदेश लिखें…" required /></label>
+              <label>इमेज जोड़ें (वैकल्पिक)<input type="file" accept="image/png,image/jpeg,image/webp" onChange={async event => { const file = event.currentTarget.files?.[0]; if (!file) return; try { setHomepagePostImage(await compressDashboardImage(file, 150000)); setHomepagePostMessage('इमेज तैयार है। पोस्ट करने के लिए बटन दबाएँ।'); } catch (error) { setHomepagePostMessage(error instanceof Error ? error.message : 'इमेज तैयार नहीं हुई।'); } }} /></label>
+              {homepagePostImage && <img src={homepagePostImage} alt="पोस्ट इमेज पूर्वावलोकन" style={{ maxWidth: 320, maxHeight: 220, objectFit: 'contain', borderRadius: 12, background: '#fff' }} />}
+              <button type="submit" className="primary-button" disabled={homepagePostBusy || !homepagePostText.trim()}>{homepagePostBusy ? 'पोस्ट हो रही है…' : 'होम पेज पर पोस्ट करें'} <Plus size={16}/></button>
+            </form>
+            {homepagePostMessage && <p className="ticker-admin-message" role="status">{homepagePostMessage}</p>}
+            <div className="ticker-admin-list">{homepagePosts.length ? homepagePosts.map(item => <div className="ticker-admin-row" key={item.id}><p>{item.text}</p>{item.imageData && <img src={item.imageData} alt="" style={{ width: 70, height: 50, objectFit: 'cover', borderRadius: 8 }} />}<button type="button" className="icon-button" onClick={() => void deleteHomepagePost(item)} aria-label="पोस्ट हटाएँ"><Trash2 size={17}/></button></div>) : <p className="ticker-admin-empty">अभी कोई होम पेज पोस्ट नहीं है।</p>}</div>
+          </section>
           <section className="ticker-admin-panel">
             <div className="ticker-admin-heading"><div><span className="modal-eyebrow">HOMEPAGE MESSAGE BAR</span><h2>रंगीन स्क्रॉलिंग टेक्स्ट</h2><p>यह सूचना होम पेज पर हेडिंग के नीचे अपने-आप चलेगी। इसे केवल Super Admin जोड़ या हटा सकता है।</p></div></div>
             <form className="ticker-admin-form" onSubmit={saveTickerMessage}>
