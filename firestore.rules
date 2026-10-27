@@ -78,7 +78,7 @@ service cloud.firestore {
         && request.resource.data.mission is string
         && request.resource.data.mission.size() <= 1000
         && request.resource.data.imageData is string
-        && request.resource.data.imageData.size() <= 180000
+        && request.resource.data.imageData.size() <= 250000
         && (!request.resource.data.keys().hasAny(['paymentProofData'])
           || (request.resource.data.paymentProofData is string
             && request.resource.data.paymentProofData.size() <= 180000))
