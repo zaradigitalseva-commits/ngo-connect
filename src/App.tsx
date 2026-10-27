@@ -484,6 +484,7 @@ function PublicHomeNgoCards({ language }: { language: Language }) {
               </div>
             </div>
             <h3 style={{ width: '100%', flex: '0 0 auto', margin: '3px 0 0', fontSize: 'clamp(10px, 1.2vw, 13px)', lineHeight: 1.15, fontWeight: 950, letterSpacing: '.2px', color: '#fff', textAlign: 'center', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', textShadow: '0 2px 0 rgba(0,0,0,.28)' }} title={ngo.name}>{ngo.name}</h3>
+            <a href={'/ngo/' + encodeURIComponent(ngo.id)} onClick={event => event.stopPropagation()} aria-label={(hi ? 'NGO खोलें: ' : 'Open NGO: ') + ngo.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', width: 'fit-content', maxWidth: '100%', marginTop: 3, padding: '4px 12px', borderRadius: 999, background: 'linear-gradient(180deg,#fff,#e2e8f0)', color: '#0f172a', border: '1px solid rgba(255,255,255,.9)', boxShadow: '0 3px 0 rgba(15,23,42,.35)', fontSize: 11, lineHeight: 1.1, fontWeight: 900, textDecoration: 'none', whiteSpace: 'nowrap' }}>{hi ? 'NGO खोलें ↗' : 'Open NGO ↗'}</a>
           </div>
         </article>)}</div>}
     <div className="home-ngo-view-all"><a className="outline-button" href="/ngo-list">{hi ? 'सभी NGO देखें' : 'View all NGOs'} <ArrowUpRight size={16}/></a></div>
