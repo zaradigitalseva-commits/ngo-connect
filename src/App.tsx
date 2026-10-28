@@ -950,17 +950,16 @@ export default function App() {
     return unsubscribe;
   }, []);
   useEffect(() => {
-    // NGO owners should land in their main management dashboard after login,
-    // regardless of whether they started from the homepage or the older admin URL.
-    // Platform administrators keep the platform dashboard and can still review all NGOs.
-    if (!authUser || isSuperAdmin(authUser)) return;
+    // Only redirect a signed-in user when an NGO is actually linked to this account.
+    // Pending applicants and regular visitors must stay on the homepage so the
+    // registration modal and public navigation do not disappear unexpectedly.
+    if (!authUser || isSuperAdmin(authUser) || !hasOwnedNgo) return;
     const path = window.location.pathname;
-    // Keep the legacy NGO Admin route available: it contains the membership application review screen.
-    // Only send owners from the homepage to their workspace; redirecting /ngo-admin hides its own page.
+    // Keep registration links and the legacy NGO Admin membership-review page intact.
     if (path === '/' && new URLSearchParams(window.location.search).get('register') !== '1') {
       window.location.replace('/ngo-workspace');
     }
-  }, [authUser]);
+  }, [authUser, hasOwnedNgo]);
   const loginAsSuperAdmin = async () => {
     if (!auth) return;
     setAuthError('');
