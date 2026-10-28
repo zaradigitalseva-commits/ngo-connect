@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { GoogleAuthProvider, getRedirectResult, onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut, type User } from 'firebase/auth';
-import { ArrowLeft, ArrowUpRight, BadgeCheck, Bell, Building2, CalendarDays, CheckCircle2, ChevronDown, CircleHelp, ClipboardList, FileBadge, FileText, Globe2, HandCoins, HeartHandshake, LayoutDashboard, Leaf, LogOut, MapPin, Menu, Plus, Search, ShieldCheck, Trash2, Users, Wallet, X } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, BadgeCheck, Bell, Building2, CalendarDays, CheckCircle2, ChevronDown, CircleHelp, ClipboardList, FileBadge, FileText, Globe2, HandCoins, HeartHandshake, LayoutDashboard, Leaf, LogOut, MapPin, Menu, Plus, Search, ShieldCheck, Trash2, Users, X } from 'lucide-react';
 import { auth, db, firebaseConfigured } from './firebase';
 import { MemberIDPortal, MemberVerifyPage, NgoAdminPortal } from './MemberIDPortal';
 import { NgoWorkspacePortal } from './NgoWorkspace';
@@ -697,7 +697,6 @@ export default function App() {
   };
   const [liveNgos, setLiveNgos] = useState<DashboardNgo[]>([]);
   const [liveMembers, setLiveMembers] = useState<DashboardRecord[]>([]);
-  const [liveTransactions, setLiveTransactions] = useState<DashboardRecord[]>([]);
   const [liveEvents, setLiveEvents] = useState<DashboardRecord[]>([]);
   const [liveDocuments, setLiveDocuments] = useState<DashboardRecord[]>([]);
   const [dashboardLoading, setDashboardLoading] = useState(true);
@@ -744,14 +743,12 @@ export default function App() {
     });
     let ngoDocs: any[] = [];
     let members: DashboardRecord[] = [];
-    let transactions: DashboardRecord[] = [];
     let events: DashboardRecord[] = [];
     let documents: DashboardRecord[] = [];
     const refresh = () => {
       if (!active) return;
       setLiveNgos(updateNgos(ngoDocs, members));
       setLiveMembers(members);
-      setLiveTransactions(transactions);
       setLiveEvents(events);
       setLiveDocuments(documents);
       setDashboardLoading(false);
@@ -761,12 +758,6 @@ export default function App() {
       onSnapshot(collection(db, 'ngoMembers'), snap => { members = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord)); refresh(); }, error => { if (active) setDashboardError(`सदस्य (ngoMembers): ${error.message}`); }),
       onSnapshot(firestoreQuery(collection(db, 'ngoEvents'), where('approvalStatus', '==', 'APPROVED')), snap => { events = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord)); refresh(); }, error => { if (active) setDashboardError(`स्वीकृत कार्यक्रम (ngoEvents): ${error.message}`); }),
       onSnapshot(collection(db, 'ngoDocuments'), snap => { documents = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord)); refresh(); }, error => { if (active) setDashboardError(`दस्तावेज़ (ngoDocuments): ${error.message}`); }),
-      // Super Admin may view only finance records explicitly published by the NGO.
-      // Never subscribe to the full private transactions collection.
-      onSnapshot(firestoreQuery(collection(db, 'ngoTransactions'), where('approvalStatus', '==', 'APPROVED')), snap => {
-        transactions = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord));
-        refresh();
-      }, error => { if (active) setDashboardError(`स्वीकृत वित्तीय रिकॉर्ड (ngoTransactions): ${error.message}`); }),
     ];
     return () => { active = false; unsubscribers.forEach(unsubscribe => unsubscribe()); };
   }, [authUser]);
