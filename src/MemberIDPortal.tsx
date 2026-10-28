@@ -126,7 +126,33 @@ export function NgoAdminPortal({ authUser, language }: { authUser: User; languag
   const reviewContent = async (record: ModerationRecord, status: 'APPROVED' | 'REJECTED') => {
     if (!isPlatformAdmin(authUser)) return;
     setBusy(true); setMessage('');
-    try { await updateDoc(doc(db, record.collection, record.id), { approvalStatus: status, reviewedBy: authUser.uid, reviewedAt: serverTimestamp(), updatedAt: serverTimestamp() }); setMessage(status === 'APPROVED' ? 'जानकारी मंज़ूर की गई।' : 'जानकारी अस्वीकार की गई।'); }
+    try {
+      const batch = writeBatch(db);
+      batch.update(doc(db, record.collection, record.id), { approvalStatus: status, reviewedBy: authUser.uid, reviewedAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      if (record.collection === 'ngoMembers') {
+        const publicRef = doc(db, 'ngoPublicTeam', record.id);
+        if (status === 'APPROVED' && String(record.data.status || 'ACTIVE').toUpperCase() === 'ACTIVE') {
+          batch.set(publicRef, {
+            ngoId: record.ngoId, name: String(record.data.name || ''), role: String(record.data.role || 'MEMBER'),
+            designation: String(record.data.designation || record.data.role || 'Member'),
+            location: String(record.data.location || ''), status: 'ACTIVE',
+            approvalStatus: 'APPROVED', updatedAt: serverTimestamp()
+          });
+        } else batch.delete(publicRef);
+      }
+      if (record.collection === 'ngoTransactions') {
+        const publicRef = doc(db, 'ngoPublicFinance', record.id);
+        if (status === 'APPROVED') {
+          batch.set(publicRef, {
+            ngoId: record.ngoId, type: String(record.data.type || ''),
+            amount: Number(record.data.amount || 0), category: String(record.data.category || ''),
+            date: String(record.data.date || ''), approvalStatus: 'APPROVED', updatedAt: serverTimestamp()
+          });
+        } else batch.delete(publicRef);
+      }
+      await batch.commit();
+      setMessage(status === 'APPROVED' ? 'जानकारी मंज़ूर की गई।' : 'जानकारी अस्वीकार की गई।');
+    }
     catch (error) { setMessage(error instanceof Error ? error.message : 'Review failed. Check Firestore rules.'); }
     finally { setBusy(false); }
   };
