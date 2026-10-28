@@ -7,7 +7,7 @@ import { NgoWorkspacePortal } from './NgoWorkspace';
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, query as firestoreQuery, serverTimestamp, setDoc, where, runTransaction, Timestamp, updateDoc, deleteField } from 'firebase/firestore';
 
 const SUPER_ADMIN_EMAILS = ['ngogrant454@gmail.com', 'zaradigitalseva@gmail.com'];
-const isSuperAdmin = (user: User | null) => Boolean(user?.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase()) && user.providerData.some(provider => provider.providerId === 'google.com'));
+const isSuperAdmin = (user: User | null) => Boolean(user?.email && SUPER_ADMIN_EMAILS.includes(user.email.trim().toLowerCase()));
 
 type Language = 'en' | 'hi';
 type Section = 'overview' | 'ngos' | 'members' | 'finance' | 'events' | 'documents' | 'subscriptions';
