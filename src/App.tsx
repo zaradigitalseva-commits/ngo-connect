@@ -17,11 +17,10 @@ const copy = {
 };
 const nav = [
   { id: 'overview' as const, icon: LayoutDashboard, key: 'overview' as const }, { id: 'ngos' as const, icon: HeartHandshake, key: 'ngos' as const },
-  { id: 'members' as const, icon: Users, key: 'members' as const },
   { id: 'events' as const, icon: CalendarDays, key: 'events' as const }, { id: 'documents' as const, icon: FileText, key: 'documents' as const },
   { id: 'subscriptions' as const, icon: BadgeCheck, key: 'subscriptions' as const }
 ];
-type DashboardNgo = { id: string; name: string; type: string; city: string; status: string; ownerUid: string; people: number; imageData?: string; mission?: string; state?: string };
+type DashboardNgo = { id: string; name: string; type: string; city: string; status: string; ownerUid: string; people: number | null; imageData?: string; mission?: string; state?: string };
 type DashboardRecord = Record<string, any> & { id: string };
 type SubscriptionPlan = { id: string; name: string; price: number; durationDays: number; description: string; active: boolean };
 
@@ -737,25 +736,24 @@ export default function App() {
     let active = true;
     setDashboardLoading(true);
     setDashboardError('');
-    const updateNgos = (ngoDocs: any[], members: DashboardRecord[]) => ngoDocs.map(d => {
+    // Super Admin must never subscribe to ngoMembers: member records are private to each NGO owner.
+    const updateNgos = (ngoDocs: any[]) => ngoDocs.map(d => {
       const data = d.data();
-      return { id: d.id, name: String(data.name || data.ngoName || 'NGO'), type: String(data.type || data.category || data.mission || 'Social organization'), city: String(data.city || data.district || data.location || data.state || '—'), status: String(data.status || 'UNKNOWN'), ownerUid: String(data.ownerUid || ''), people: members.filter(m => m.ngoId === d.id).length, imageData: String(data.imageData || data.logoUrl || data.logo || data.registrationFormData?.imageData || '') };
+      return { id: d.id, name: String(data.name || data.ngoName || 'NGO'), type: String(data.type || data.category || data.mission || 'Social organization'), city: String(data.city || data.district || data.location || data.state || '—'), status: String(data.status || 'UNKNOWN'), ownerUid: String(data.ownerUid || ''), people: null, imageData: String(data.imageData || data.logoUrl || data.logo || data.registrationFormData?.imageData || '') };
     });
     let ngoDocs: any[] = [];
-    let members: DashboardRecord[] = [];
     let events: DashboardRecord[] = [];
     let documents: DashboardRecord[] = [];
     const refresh = () => {
       if (!active) return;
-      setLiveNgos(updateNgos(ngoDocs, members));
-      setLiveMembers(members);
+      setLiveNgos(updateNgos(ngoDocs));
+      setLiveMembers([]);
       setLiveEvents(events);
       setLiveDocuments(documents);
       setDashboardLoading(false);
     };
     const unsubscribers = [
       onSnapshot(collection(db, 'ngos'), snap => { ngoDocs = snap.docs; refresh(); }, error => { if (active) setDashboardError(`NGO सूची (ngos): ${error.message}`); }),
-      onSnapshot(collection(db, 'ngoMembers'), snap => { members = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord)); refresh(); }, error => { if (active) setDashboardError(`सदस्य (ngoMembers): ${error.message}`); }),
       onSnapshot(firestoreQuery(collection(db, 'ngoEvents'), where('approvalStatus', '==', 'APPROVED')), snap => { events = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord)); refresh(); }, error => { if (active) setDashboardError(`स्वीकृत कार्यक्रम (ngoEvents): ${error.message}`); }),
       onSnapshot(collection(db, 'ngoDocuments'), snap => { documents = snap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardRecord)); refresh(); }, error => { if (active) setDashboardError(`दस्तावेज़ (ngoDocuments): ${error.message}`); }),
     ];
