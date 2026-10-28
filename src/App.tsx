@@ -238,7 +238,7 @@ function PublicNgoSite({ language, setLanguage, ngoId, authUser, onLogin }: { la
 }
 
 
-function PublicNgoList({ language, setLanguage }: { language: Language; setLanguage: (language: Language) => void }) {
+function PublicOfficialDirectory({ language, setLanguage }: { language: Language; setLanguage: (language: Language) => void }) {
   const hi = language === 'hi';
 
   return <div className="public-site ngo-directory-site">
@@ -267,6 +267,56 @@ function PublicNgoList({ language, setLanguage }: { language: Language; setLangu
         </div>
         <a className="primary-button official-directory-button" href="https://thenationaltrust.in/content/registered_organization.php" target="_blank" rel="noopener noreferrer">{hi ? 'आधिकारिक NGO सूची खोलें' : 'Open official NGO directory'} <ArrowUpRight size={18}/></a>
         <p className="official-directory-note">{hi ? 'नोट: इस पेज पर All NGO Connect में रजिस्टर किए गए NGO कार्ड नहीं दिखाए जाते। सरकारी रिकॉर्ड सीधे आधिकारिक वेबसाइट पर देखे जा सकते हैं।' : 'Note: NGO cards registered on All NGO Connect are not shown on this page. Government records can be viewed directly on the official website.'}</p>
+      </section>
+      <footer className="ngo-directory-footer">© 2026 All NGO Connect · {hi ? 'बेहतर बदलाव के लिए साथ आएँ।' : 'Together for better impact.'}</footer>
+    </main>
+  </div>;
+}
+
+
+function PublicNgoList({ language, setLanguage }: { language: Language; setLanguage: (language: Language) => void }) {
+  const hi = language === 'hi';
+  const [ngos, setNgos] = useState<Array<{id:string; name:string; type:string; state:string; district:string; mission:string; imageData:string; status:string}>>([]);
+  const [searchText, setSearchText] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  useEffect(() => {
+    const activeStatuses = ['LIVE','ACTIVE','APPROVED','Live','Active','Approved','live','active','approved'];
+    const unsubscribe = onSnapshot(firestoreQuery(collection(db, 'ngos'), where('status', 'in', activeStatuses)), snapshot => {
+      const rows = snapshot.docs.map(item => {
+        const data = item.data();
+        return { id:item.id, name:String(data.name || data.ngoName || 'NGO'), type:String(data.type || data.category || 'Social organization'), state:String(data.state || ''), district:String(data.district || data.city || data.location || ''), mission:String(data.mission || data.description || ''), imageData:String(data.imageData || data.logoData || data.logo || ''), status:String(data.status || '') };
+      }).sort((a,b) => a.name.localeCompare(b.name));
+      setNgos(rows); setLoading(false); setLoadError('');
+    }, error => { setLoading(false); setLoadError(error.message); setNgos([]); });
+    return unsubscribe;
+  }, []);
+  const filtered = ngos.filter(ngo => [ngo.name,ngo.type,ngo.state,ngo.district,ngo.mission].join(' ').toLowerCase().includes(searchText.trim().toLowerCase()));
+  return <div className="public-site ngo-directory-site">
+    <header className="public-header">
+      <a className="public-brand" href="/" aria-label="All NGO Connect home"><span className="brand-mark"><Leaf size={23}/></span><span className="brand-name-stack"><span className="brand-name-banner"><span>All NGO</span><span>Connect</span></span><small>{hi ? 'मजबूत समुदाय। बेहतर बदलाव।' : 'Stronger communities. Better impact.'}</small></span></a>
+      <div className="public-actions">
+        <button className="language-button" onClick={() => setLanguage(hi ? 'en' : 'hi')}>{hi ? 'English' : 'हिन्दी'}</button>
+        <a className="outline-button" href="/">{hi ? 'होम पेज' : 'Home page'}</a>
+        <a className="primary-button" href="/official-ngo-list">{hi ? 'NGO सूची' : 'Official NGO List'} <ArrowUpRight size={17}/></a>
+      </div>
+    </header>
+    <main className="ngo-directory-main">
+      <a className="directory-back-link" href="/"><ArrowLeft size={17}/>{hi ? 'मुख्य पेज पर वापस जाएँ' : 'Back to home'}</a>
+      <section className="ngo-directory-heading">
+        <span className="public-kicker"><HeartHandshake size={15}/>{hi ? 'ALL NGO CONNECT · सार्वजनिक सूची' : 'ALL NGO CONNECT · PUBLIC DIRECTORY'}</span>
+        <h1>{hi ? 'हमसे जुड़े NGO की सूची' : 'NGOs Connected to All NGO Connect'}</h1>
+        <p>{hi ? 'यहाँ All NGO Connect पर स्वीकृत और सक्रिय NGO की जानकारी मिलेगी। नाम, राज्य या जिले से खोजें।' : 'Browse approved and active organizations registered with All NGO Connect. Search by name, state or district.'}</p>
+      </section>
+      <section className="ngo-directory-panel">
+        <label className="ngo-directory-search"><Search size={19}/><input value={searchText} onChange={e => setSearchText(e.target.value)} placeholder={hi ? 'NGO का नाम, राज्य या जिला खोजें…' : 'Search NGO name, state or district…'} /></label>
+        <div className="ngo-directory-count">{filtered.length} {hi ? 'NGO मिलीं' : 'NGOs found'}</div>
+        {loading ? <div className="ngo-directory-empty"><span className="directory-loader"/><p>{hi ? 'NGO सूची लोड हो रही है…' : 'Loading NGO directory…'}</p></div> :
+          loadError ? <div className="ngo-directory-empty"><Building2 size={30}/><p>{hi ? 'NGO सूची लोड नहीं हो सकी। कृपया बाद में कोशिश करें।' : 'Could not load the NGO directory. Please try again later.'}</p></div> :
+          filtered.length ? <div className="ngo-directory-grid">{filtered.map(ngo => <a className="ngo-directory-card" href={`/ngo/${encodeURIComponent(ngo.id)}`} key={ngo.id}>
+            <div className="ngo-directory-card-top">{ngo.imageData ? <img src={ngo.imageData} alt="" loading="lazy"/> : <span className="ngo-directory-card-placeholder"><Building2 size={30}/></span>}<span className="ngo-directory-status">{hi ? 'सक्रिय' : 'Active'}</span></div>
+            <div className="ngo-directory-card-body"><h2>{ngo.name}</h2><p className="ngo-directory-card-type">{ngo.type}</p><p className="ngo-directory-location"><MapPin size={15}/>{[ngo.district,ngo.state].filter(Boolean).join(', ') || (hi ? 'स्थान उपलब्ध नहीं' : 'Location not provided')}</p>{ngo.mission && <p className="ngo-directory-card-mission">{ngo.mission}</p>}<span className="ngo-directory-card-link">{hi ? 'NGO प्रोफ़ाइल देखें' : 'View NGO profile'} <ArrowUpRight size={16}/></span></div>
+          </a>)}</div> : <div className="ngo-directory-empty"><Building2 size={30}/><strong>{hi ? 'अभी कोई सक्रिय NGO नहीं मिला' : 'No active NGOs found yet'}</strong><p>{hi ? 'स्वीकृत NGO यहाँ अपने-आप दिखाई देंगे।' : 'Approved NGOs will appear here automatically.'}</p><a className="primary-button" href="/?register=1">{hi ? 'अपना NGO रजिस्टर करें' : 'Register your NGO'}</a></div>}
       </section>
       <footer className="ngo-directory-footer">© 2026 All NGO Connect · {hi ? 'बेहतर बदलाव के लिए साथ आएँ।' : 'Together for better impact.'}</footer>
     </main>
@@ -464,7 +514,7 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
     {registrationSuccessMessage && !showPublicRegistration && <div role="status" className="public-auth-error" style={{ maxWidth: 900, margin: '12px auto', padding: '12px 18px' }}>{registrationSuccessMessage}</div>}
     <header className="public-header main-site-header" style={{ position: "relative", overflow: "hidden", isolation: "isolate" }}><img className="main-header-slider-image" src={mainHeaderSlides[mainHeaderSlideIndex]} alt="" aria-hidden="true" />
       <a className="public-brand" href="/" aria-label="All NGO Connect home"><span className="brand-mark"><Leaf size={23}/></span><span className="brand-name-stack"><span className="brand-name-banner"><span>All NGO</span><span>Connect</span></span><small>{hi ? 'मजबूत समुदाय। बेहतर बदलाव।' : 'Stronger communities. Better impact.'}</small></span></a>
-      <nav className="public-nav"><a className="nav-3d nav-3d-green" href="/ngo-list">{hi ? "अपना NGO" : "Your NGO"}</a><a className="nav-3d nav-3d-green" href="/ngo-list">{hi ? "NGO सूची" : "NGO List"}</a><a className="nav-3d nav-3d-purple" href="/services">{hi ? "हमारी सेवाएँ" : "Our Services"}</a><a className="nav-3d nav-3d-blue" href="/about">{hi ? 'हमारे बारे में' : 'About'}</a><a className="nav-3d nav-3d-orange" href="/features">{hi ? 'सुविधाएँ' : 'Features'}</a><a className="nav-3d nav-3d-purple" href="/contact">{hi ? 'संपर्क' : 'Contact'}</a><a className="nav-3d nav-3d-pink" href="/privacy-policy">{hi ? 'प्राइवेसी पॉलिसी' : 'Privacy Policy'}</a></nav>
+      <nav className="public-nav"><a className="nav-3d nav-3d-green" href="/ngo-list">{hi ? "अपना NGO" : "Your NGO"}</a><a className="nav-3d nav-3d-green" href="/official-ngo-list">{hi ? "NGO सूची" : "NGO List"}</a><a className="nav-3d nav-3d-purple" href="/services">{hi ? "हमारी सेवाएँ" : "Our Services"}</a><a className="nav-3d nav-3d-blue" href="/about">{hi ? 'हमारे बारे में' : 'About'}</a><a className="nav-3d nav-3d-orange" href="/features">{hi ? 'सुविधाएँ' : 'Features'}</a><a className="nav-3d nav-3d-purple" href="/contact">{hi ? 'संपर्क' : 'Contact'}</a><a className="nav-3d nav-3d-pink" href="/privacy-policy">{hi ? 'प्राइवेसी पॉलिसी' : 'Privacy Policy'}</a></nav>
       <div className="public-actions"><button className="language-button" onClick={() => setLanguage(hi ? 'en' : 'hi')}>{hi ? 'English' : 'हिन्दी'}</button>{!registrationAlreadySubmitted && <button className="outline-button" onClick={() => { setRegistrationMessage(''); setShowPublicRegistration(true); }}>Register</button>}{authUser ? <div className="public-user"><button className="outline-button" onClick={onLogout}>{hi ? 'लॉगआउट' : 'Sign out'}</button></div> : <button className="primary-button" onClick={onLogin} disabled={!firebaseConfigured}><Globe2 size={17}/>Login</button>}</div>
     </header>
     <main>
@@ -1034,6 +1084,7 @@ export default function App() {
   }
   const publicNgoMatch = window.location.pathname.match(/^\/ngo\/([^/]+)\/?$/);
   if (publicNgoMatch) return <PublicNgoSite language={language} setLanguage={setLanguage} ngoId={decodeURIComponent(publicNgoMatch[1])} authUser={authUser} onLogin={loginAsSuperAdmin} />;
+  if (window.location.pathname.startsWith('/official-ngo-list')) return <PublicOfficialDirectory language={language} setLanguage={setLanguage} />;
   if (window.location.pathname.startsWith('/ngo-list')) return <PublicNgoList language={language} setLanguage={setLanguage} />;
   if (window.location.pathname.startsWith('/members')) return <MemberIDPortal authUser={authUser} onLogin={loginAsSuperAdmin} language={language} />;
   if (window.location.pathname.startsWith('/ngo-admin')) {
