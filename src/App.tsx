@@ -981,7 +981,7 @@ export default function App() {
     ...liveDocuments.map(row => ({ ...row, kind: 'document', when: row.createdAt?.toDate?.() || null })),
   ].sort((a, b) => (b.when?.getTime?.() || 0) - (a.when?.getTime?.() || 0)).slice(0, 5);
   const notify = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 3800); };
-  const chooseSection = (id: Section) => { setSection(id); setMobileMenu(false); };
+  const chooseSection = (id: Section) => { if (isSuperAdmin(authUser) && id === 'finance') { setSection('overview'); setMobileMenu(false); return; } setSection(id); setMobileMenu(false); };
   const submitRegistration = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!authUser || !authUser.email || !firebaseConfigured) { notify(language === 'hi' ? 'लॉगिन या Firebase सेटअप जाँचें।' : 'Check sign-in and Firebase configuration.'); return; }
@@ -1050,7 +1050,8 @@ export default function App() {
       setTickerMessage('सूचना हटा दी गई।');
     } catch (error) { setTickerMessage(error instanceof Error ? error.message : 'सूचना हटाई नहीं जा सकी।'); }
   };
-  const pageTitle = nav.find(item => item.id === section)?.key ?? 'overview';
+  const visibleNav = isSuperAdmin(authUser) ? nav.filter(item => item.id !== 'finance') : nav;
+  const pageTitle = visibleNav.find(item => item.id === section)?.key ?? 'overview';
 
   if (window.location.pathname.startsWith('/privacy-policy')) return <PrivacyPolicyPage language={language} setLanguage={setLanguage} />;
   if (window.location.pathname === '/about') return <PublicInfoPage language={language} setLanguage={setLanguage} page="about" />;
@@ -1083,7 +1084,7 @@ export default function App() {
     <aside className={`sidebar ${mobileMenu ? 'sidebar-open' : ''}`}>
       <div className="brand"><div className="brand-mark"><Leaf size={22} strokeWidth={2.4} /></div><div><div className="brand-name">All NGO Connect</div><div className="brand-caption">{t.tagline}</div></div><button className="icon-button close-menu" onClick={() => setMobileMenu(false)} aria-label="Close menu"><X size={19}/></button></div>
       <div className="workspace-label">{t.platform}</div>
-      <nav className="side-nav">{nav.map(item => <button key={item.id} className={`nav-item ${section === item.id ? 'nav-active' : ''}`} onClick={() => chooseSection(item.id)}><item.icon size={19}/><span>{t[item.key]}</span>{item.id === 'subscriptions' && <span className="nav-dot"/>}</button>)}</nav>
+      <nav className="side-nav">{visibleNav.map(item => <button key={item.id} className={`nav-item ${section === item.id ? 'nav-active' : ''}`} onClick={() => chooseSection(item.id)}><item.icon size={19}/><span>{t[item.key]}</span>{item.id === 'subscriptions' && <span className="nav-dot"/>}</button>)}</nav>
       <div className="sidebar-bottom"><div className="help-card"><div className="help-icon"><CircleHelp size={19}/></div><div><strong>{language === 'hi' ? 'मदद चाहिए?' : 'Need a hand?'}</strong><p>{language === 'hi' ? 'सेटअप गाइड देखें' : 'Explore the setup guide'}</p></div><ChevronDown size={15}/></div><div className="profile-row"><div className="avatar avatar-admin">NC</div><div className="profile-info"><strong>{language === 'hi' ? 'प्लेटफ़ॉर्म एडमिन' : 'Platform Admin'}</strong><span>{authUser?.email ?? 'Firebase connected'}</span></div></div></div>
     </aside>
     {mobileMenu && <button className="mobile-scrim" onClick={() => setMobileMenu(false)} aria-label="Close navigation"/>}
