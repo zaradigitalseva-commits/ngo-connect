@@ -302,32 +302,31 @@ function PublicNgoList({ language, setLanguage }: { language: Language; setLangu
   const filtered = ngos.filter(ngo => [ngo.name, ngo.category, ngo.location, ngo.mission].join(' ').toLocaleLowerCase().includes(searchText.trim().toLocaleLowerCase()));
 
   return <div className="public-site ngo-directory-site">
-    <header className="public-header" style={{ backgroundImage: "linear-gradient(90deg, rgba(255,255,255,.90), rgba(255,255,255,.60)), url(https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=2000&q=85)", backgroundPosition: "center", backgroundSize: "cover", backgroundRepeat: "no-repeat" }}>
+    <header className="public-header">
       <a className="public-brand" href="/" aria-label="All NGO Connect home"><span className="brand-mark"><Leaf size={23}/></span><span className="brand-name-stack"><span className="brand-name-banner"><span>All NGO</span><span>Connect</span></span><small>{hi ? 'मजबूत समुदाय। बेहतर बदलाव।' : 'Stronger communities. Better impact.'}</small></span></a>
       <div className="public-actions">
         <button className="language-button" onClick={() => setLanguage(hi ? 'en' : 'hi')}>{hi ? 'English' : 'हिन्दी'}</button>
         <a className="outline-button" href="/">{hi ? 'होम पेज' : 'Home page'}</a>
-        <a className="primary-button" href="/?register=1">{hi ? 'NGO रजिस्टर करें' : 'Register NGO'} <ArrowUpRight size={17}/></a>
+        <a className="primary-button" href="/?register=1">{hi ? 'अपना NGO रजिस्टर करें' : 'Register your NGO'} <ArrowUpRight size={17}/></a>
       </div>
     </header>
     <main className="ngo-directory-main">
       <a className="directory-back-link" href="/"><ArrowLeft size={17}/>{hi ? 'मुख्य पेज पर वापस जाएँ' : 'Back to home'}</a>
       <section className="ngo-directory-heading">
-        <span className="public-kicker"><HeartHandshake size={15}/>{hi ? 'ALL NGO CONNECT · सार्वजनिक सूची' : 'ALL NGO CONNECT · PUBLIC DIRECTORY'}</span>
-        <h1>{hi ? 'सभी NGO की सूची' : 'All NGOs'}</h1>
-        <p>{hi ? 'सक्रिय और स्वीकृत संस्थाओं को नाम, क्षेत्र या स्थान से खोजें।' : 'Find approved organizations by name, category, mission or location.'}</p>
+        <span className="public-kicker"><HeartHandshake size={15}/>{hi ? 'आधिकारिक संस्था निर्देशिका' : 'OFFICIAL ORGANISATION DIRECTORY'}</span>
+        <h1>{hi ? 'पंजीकृत NGO की सूची' : 'Registered NGO Directory'}</h1>
+        <p>{hi ? 'राज्य, जिला और संस्था के नाम से आधिकारिक सूची में खोजें। यह सूची National Trust की वेबसाइट से खुलती है।' : 'Search the official directory by state, district or organisation name. The records are provided by the National Trust website.'}</p>
       </section>
-      <section className="ngo-directory-panel">
-        <div className="ngo-directory-search">
-          <Search size={21}/>
-          <input value={searchText} onChange={event => setSearchText(event.target.value)} placeholder={hi ? 'NGO का नाम, क्षेत्र या स्थान खोजें…' : 'Search NGO name, category or location…'} aria-label={hi ? 'NGO खोजें' : 'Search NGOs'}/>
-          {searchText && <button type="button" onClick={() => setSearchText('')} aria-label={hi ? 'खोज साफ़ करें' : 'Clear search'}><X size={18}/></button>}
+      <section className="ngo-directory-panel official-directory-panel">
+        <div className="official-directory-info">
+          <span className="official-directory-icon"><Building2 size={30}/></span>
+          <div>
+            <h2>{hi ? 'National Trust — पंजीकृत संस्थाएँ' : 'National Trust — Registered Organisations'}</h2>
+            <p>{hi ? 'यह सरकारी स्रोत की सूची है। नवीनतम रिकॉर्ड और खोज के लिए आधिकारिक वेबसाइट खोलें।' : 'This is the official source. Open its website for current records and search filters.'}</p>
+          </div>
         </div>
-        <div className="ngo-directory-results"><strong>{loading ? (hi ? 'लोड हो रहा है…' : 'Loading…') : filtered.length}</strong><span>{hi ? 'NGO मिलीं' : 'NGOs found'}</span></div>
-        {loading ? <div className="ngo-directory-empty"><span className="directory-loader"/><p>{hi ? 'सभी सक्रिय NGO की सूची लोड हो रही है…' : 'Loading approved NGOs…'}</p></div>
-          : loadError ? <div className="ngo-directory-empty" role="alert"><Building2 size={32}/><p>{loadError}</p><button className="outline-button" onClick={() => window.location.reload()}>{hi ? 'फिर कोशिश करें' : 'Try again'}</button></div>
-          : filtered.length === 0 ? <div className="ngo-directory-empty"><Search size={32}/><strong>{searchText ? (hi ? 'कोई NGO नहीं मिली' : 'No NGOs found') : (hi ? 'अभी कोई सक्रिय NGO सूचीबद्ध नहीं है' : 'No approved NGOs listed yet')}</strong><p>{searchText ? (hi ? 'दूसरा शब्द खोजें या खोज साफ़ करें।' : 'Try another keyword or clear your search.') : (hi ? 'भुगतान सत्यापन और मंज़ूरी के बाद सक्रिय NGO यहाँ दिखाई देंगी।' : 'Approved and active NGOs will appear here.')}</p>{searchText && <button className="outline-button" onClick={() => setSearchText('')}>{hi ? 'खोज साफ़ करें' : 'Clear search'}</button>}</div>
-          : <div className="ngo-directory-grid">{filtered.map((ngo, index) => <article className="ngo-directory-card" key={ngo.id} role="link" tabIndex={0} aria-label={(hi ? 'NGO साइट खोलें: ' : 'Open NGO website: ') + ngo.name} onClick={() => { window.location.href = '/ngo/' + encodeURIComponent(ngo.id); }} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); window.location.href = '/ngo/' + encodeURIComponent(ngo.id); } }} style={{ cursor: 'pointer', transformStyle: 'preserve-3d', transition: 'transform .22s ease, box-shadow .22s ease', boxShadow: '0 12px 0 rgba(79,70,229,.10), 0 18px 30px rgba(79,70,229,.16)' }}><div className="ngo-directory-card-top">{ngo.imageData ? <img className="ngo-directory-card-image" src={ngo.imageData} alt={ngo.name + ' NGO'} style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: '14px' }} /> : <span className={`ngo-directory-logo directory-tone-${index % 4}`}>{ngo.name.slice(0, 2).toUpperCase()}</span>}<span className="directory-approved"><i/> {hi ? 'सक्रिय' : 'Active'}</span></div><h2>{ngo.name}</h2>{ngo.category && <span className="ngo-directory-category">{ngo.category}</span>}{ngo.location && <p className="ngo-directory-location"><MapPin size={15}/>{ngo.location}</p>}{ngo.mission && <p className="ngo-directory-mission">{ngo.mission}</p>}</article>)}</div>}
+        <a className="primary-button official-directory-button" href="https://thenationaltrust.in/content/registered_organization.php" target="_blank" rel="noopener noreferrer">{hi ? 'आधिकारिक NGO सूची खोलें' : 'Open official NGO directory'} <ArrowUpRight size={18}/></a>
+        <p className="official-directory-note">{hi ? 'नोट: इस पेज पर All NGO Connect में रजिस्टर किए गए NGO कार्ड नहीं दिखाए जाते। सरकारी रिकॉर्ड सीधे आधिकारिक वेबसाइट पर देखे जा सकते हैं।' : 'Note: NGO cards registered on All NGO Connect are not shown on this page. Government records can be viewed directly on the official website.'}</p>
       </section>
       <footer className="ngo-directory-footer">© 2026 All NGO Connect · {hi ? 'बेहतर बदलाव के लिए साथ आएँ।' : 'Together for better impact.'}</footer>
     </main>
