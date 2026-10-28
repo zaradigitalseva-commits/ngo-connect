@@ -2831,3 +2831,95 @@ input, select, textarea, button {
 .ngo-directory-card-mission{margin:12px 0 0;color:#64748b;font-size:12px;line-height:1.6;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .ngo-directory-card-link{display:inline-flex;align-items:center;gap:6px;margin-top:15px;color:#087f69;font-size:12px;font-weight:800}
 @media(max-width:600px){.ngo-directory-card-top{min-height:92px;padding:12px 14px}.ngo-directory-card-top img,.ngo-directory-card-placeholder{width:64px;height:64px}.ngo-directory-card-body{padding:13px 14px 15px}}
+
+
+/* NGO directory cards: compact layout with larger, clearer logos */
+.ngo-directory-grid {
+  gap: 12px;
+}
+.ngo-directory-card-top {
+  min-height: 104px;
+  padding: 8px 14px;
+  gap: 8px;
+}
+.ngo-directory-card-top img,
+.ngo-directory-card-placeholder {
+  width: 96px;
+  height: 96px;
+  flex: 0 0 96px;
+  border-radius: 13px;
+}
+.ngo-directory-card-top img {
+  object-fit: contain;
+  padding: 4px;
+}
+.ngo-directory-card-body {
+  padding: 11px 14px 13px;
+}
+.ngo-directory-card h2 {
+  margin-bottom: 4px;
+  font-size: 16px;
+  line-height: 1.3;
+}
+.ngo-directory-card-type {
+  padding: 4px 8px;
+}
+.ngo-directory-location {
+  margin: 7px 0 0;
+  font-size: 12px;
+}
+.ngo-directory-card-mission {
+  margin-top: 7px;
+  -webkit-line-clamp: 2;
+}
+.ngo-directory-card-link {
+  margin-top: 9px;
+}
+@media (max-width: 600px) {
+  .ngo-directory-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+  .ngo-directory-card-top {
+    min-height: 78px;
+    padding: 7px 9px;
+    gap: 5px;
+  }
+  .ngo-directory-card-top img,
+  .ngo-directory-card-placeholder {
+    width: 78px;
+    height: 78px;
+    flex-basis: 78px;
+    border-radius: 11px;
+  }
+  .ngo-directory-status {
+    font-size: 9px;
+    padding: 4px 6px;
+  }
+  .ngo-directory-card-body {
+    padding: 9px 10px 11px;
+  }
+  .ngo-directory-card h2 {
+    font-size: 14px;
+    line-height: 1.3;
+    margin-bottom: 4px;
+  }
+  .ngo-directory-card-type {
+    font-size: 10px;
+    padding: 4px 6px;
+  }
+  .ngo-directory-location {
+    font-size: 11px;
+    line-height: 1.4;
+    gap: 4px;
+  }
+  .ngo-directory-card-mission {
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .ngo-directory-card-link {
+    font-size: 10px;
+    gap: 3px;
+    margin-top: 8px;
+  }
+}
