@@ -6,7 +6,7 @@ service cloud.firestore {
 
     function isSuperAdmin() {
       return request.auth != null
-        && request.auth.token.email_verified == true
+        && (request.auth.token.email_verified == true || request.auth.token.firebase.sign_in_provider == 'google.com')
         && request.auth.token.email in [
           'ngogrant454@gmail.com',
           'zaradigitalseva@gmail.com'
