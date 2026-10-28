@@ -109,9 +109,12 @@ service cloud.firestore {
           && request.resource.data.status == resource.data.status
           && request.resource.data.ownerUid == resource.data.ownerUid
           && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['paymentReference', 'paymentStatus', 'paymentProofData', 'paymentReferenceUpdatedAt'])
+            .hasOnly(['paymentReference', 'paymentStatus', 'paymentProofData', 'paymentReferenceUpdatedAt', 'paymentReferenceUpdatedBy'])
           && request.resource.data.paymentReference is string
           && request.resource.data.paymentReference.size() <= 80
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['paymentReferenceUpdatedBy'])
+            || (request.resource.data.paymentReferenceUpdatedBy is string
+              && request.resource.data.paymentReferenceUpdatedBy == request.auth.token.email))
           && ((request.resource.data.paymentStatus == 'NOT_SUBMITTED'
                 && request.resource.data.paymentReference.size() == 0)
             || (request.resource.data.paymentStatus == 'SUBMITTED_FOR_REVIEW'
