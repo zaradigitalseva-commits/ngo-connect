@@ -981,7 +981,7 @@ export default function App() {
     ...liveDocuments.map(row => ({ ...row, kind: 'document', when: row.createdAt?.toDate?.() || null })),
   ].sort((a, b) => (b.when?.getTime?.() || 0) - (a.when?.getTime?.() || 0)).slice(0, 5);
   const notify = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 3800); };
-  const chooseSection = (id: Section) => { if (isSuperAdmin(authUser) && id === 'finance') { setSection('overview'); setMobileMenu(false); return; } setSection(id); setMobileMenu(false); };
+  const chooseSection = (id: Section) => { setSection(id); setMobileMenu(false); };
   const submitRegistration = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!authUser || !authUser.email || !firebaseConfigured) { notify(language === 'hi' ? 'लॉगिन या Firebase सेटअप जाँचें।' : 'Check sign-in and Firebase configuration.'); return; }
@@ -1050,7 +1050,7 @@ export default function App() {
       setTickerMessage('सूचना हटा दी गई।');
     } catch (error) { setTickerMessage(error instanceof Error ? error.message : 'सूचना हटाई नहीं जा सकी।'); }
   };
-  const visibleNav = isSuperAdmin(authUser) ? nav.filter(item => item.id !== 'finance') : nav;
+  const visibleNav = nav;
   const pageTitle = visibleNav.find(item => item.id === section)?.key ?? 'overview';
 
   if (window.location.pathname.startsWith('/privacy-policy')) return <PrivacyPolicyPage language={language} setLanguage={setLanguage} />;
