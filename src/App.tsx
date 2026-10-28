@@ -240,66 +240,6 @@ function PublicNgoSite({ language, setLanguage, ngoId, authUser, onLogin }: { la
 
 function PublicNgoList({ language, setLanguage }: { language: Language; setLanguage: (language: Language) => void }) {
   const hi = language === 'hi';
-  const [ngos, setNgos] = useState<Array<{ id: string; name: string; category: string; location: string; mission: string; imageData: string }>>([]);
-  const [searchText, setSearchText] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
-
-  useEffect(() => {
-    let active = true;
-    if (!firebaseConfigured) {
-      setLoading(false);
-      setLoadError(hi ? 'NGO सूची लोड करने के लिए Firebase सेटअप आवश्यक है।' : 'Firebase setup is required to load the NGO directory.');
-      return () => { active = false; };
-    }
-    // Use separate equality queries so Firestore Rules can safely verify each public status.
-    const statuses = ['LIVE', 'ACTIVE', 'APPROVED'];
-    const snapshotsByStatus = new Map<string, Array<{ id: string; name: string; category: string; location: string; mission: string; imageData: string; createdAtMs: number }>>();
-    const received = new Set<string>();
-    const unsubscribers = statuses.map(status => onSnapshot(
-      firestoreQuery(collection(db, 'ngos'), where('status', '==', status)),
-      snapshot => {
-        if (!active) return;
-        const records = snapshot.docs.map(item => {
-          const data = item.data();
-          const locationParts = [data.city, data.district, data.state].filter(value => typeof value === 'string' && value.trim()).map(String);
-          const dateValue = data.createdAt || data.registeredAt || data.registrationDate || data.updatedAt;
-          const createdAtMs = dateValue && typeof dateValue.toMillis === 'function'
-            ? dateValue.toMillis()
-            : dateValue instanceof Date ? dateValue.getTime()
-            : typeof dateValue === 'number' ? dateValue
-            : typeof dateValue === 'string' ? (Date.parse(dateValue) || 0) : 0;
-          return {
-            id: item.id,
-            name: String(data.name || data.ngoName || 'NGO'),
-            category: String(data.type || data.category || ''),
-            location: locationParts.filter((value, index) => locationParts.indexOf(value) === index).join(', ') || String(data.location || ''),
-            mission: String(data.mission || data.description || ''),
-            imageData: String(data.imageData || data.registrationFormData?.imageData || ''),
-            createdAtMs
-          };
-        });
-        snapshotsByStatus.set(status, records);
-        received.add(status);
-        const merged = new Map<string, typeof records[number]>();
-        snapshotsByStatus.forEach(rows => rows.forEach(row => merged.set(row.id, row)));
-        setNgos(Array.from(merged.values()).sort((a, b) => b.createdAtMs - a.createdAtMs || a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })));
-        setLoading(received.size < statuses.length);
-        setLoadError('');
-      },
-      error => {
-        if (!active) return;
-        const code = String((error as { code?: string })?.code || 'unknown');
-        setLoadError(hi
-          ? `NGO सूची लोड नहीं हुई (Firebase: ${code}). Firestore Rules और Firebase प्रोजेक्ट जाँचें।`
-          : `Could not load NGO directory (Firebase: ${code}). Check Firestore Rules and Firebase project.`);
-        setLoading(false);
-      }
-    ));
-    return () => { active = false; unsubscribers.forEach(unsubscribe => unsubscribe()); };
-  }, [hi]);
-
-  const filtered = ngos.filter(ngo => [ngo.name, ngo.category, ngo.location, ngo.mission].join(' ').toLocaleLowerCase().includes(searchText.trim().toLocaleLowerCase()));
 
   return <div className="public-site ngo-directory-site">
     <header className="public-header">
