@@ -156,8 +156,19 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
     // approved record also sends it back to the review queue.
     const mutable = { ...form, ...(kind === 'finance' ? { amount: Number(form.amount) } : {}), ngoId, approvalStatus: 'PENDING', updatedAt: serverTimestamp() };
     try {
-      if (editingId) await updateDoc(doc(db, activeModule.collection, editingId), mutable);
-      else await addDoc(collection(db, activeModule.collection), { ...mutable, createdBy: authUser.uid, createdAt: serverTimestamp() });
+      if (editingId) {
+        await updateDoc(doc(db, activeModule.collection, editingId), mutable);
+        if (kind === 'members') {
+          const publicRef = doc(db, 'ngoPublicTeam', editingId);
+          if ((await getDoc(publicRef)).exists()) await deleteDoc(publicRef);
+        }
+        if (kind === 'finance') {
+          const publicRef = doc(db, 'ngoPublicFinance', editingId);
+          if ((await getDoc(publicRef)).exists()) await deleteDoc(publicRef);
+        }
+      } else {
+        await addDoc(collection(db, activeModule.collection), { ...mutable, createdBy: authUser.uid, createdAt: serverTimestamp() });
+      }
       setMessage(hi ? '✅ रिकॉर्ड सेव हो गया। यह आपके NGO के रिकॉर्ड में अपडेट हो गया।' : '✅ Record saved and updated in your NGO workspace.');
       setForm(blank(kind)); setEditingId('');
     } catch (e) { setMessage(e instanceof Error ? e.message : (hi ? 'सेव नहीं हुआ। Firestore Rules जाँचें।' : 'Save failed. Check Firestore rules.')); }
@@ -166,7 +177,18 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
   const remove = async (row: RecordRow) => {
     if (!window.confirm(hi ? 'क्या आप यह रिकॉर्ड हमेशा के लिए हटाना चाहते हैं?' : 'Delete this record permanently?')) return;
     setBusy(true); setMessage('');
-    try { await deleteDoc(doc(db, activeModule.collection, row.id)); setMessage(hi ? 'रिकॉर्ड हटा दिया गया।' : 'Record deleted.'); }
+    try {
+      await deleteDoc(doc(db, activeModule.collection, row.id));
+      if (kind === 'members') {
+        const publicRef = doc(db, 'ngoPublicTeam', row.id);
+        if ((await getDoc(publicRef)).exists()) await deleteDoc(publicRef);
+      }
+      if (kind === 'finance') {
+        const publicRef = doc(db, 'ngoPublicFinance', row.id);
+        if ((await getDoc(publicRef)).exists()) await deleteDoc(publicRef);
+      }
+      setMessage(hi ? 'रिकॉर्ड हटा दिया गया।' : 'Record deleted.');
+    }
     catch (e) { setMessage(e instanceof Error ? e.message : 'Delete failed.'); }
     finally { setBusy(false); }
   };
