@@ -3035,3 +3035,6 @@ input, select, textarea, button {
     flex-wrap: wrap;
   }
 }
+/* Keep uploaded NGO logos neatly fitted inside admin dashboard logo tiles. */
+.ngo-logo img{display:block;width:100%;height:100%;object-fit:contain;border-radius:inherit;background:#fff;}
+.ngo-card .ngo-logo.large img{padding:2px;}
