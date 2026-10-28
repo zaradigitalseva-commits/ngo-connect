@@ -204,6 +204,8 @@ function PublicNgoSite({ language, setLanguage, ngoId, authUser, onLogin }: { la
                 if (!window.confirm(hi ? 'क्या इस सदस्य को NGO की सार्वजनिक टीम सूची से हटाना है? यह रिकॉर्ड स्थायी रूप से हट जाएगा।' : 'Remove this member from the public NGO team? This permanently deletes the record.')) return;
                 try {
                   await deleteDoc(doc(db, 'ngoMembers', person.id));
+                  const publicTeamRef = doc(db, 'ngoPublicTeam', person.id);
+                  if ((await getDoc(publicTeamRef)).exists()) await deleteDoc(publicTeamRef);
                   window.alert(hi ? 'टीम सदस्य हटा दिया गया।' : 'Team member deleted.');
                 } catch (error) {
                   window.alert(error instanceof Error ? error.message : (hi ? 'डिलीट नहीं हुआ। अनुमति जाँचें।' : 'Delete failed. Check permissions.'));
