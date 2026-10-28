@@ -410,7 +410,6 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
           return ['PENDING_PAYMENT', 'PENDING', 'SUBMITTED_FOR_REVIEW'].includes(status);
         });
         setHasPendingRegistration(pending);
-        if (pending) setShowPublicRegistration(false);
       },
       () => setHasPendingRegistration(false)
     );
@@ -419,7 +418,6 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
       snapshot => {
         const exists = !snapshot.empty;
         setHasOwnedNgo(exists);
-        if (exists) setShowPublicRegistration(false);
       },
       () => setHasOwnedNgo(false)
     );
@@ -428,7 +426,7 @@ function PublicHome({ language, setLanguage, authUser, onLogin, onLogout, authEr
       unsubscribeOwnedNgos();
     };
   }, [authUser]);
-  useEffect(() => { if (new URLSearchParams(window.location.search).get('register') === '1' && !registrationAlreadySubmitted) setShowPublicRegistration(true); }, [registrationAlreadySubmitted]);
+  useEffect(() => { if (new URLSearchParams(window.location.search).get('register') === '1') setShowPublicRegistration(true); }, []);
   const [registrationBusy, setRegistrationBusy] = useState(false);
   const [registrationMessage, setRegistrationMessage] = useState('');
   const [registrationSuccessMessage, setRegistrationSuccessMessage] = useState('');
