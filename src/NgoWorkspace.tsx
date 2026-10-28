@@ -152,7 +152,9 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
     if (kind === 'finance' && (!Number.isFinite(Number(form.amount)) || Number(form.amount) <= 0)) { setMessage(hi ? 'राशि शून्य से अधिक होनी चाहिए।' : 'Amount must be greater than zero.'); return; }
     if (kind === 'documents' && form.url && !/^https:\/\//i.test(form.url)) { setMessage(hi ? 'फाइल लिंक https:// से शुरू होना चाहिए।' : 'File URL must start with https://.'); return; }
     setBusy(true); setMessage('');
-    const mutable = { ...form, ...(kind === 'finance' ? { amount: Number(form.amount) } : {}), ngoId, approvalStatus: 'APPROVED', updatedAt: serverTimestamp() };
+    // NGO Admin submissions must wait for Super Admin review. Editing an
+    // approved record also sends it back to the review queue.
+    const mutable = { ...form, ...(kind === 'finance' ? { amount: Number(form.amount) } : {}), ngoId, approvalStatus: 'PENDING', updatedAt: serverTimestamp() };
     try {
       if (editingId) await updateDoc(doc(db, activeModule.collection, editingId), mutable);
       else await addDoc(collection(db, activeModule.collection), { ...mutable, createdBy: authUser.uid, createdAt: serverTimestamp() });
