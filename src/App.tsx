@@ -957,7 +957,7 @@ export default function App() {
     const path = window.location.pathname;
     // Keep the legacy NGO Admin route available: it contains the membership application review screen.
     // Only send owners from the homepage to their workspace; redirecting /ngo-admin hides its own page.
-    if (path === '/') {
+    if (path === '/' && new URLSearchParams(window.location.search).get('register') !== '1') {
       window.location.replace('/ngo-workspace');
     }
   }, [authUser]);
