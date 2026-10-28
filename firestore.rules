@@ -212,7 +212,9 @@ service cloud.firestore {
     }
 
     match /ngoMembers/{recordId} {
-      allow read: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
+      // Member lists are private: only the owning NGO admin may read its own members.
+      // Super Admin cannot read or list members across NGOs.
+      allow read: if ownsNgo(resource.data.ngoId);
       allow create: if isSuperAdmin() || (ownsNgo(request.resource.data.ngoId)
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.ngoId is string
