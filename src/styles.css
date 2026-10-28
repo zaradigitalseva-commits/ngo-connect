@@ -2923,3 +2923,115 @@ input, select, textarea, button {
     margin-top: 8px;
   }
 }
+
+
+/* Final tune: smaller NGO cards with prominent logos on every screen */
+.ngo-directory-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.ngo-directory-card {
+  border-radius: 13px;
+  box-shadow: 0 3px 12px rgba(15, 23, 42, 0.07);
+}
+.ngo-directory-card-top {
+  min-height: 94px;
+  box-sizing: border-box;
+  padding: 7px 10px;
+  gap: 7px;
+}
+.ngo-directory-card-top img,
+.ngo-directory-card-placeholder {
+  width: 88px;
+  height: 88px;
+  flex: 0 0 88px;
+  box-sizing: border-box;
+  border-radius: 12px;
+}
+.ngo-directory-status {
+  padding: 4px 7px;
+  font-size: 10px;
+}
+.ngo-directory-card-body {
+  padding: 9px 11px 11px;
+}
+.ngo-directory-card h2 {
+  font-size: 15px;
+  line-height: 1.3;
+  margin-bottom: 4px;
+}
+.ngo-directory-card-type {
+  font-size: 10px;
+  padding: 4px 7px;
+}
+.ngo-directory-location {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.ngo-directory-card-mission {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.4;
+  -webkit-line-clamp: 2;
+}
+.ngo-directory-card-link {
+  margin-top: 8px;
+  font-size: 11px;
+}
+@media (max-width: 900px) {
+  .ngo-directory-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+}
+@media (max-width: 600px) {
+  .ngo-directory-main {
+    width: calc(100% - 20px);
+  }
+  .ngo-directory-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .ngo-directory-card {
+    border-radius: 11px;
+  }
+  .ngo-directory-card-top {
+    min-height: 82px;
+    padding: 6px 7px;
+    gap: 4px;
+  }
+  .ngo-directory-card-top img,
+  .ngo-directory-card-placeholder {
+    width: 72px;
+    height: 72px;
+    flex-basis: 72px;
+    border-radius: 10px;
+    padding: 3px;
+  }
+  .ngo-directory-status {
+    font-size: 8px;
+    padding: 4px 5px;
+    white-space: nowrap;
+  }
+  .ngo-directory-card-body {
+    padding: 8px 9px 10px;
+  }
+  .ngo-directory-card h2 {
+    font-size: 13px;
+    overflow-wrap: anywhere;
+  }
+  .ngo-directory-card-type {
+    font-size: 9px;
+    padding: 3px 5px;
+  }
+  .ngo-directory-location {
+    font-size: 10px;
+    gap: 3px;
+  }
+  .ngo-directory-card-link {
+    font-size: 9px;
+    gap: 3px;
+    flex-wrap: wrap;
+  }
+}
