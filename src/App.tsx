@@ -1073,7 +1073,8 @@ export default function App() {
   if (window.location.pathname.startsWith('/official-ngo-list')) return <PublicOfficialDirectory language={language} setLanguage={setLanguage} />;
   if (window.location.pathname.startsWith('/ngo-list')) return <PublicNgoList language={language} setLanguage={setLanguage} />;
   if (window.location.pathname.startsWith('/members')) return <MemberIDPortal authUser={authUser} onLogin={loginAsSuperAdmin} language={language} />;
-  if (window.location.pathname.startsWith('/ngo-admin')) {
+  // The /ngo-admin link is for NGO owners. Platform Super Admins should land on the platform dashboard instead.
+  if (window.location.pathname.startsWith('/ngo-admin') && !isSuperAdmin(authUser)) {
     if (authUser) return <NgoAdminPortal authUser={authUser} language={language} />;
     return <main className="member-portal">
       <header className="member-portal-header"><a className="member-brand" href="/">All NGO Connect</a><a className="outline-button" href="/">होम</a></header>
