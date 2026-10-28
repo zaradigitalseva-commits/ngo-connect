@@ -949,17 +949,6 @@ export default function App() {
     });
     return unsubscribe;
   }, []);
-  useEffect(() => {
-    // Only redirect a signed-in user when an NGO is actually linked to this account.
-    // Pending applicants and regular visitors must stay on the homepage so the
-    // registration modal and public navigation do not disappear unexpectedly.
-    if (!authUser || isSuperAdmin(authUser) || !hasOwnedNgo) return;
-    const path = window.location.pathname;
-    // Keep registration links and the legacy NGO Admin membership-review page intact.
-    if (path === '/' && new URLSearchParams(window.location.search).get('register') !== '1') {
-      window.location.replace('/ngo-workspace');
-    }
-  }, [authUser, hasOwnedNgo]);
   const loginAsSuperAdmin = async () => {
     if (!auth) return;
     setAuthError('');
