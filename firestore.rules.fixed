@@ -6,7 +6,7 @@ service cloud.firestore {
 
     function isSuperAdmin() {
       return request.auth != null
-        && request.auth.token.email_verified == true
+        && (request.auth.token.email_verified == true || request.auth.token.firebase.sign_in_provider == 'google.com')
         && request.auth.token.email in [
           'ngogrant454@gmail.com',
           'zaradigitalseva@gmail.com'
@@ -66,7 +66,7 @@ service cloud.firestore {
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.email == request.auth.token.email
         && request.resource.data.status == 'PENDING_PAYMENT'
-        && request.resource.data.paymentStatus == 'SUBMITTED_FOR_REVIEW'
+        && request.resource.data.paymentStatus in ['NOT_SUBMITTED', 'SUBMITTED_FOR_REVIEW']
         && request.resource.data.name is string
         && request.resource.data.name.size() > 1
         && request.resource.data.name.size() <= 120
@@ -78,7 +78,7 @@ service cloud.firestore {
         && request.resource.data.mission is string
         && request.resource.data.mission.size() <= 1000
         && request.resource.data.imageData is string
-        && request.resource.data.imageData.size() <= 180000
+        && request.resource.data.imageData.size() <= 250000
         && (!request.resource.data.keys().hasAny(['paymentProofData'])
           || (request.resource.data.paymentProofData is string
             && request.resource.data.paymentProofData.size() <= 180000))
@@ -93,11 +93,36 @@ service cloud.firestore {
         && request.resource.data.planPrice is number && request.resource.data.planPrice > 0
         && request.resource.data.planDurationDays is int && request.resource.data.planDurationDays >= 1
         && request.resource.data.paymentReference is string
-        && request.resource.data.paymentReference.size() >= 4
         && request.resource.data.paymentReference.size() <= 80
+        && ((request.resource.data.paymentStatus == 'NOT_SUBMITTED'
+              && request.resource.data.paymentReference.size() == 0)
+          || (request.resource.data.paymentStatus == 'SUBMITTED_FOR_REVIEW'
+              && request.resource.data.paymentReference.size() >= 4))
         && request.resource.data.createdAt == request.time;
 
-      allow update, delete: if isSuperAdmin();
+      // An NGO owner may submit or correct payment details only while the
+      // registration is pending. Approval/status and identity fields stay protected.
+      allow update: if isSuperAdmin()
+        || (request.auth != null
+          && resource.data.ownerUid == request.auth.uid
+          && resource.data.status == 'PENDING_PAYMENT'
+          && request.resource.data.status == resource.data.status
+          && request.resource.data.ownerUid == resource.data.ownerUid
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['paymentReference', 'paymentStatus', 'paymentProofData', 'paymentReferenceUpdatedAt', 'paymentReferenceUpdatedBy'])
+          && request.resource.data.paymentReference is string
+          && request.resource.data.paymentReference.size() <= 80
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['paymentReferenceUpdatedBy'])
+            || (request.resource.data.paymentReferenceUpdatedBy is string
+              && request.resource.data.paymentReferenceUpdatedBy == request.auth.token.email))
+          && ((request.resource.data.paymentStatus == 'NOT_SUBMITTED'
+                && request.resource.data.paymentReference.size() == 0)
+            || (request.resource.data.paymentStatus == 'SUBMITTED_FOR_REVIEW'
+                && request.resource.data.paymentReference.size() >= 4))
+          && (!request.resource.data.keys().hasAny(['paymentProofData'])
+            || (request.resource.data.paymentProofData is string
+              && request.resource.data.paymentProofData.size() <= 180000)));
+      allow delete: if isSuperAdmin();
     }
 
     // Public payment QR: visitors can read, only admins can change it
@@ -234,8 +259,7 @@ service cloud.firestore {
         && request.resource.data.ngoId == resource.data.ngoId
         && (!resource.data.keys().hasAny(['createdBy']) || request.resource.data.createdBy == resource.data.createdBy)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','phone','email','photoData','role','status','designation','location','approvalStatus','source','applicationId','memberId','createdAt','updatedAt'])
-        && (request.resource.data.approvalStatus == resource.data.approvalStatus
-          || request.resource.data.approvalStatus == 'PENDING'
+        && (request.resource.data.approvalStatus == 'PENDING'
           || (request.resource.data.approvalStatus == 'APPROVED'
             && request.resource.data.source == 'memberApplication'
             && request.resource.data.applicationId is string
@@ -282,7 +306,7 @@ service cloud.firestore {
         && request.resource.data.location is string && request.resource.data.location.size() <= 300
         && request.resource.data.description is string && request.resource.data.description.size() <= 2000
         && request.resource.data.status in ['PLANNED','COMPLETED','CANCELLED']
-        && (!request.resource.data.keys().hasAny(['approvalStatus']) || request.resource.data.approvalStatus == 'PENDING')
+        && request.resource.data.approvalStatus == 'PENDING'
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time;
       allow update: if isSuperAdmin() || (ownsNgo(resource.data.ngoId)
@@ -294,7 +318,7 @@ service cloud.firestore {
         && request.resource.data.location is string && request.resource.data.location.size() <= 300
         && request.resource.data.description is string && request.resource.data.description.size() <= 2000
         && request.resource.data.status in ['PLANNED','COMPLETED','CANCELLED']
-        && (!request.resource.data.keys().hasAny(['approvalStatus']) || request.resource.data.approvalStatus == 'PENDING')
+        && request.resource.data.approvalStatus == 'PENDING'
         && request.resource.data.updatedAt == request.time);
       allow delete: if ownsNgo(resource.data.ngoId);
     }
@@ -307,16 +331,65 @@ service cloud.firestore {
         && request.resource.data.title is string && request.resource.data.title.size() > 0
         && request.resource.data.type in ['REPORT','CERTIFICATE','OTHER']
         && request.resource.data.url is string
-        && request.resource.data.approvalStatus == 'APPROVED'
+        && request.resource.data.approvalStatus == 'PENDING'
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time);
       allow update: if isSuperAdmin() || (ownsNgo(resource.data.ngoId)
         && request.resource.data.ngoId == resource.data.ngoId
         && request.resource.data.createdBy == resource.data.createdBy
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title','type','url','notes','approvalStatus','updatedAt'])
-        && request.resource.data.approvalStatus == 'APPROVED'
+        && request.resource.data.approvalStatus == 'PENDING'
         && request.resource.data.updatedAt == request.time);
       allow delete: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
+    }
+
+    match /ngoPublicTeam/{recordId} {
+      // Public-safe projection: no phone, email, photo, address, or application data.
+      allow read: if true;
+      allow create, update: if isSuperAdmin()
+        && request.resource.data.keys().hasOnly(['ngoId','name','role','designation','location','status','approvalStatus','updatedAt'])
+        && request.resource.data.keys().hasAll(['ngoId','name','role','designation','location','status','approvalStatus','updatedAt'])
+        && request.resource.data.ngoId is string
+        && request.resource.data.name is string
+        && request.resource.data.designation is string
+        && request.resource.data.location is string
+        && request.resource.data.status == 'ACTIVE'
+        && request.resource.data.approvalStatus == 'APPROVED'
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
+    }
+
+    match /ngoPublicFinance/{recordId} {
+      // Public-safe finance summary: never store donor names, notes, or creator identity.
+      allow read: if true;
+      allow create, update: if isSuperAdmin()
+        && request.resource.data.keys().hasOnly(['ngoId','type','amount','category','date','approvalStatus','updatedAt'])
+        && request.resource.data.keys().hasAll(['ngoId','type','amount','category','date','approvalStatus','updatedAt'])
+        && request.resource.data.ngoId is string
+        && request.resource.data.type in ['DONATION','EXPENSE']
+        && request.resource.data.amount is number
+        && request.resource.data.amount > 0
+        && request.resource.data.category is string
+        && request.resource.data.date is string
+        && request.resource.data.approvalStatus == 'APPROVED'
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if isSuperAdmin() || ownsNgo(resource.data.ngoId);
+    }
+
+    match /homepagePosts/{postId} {
+      allow read: if true;
+      allow create: if isSuperAdmin()
+        && request.resource.data.keys().hasOnly(['text', 'imageData', 'createdAt', 'createdBy'])
+        && request.resource.data.keys().hasAll(['text', 'imageData', 'createdAt', 'createdBy'])
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 3000
+        && request.resource.data.imageData is string
+        && request.resource.data.imageData.size() <= 250000
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.createdBy == request.auth.token.email;
+      allow update: if false;
+      allow delete: if isSuperAdmin();
     }
 
     match /publicTickerMessages/{messageId} {
