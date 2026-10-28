@@ -106,13 +106,15 @@ function PublicNgoSite({ language, setLanguage, ngoId, authUser, onLogin }: { la
   }, []);
   useEffect(() => {
     let active = true;
-    const unsubscribeTeam = onSnapshot(firestoreQuery(collection(db, 'ngoMembers'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => {
+    // Public team cards read a deliberately sanitized projection, never private member records.
+    const unsubscribeTeam = onSnapshot(firestoreQuery(collection(db, 'ngoPublicTeam'), where('ngoId', '==', ngoId)), snapshot => {
       if (!active) return;
-      setTeam(snapshot.docs.map(item => ({ id: item.id, ...item.data() } as Record<string, any>)).filter(person => person.approvalStatus === 'APPROVED' && String(person.status || 'ACTIVE').toUpperCase() === 'ACTIVE').sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))));
+      setTeam(snapshot.docs.map(item => ({ id: item.id, ...item.data() } as Record<string, any>)).filter(person => String(person.status || 'ACTIVE').toUpperCase() === 'ACTIVE').sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))));
     }, () => { if (active) setTeam([]); });
     const unsubscribeEvents = onSnapshot(firestoreQuery(collection(db, 'ngoEvents'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => setPublicEvents(snapshot.docs.map(d => ({id:d.id,...d.data()} as Record<string, any>)).filter(row => row.approvalStatus === 'APPROVED').sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')))), () => setPublicEvents([]));
     const unsubscribeDocuments = onSnapshot(firestoreQuery(collection(db, 'ngoDocuments'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => setPublicDocuments(snapshot.docs.map(d => ({id:d.id,...d.data()} as Record<string, any>)).filter(row => row.approvalStatus === 'APPROVED')), () => setPublicDocuments([]));
-    const unsubscribeFinance = onSnapshot(firestoreQuery(collection(db, 'ngoTransactions'), where('ngoId', '==', ngoId), where('approvalStatus', '==', 'APPROVED')), snapshot => setPublicFinance(snapshot.docs.map(d => ({id:d.id,...d.data()} as Record<string, any>)).filter(row => row.approvalStatus === 'APPROVED').sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')))), () => setPublicFinance([]));
+    // Public finance shows only an approved summary projection without donor names or notes.
+    const unsubscribeFinance = onSnapshot(firestoreQuery(collection(db, 'ngoPublicFinance'), where('ngoId', '==', ngoId)), snapshot => setPublicFinance(snapshot.docs.map(d => ({id:d.id,...d.data()} as Record<string, any>)).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')))), () => setPublicFinance([]));
     const unsubscribeNgo = onSnapshot(doc(db, 'ngos', ngoId), snapshot => {
       if (!active) return;
       if (!snapshot.exists() || !['LIVE', 'ACTIVE', 'APPROVED'].includes(String(snapshot.data().status || '').toUpperCase())) { setFailed(true); setNgo(null); }
@@ -189,9 +191,11 @@ function PublicNgoSite({ language, setLanguage, ngoId, authUser, onLogin }: { la
                 try {
                   await updateDoc(doc(db, 'ngoMembers', person.id), {
                     name: nextName.trim(), designation: nextDesignation.trim(),
-                    location: nextLocation.trim(), updatedAt: serverTimestamp()
+                    location: nextLocation.trim(), approvalStatus: 'PENDING', updatedAt: serverTimestamp()
                   });
-                  window.alert(hi ? 'टीम सदस्य की जानकारी अपडेट हो गई।' : 'Team member updated.');
+                  const publicTeamRef = doc(db, 'ngoPublicTeam', person.id);
+                  if ((await getDoc(publicTeamRef)).exists()) await deleteDoc(publicTeamRef);
+                  window.alert(hi ? 'टीम बदलाव जाँच के लिए भेजा गया है। मंज़ूरी के बाद सार्वजनिक होगा।' : 'Team changes were sent for review and will be public after approval.');
                 } catch (error) {
                   window.alert(error instanceof Error ? error.message : (hi ? 'अपडेट नहीं हुआ। अनुमति जाँचें।' : 'Update failed. Check permissions.'));
                 }
