@@ -78,16 +78,34 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
   }, [kind, hi]);
 
   useEffect(() => {
-    // NGO workspace is always isolated to the signed-in owner's UID, including accounts that are also platform admins.
-    const ngoSource = query(collection(db, 'ngos'), where('ownerUid', '==', authUser.uid));
+    // Platform Super Admins can select an active NGO to inspect its workspace.
+    // All other accounts remain strictly scoped to their own ownerUid.
+    const isPlatformAdmin = authUser.emailVerified && [
+      'ngogrant454@gmail.com',
+      'zaradigitalseva@gmail.com',
+    ].includes((authUser.email || '').toLowerCase());
+    const ngoSource = isPlatformAdmin
+      ? query(collection(db, 'ngos'))
+      : query(collection(db, 'ngos'), where('ownerUid', '==', authUser.uid));
     const unsubscribe = onSnapshot(ngoSource, snap => {
-      const list = snap.docs.map(d => ({ id: d.id, name: String(d.data().name || d.data().ngoName || 'NGO'), status: String(d.data().status || '').toUpperCase(), memberFee: Number(d.data().memberFee || 100), adminWhatsApp: String(d.data().adminWhatsApp || '') })).filter(n => ['LIVE', 'ACTIVE', 'APPROVED'].includes(n.status));
+      const list = snap.docs
+        .map(d => ({
+          id: d.id,
+          name: String(d.data().name || d.data().ngoName || 'NGO'),
+          status: String(d.data().status || '').toUpperCase(),
+          memberFee: Number(d.data().memberFee || 100),
+          adminWhatsApp: String(d.data().adminWhatsApp || ''),
+        }))
+        .filter(n => ['LIVE', 'ACTIVE', 'APPROVED'].includes(n.status));
       setNgos(list);
       setNgoId(current => list.some(n => n.id === current) ? current : list[0]?.id || '');
       setLoading(false);
-    }, e => { setMessage(e instanceof Error ? e.message : 'NGO load failed'); setLoading(false); });
+    }, e => {
+      setMessage(e instanceof Error ? e.message : 'NGO load failed');
+      setLoading(false);
+    });
     return unsubscribe;
-  }, [authUser.uid]);
+  }, [authUser.uid, authUser.email, authUser.emailVerified]);
   useEffect(() => {
     setSettingsFee(String(currentNgo?.memberFee || 100));
     setSettingsWhatsApp(currentNgo?.adminWhatsApp || '');
@@ -180,7 +198,7 @@ export function NgoWorkspacePortal({ authUser, language }: { authUser: User; lan
     <section className="member-portal-hero"><span>{'ALL NGO CONNECT · WORKSPACE'}</span><h1>{hi ? 'आपका NGO प्रबंधन डैशबोर्ड' : 'Your NGO management workspace'}</h1><p>{hi ? 'सदस्य, दान/खर्च, कार्यक्रम और दस्तावेज़ अपने NGO के भीतर प्रबंधित करें। रिकॉर्ड केवल आपके NGO ID से जुड़े हैं।' : 'Manage members, donations/expenses, events and documents within your NGO. Records are scoped to your NGO.'}</p></section>
     {loading ? <div className="member-notice">{hi ? 'NGO लोड हो रहा है…' : 'Loading NGOs…'}</div> : ngos.length === 0 ? <section className="member-form-panel" style={{textAlign:'center',padding:'28px 20px'}}><h2>{hi ? 'अभी इस खाते से कोई NGO जुड़ा नहीं है' : 'No NGO is linked to this account yet'}</h2><p>{hi ? 'नया NGO शुरू करने के लिए पहले रजिस्ट्रेशन फॉर्म भरें, सक्रिय प्लान चुनें, UPI QR से भुगतान करके UTR जमा करें। भुगतान सत्यापित होने और NGO सक्रिय होने के बाद इसी Google खाते से डैशबोर्ड खुलेगा।' : 'To get started, complete the NGO registration form, choose an active plan, pay using the UPI QR, and submit your UTR. Once payment is verified and your NGO is activated, the dashboard will open for this Google account.'}</p><a className="primary-button" href="/?register=1" style={{display:'inline-flex',alignItems:'center',justifyContent:'center',marginTop:12,textDecoration:'none'}}>{hi ? '📝 NGO रजिस्ट्रेशन फॉर्म खोलें' : '📝 Open NGO registration form'}</a><p style={{fontSize:13,marginTop:12}}>{hi ? 'यदि पहले ही रजिस्ट्रेशन जमा किया है, तो दोबारा फॉर्म न भरें। भुगतान/मंज़ूरी की स्थिति जाँचें।' : 'If you already submitted a registration, do not submit another. Ask platform support to check payment and activation status.'}</p></section> : <>
       <section className="member-form-panel ngo-settings-panel"><h2>{hi ? 'NGO सेटिंग' : 'NGO settings'}</h2><p>{hi ? 'सदस्य आवेदन देखने और फीस जाँचकर Member ID मंज़ूर करने के लिए Member ID / Admin खोलें।' : 'Open Member ID / Admin to review applications, verify fees, and approve Member IDs.'} <a className="outline-button" href="/ngo-admin" style={{display:'inline-flex',marginTop:8}}>{hi ? 'सदस्य आवेदन खोलें' : 'Open member applications'}</a></p><form onSubmit={saveSettings} className="ngo-workspace-form"><label>{hi ? 'सदस्यता शुल्क (₹)' : 'Membership fee (₹)'}<input required type="number" min="1" max="100000" step="1" value={settingsFee} onChange={e => setSettingsFee(e.target.value)} /></label><label>{hi ? 'NGO Admin WhatsApp नंबर (देश कोड सहित)' : 'NGO admin WhatsApp (include country code)'}<input required type="tel" maxLength={20} value={settingsWhatsApp} onChange={e => setSettingsWhatsApp(e.target.value)} placeholder="919876543210" /></label><div className="ngo-workspace-form-actions"><button className="primary-button" type="submit" disabled={settingsBusy}>{settingsBusy ? (hi ? 'सेव हो रहा है…' : 'Saving…') : (hi ? 'सेटिंग सेव करें' : 'Save settings')}</button></div></form>{settingsMessage && <p className="member-notice" role="status" aria-live="polite" style={{marginTop:12,fontWeight:700}}>{settingsMessage}</p>}</section>
-      <section className="ngo-workspace-toolbar"><div className="member-notice" style={{margin:0,fontWeight:800}}>{hi ? 'आपका NGO:' : 'Your NGO:'} {currentNgo?.name || ''} · {currentNgo?.status || ''}</div><div className="ngo-workspace-tabs">{modules.map(m => { const Icon = icons[m.id]; return <button key={m.id} className={kind === m.id ? 'active' : ''} onClick={() => setKind(m.id)}><Icon size={17}/>{hi ? m.hi : m.en}</button>; })}</div></section>
+      <section className="ngo-workspace-toolbar"><div className="member-notice" style={{margin:0,fontWeight:800}}>{hi ? (authUser.emailVerified && ['ngogrant454@gmail.com','zaradigitalseva@gmail.com'].includes((authUser.email || '').toLowerCase()) ? 'चयनित NGO:' : 'आपका NGO:') : (authUser.emailVerified && ['ngogrant454@gmail.com','zaradigitalseva@gmail.com'].includes((authUser.email || '').toLowerCase()) ? 'Selected NGO:' : 'Your NGO:')} {currentNgo?.name || ''} · {currentNgo?.status || ''}</div>{authUser.emailVerified && ['ngogrant454@gmail.com','zaradigitalseva@gmail.com'].includes((authUser.email || '').toLowerCase()) && ngos.length > 1 && <label style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}><span>{hi ? 'NGO चुनें:' : 'Select NGO:'}</span><select aria-label={hi ? 'NGO चुनें' : 'Select NGO'} value={ngoId} onChange={e => setNgoId(e.target.value)} style={{maxWidth:'100%',minWidth:220,padding:'10px 12px',borderRadius:10,border:'1px solid #c4b5fd',fontWeight:700}}>{ngos.map(ngo => <option key={ngo.id} value={ngo.id}>{ngo.name} · {ngo.status}</option>)}</select></label>}<div className="ngo-workspace-tabs">{modules.map(m => { const Icon = icons[m.id]; return <button key={m.id} className={kind === m.id ? 'active' : ''} onClick={() => setKind(m.id)}><Icon size={17}/>{hi ? m.hi : m.en}</button>; })}</div></section>
       <section className="member-applications-panel" style={{marginBottom:20}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
           <h2 style={{margin:0}}>{hi ? "यूज़र के सदस्य आवेदन" : "Membership applications from users"} · {memberApplications.length}</h2>
