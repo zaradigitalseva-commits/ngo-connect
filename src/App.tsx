@@ -691,7 +691,7 @@ export default function App() {
   };
   const [liveNgos, setLiveNgos] = useState<DashboardNgo[]>([]);
   const [liveMembers, setLiveMembers] = useState<DashboardRecord[]>([]);
-  const [liveTransactions, setLiveTransactions] = useState<DashboardRecord[]>([]);
+  const [liveTransactions] = useState<DashboardRecord[]>([]);
   const [liveEvents, setLiveEvents] = useState<DashboardRecord[]>([]);
   const [liveDocuments, setLiveDocuments] = useState<DashboardRecord[]>([]);
   const [dashboardLoading, setDashboardLoading] = useState(true);
