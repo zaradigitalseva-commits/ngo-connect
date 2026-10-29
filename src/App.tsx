@@ -626,7 +626,7 @@ export default function App() {
   const [authError, setAuthError] = useState('');
 
   useEffect(() => {
-    const path = window.location.pathname.replace(/\\/+$/, '') || '/';
+    const path = window.location.pathname.replace(/\/+$/, '') || '/';
     const privatePath = ['/ngo-admin', '/ngo-workspace', '/members', '/member-verify'].some(prefix => path === prefix || path.startsWith(prefix + '/'));
     const routeMeta: Record<string, { title: string; description: string }> = {
       '/': { title: 'All NGO Connect | NGO Directory & Community Platform', description: 'Discover community organizations and learn how All NGO Connect helps NGOs organize their work, members, programs and reports.' },
@@ -648,7 +648,7 @@ export default function App() {
       let element = document.head.querySelector(selector) as HTMLMetaElement | null;
       if (!element) {
         element = document.createElement('meta');
-        const parts = selector.match(/\\[(name|property)="([^"]+)"\\]/);
+        const parts = selector.match(/\[(name|property)="([^"]+)"\]/);
         if (parts) element.setAttribute(parts[1], parts[2]);
         document.head.appendChild(element);
       }
