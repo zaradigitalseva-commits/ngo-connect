@@ -116,7 +116,50 @@ function PublicNgoSite({ language, setLanguage, ngoId, authUser, onLogin }: { la
     const unsubscribeNgo = onSnapshot(doc(db, 'ngos', ngoId), snapshot => {
       if (!active) return;
       if (!snapshot.exists() || !['LIVE', 'ACTIVE', 'APPROVED'].includes(String(snapshot.data().status || '').toUpperCase())) { setFailed(true); setNgo(null); }
-      else { setFailed(false); setNgo({ id: snapshot.id, ...snapshot.data() }); }
+      else {
+        setFailed(false);
+        const record = { id: snapshot.id, ...snapshot.data() };
+        setNgo(record);
+        // Set the public profile's metadata only after an active NGO record is confirmed.
+        const profileName = String(record.name || record.ngoName || 'NGO').trim();
+        const profileMission = String(record.mission || record.description || 'Community organization profile and public information').trim();
+        const profilePlace = [record.district || record.city, record.state].filter(Boolean).map(String).join(', ');
+        const profileDescription = (profileName + (profilePlace ? ' — NGO in ' + profilePlace : '') + '. ' + profileMission)
+          .replace(/\\s+/g, ' ').slice(0, 300);
+        document.title = profileName + (profilePlace ? ' | NGO in ' + profilePlace : ' | NGO Profile') + ' | All NGO Connect';
+        const setProfileMeta = (selector: string, attr: string, value: string) => {
+          let element = document.head.querySelector(selector) as HTMLMetaElement | null;
+          if (!element) {
+            element = document.createElement('meta');
+            const match = selector.match(/\\[(name|property)="([^"]+)"\\]/);
+            if (match) element.setAttribute(match[1], match[2]);
+            document.head.appendChild(element);
+          }
+          element.setAttribute(attr, value);
+        };
+        setProfileMeta('meta[name="description"]', 'content', profileDescription);
+        setProfileMeta('meta[property="og:title"]', 'content', document.title);
+        setProfileMeta('meta[property="og:description"]', 'content', profileDescription);
+        setProfileMeta('meta[name="twitter:title"]', 'content', document.title);
+        setProfileMeta('meta[name="twitter:description"]', 'content', profileDescription);
+        setProfileMeta('meta[name="robots"]', 'content', 'index, follow, max-image-preview:large');
+        const profileUrl = 'https://ngo-connect-jet.vercel.app/ngo/' + encodeURIComponent(snapshot.id);
+        setProfileMeta('meta[property="og:url"]', 'content', profileUrl);
+        let canonical = document.head.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+        if (!canonical) { canonical = document.createElement('link'); canonical.rel = 'canonical'; document.head.appendChild(canonical); }
+        canonical.href = profileUrl;
+        let profileSchema = document.head.querySelector('#ngo-profile-jsonld') as HTMLScriptElement | null;
+        if (!profileSchema) { profileSchema = document.createElement('script'); profileSchema.id = 'ngo-profile-jsonld'; profileSchema.type = 'application/ld+json'; document.head.appendChild(profileSchema); }
+        profileSchema.textContent = JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'NGO',
+          name: profileName,
+          url: profileUrl,
+          description: profileDescription,
+          areaServed: profilePlace || undefined,
+          parentOrganization: { '@type': 'Organization', name: 'All NGO Connect', url: 'https://ngo-connect-jet.vercel.app/' }
+        });
+      }
       setLoading(false);
     }, () => { if (active) { setFailed(true); setLoading(false); } });
     return () => { active = false; unsubscribeTeam(); unsubscribeEvents(); unsubscribeDocuments(); unsubscribeFinance(); unsubscribeNgo(); };
