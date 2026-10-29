@@ -729,7 +729,10 @@ export default function App() {
     setMeta('meta[name="robots"]', 'content', privatePath ? 'noindex, nofollow' : 'index, follow, max-image-preview:large');
     setMeta('meta[property="og:title"]', 'content', meta.title);
     setMeta('meta[property="og:description"]', 'content', meta.description);
-    setMeta('meta[property="og:url"]', 'content', window.location.origin + path);
+    setMeta('meta[name="twitter:title"]', 'content', meta.title);
+    setMeta('meta[name="twitter:description"]', 'content', meta.description);
+    const canonicalUrl = 'https://ngo-connect-jet.vercel.app' + (path === '/' ? '/' : path);
+    setMeta('meta[property="og:url"]', 'content', canonicalUrl);
     let canonical = document.head.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
     if (!privatePath) {
       if (!canonical) {
@@ -737,7 +740,7 @@ export default function App() {
         canonical.rel = 'canonical';
         document.head.appendChild(canonical);
       }
-      canonical.href = window.location.origin + path;
+      canonical.href = canonicalUrl;
     } else if (canonical) {
       canonical.remove();
     }
