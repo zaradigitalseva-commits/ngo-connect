@@ -558,8 +558,8 @@ function PublicInfoPage({ language, setLanguage, page }: { language: Language; s
     event.preventDefault();
     const subject = contactForm.subject.trim() || (hi ? 'All NGO Connect सहायता अनुरोध' : 'All NGO Connect support request');
     const body = (hi ? 'नाम: ' : 'Name: ') + contactForm.name.trim()
-      + '\\n' + (hi ? 'ईमेल: ' : 'Email: ') + contactForm.email.trim()
-      + '\\n\\n' + (hi ? 'संदेश: ' : 'Message: ') + contactForm.message.trim();
+      + '\n' + (hi ? 'ईमेल: ' : 'Email: ') + contactForm.email.trim()
+      + '\n\n' + (hi ? 'संदेश: ' : 'Message: ') + contactForm.message.trim();
     const mailto = 'mailto:ngogrant454@gmail.com?subject=' + encodeURIComponent(subject)
       + '&body=' + encodeURIComponent(body);
     setContactNotice(hi ? 'आपका ईमेल ऐप खुलना चाहिए। भेजने के लिए अपने ईमेल ऐप में Send दबाएँ।' : 'Your email app should open. Press Send in your email app to send the message.');
