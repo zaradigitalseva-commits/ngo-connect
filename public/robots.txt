@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /ngo-admin
+Disallow: /ngo-workspace
+Disallow: /members
+Disallow: /member-verify
+
+Sitemap: https://ngo-connect-jet.vercel.app/sitemap.xml
