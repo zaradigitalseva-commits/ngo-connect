@@ -125,13 +125,13 @@ function PublicNgoSite({ language, setLanguage, ngoId, authUser, onLogin }: { la
         const profileMission = String(record.mission || record.description || 'Community organization profile and public information').trim();
         const profilePlace = [record.district || record.city, record.state].filter(Boolean).map(String).join(', ');
         const profileDescription = (profileName + (profilePlace ? ' — NGO in ' + profilePlace : '') + '. ' + profileMission)
-          .replace(/\\s+/g, ' ').slice(0, 300);
+          .replace(/\s+/g, ' ').slice(0, 300);
         document.title = profileName + (profilePlace ? ' | NGO in ' + profilePlace : ' | NGO Profile') + ' | All NGO Connect';
         const setProfileMeta = (selector: string, attr: string, value: string) => {
           let element = document.head.querySelector(selector) as HTMLMetaElement | null;
           if (!element) {
             element = document.createElement('meta');
-            const match = selector.match(/\\[(name|property)="([^"]+)"\\]/);
+            const match = selector.match(/\[(name|property)="([^"]+)"\]/);
             if (match) element.setAttribute(match[1], match[2]);
             document.head.appendChild(element);
           }
