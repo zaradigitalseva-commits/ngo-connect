@@ -118,7 +118,7 @@ function PublicNgoSite({ language, setLanguage, ngoId, authUser, onLogin }: { la
       if (!snapshot.exists() || !['LIVE', 'ACTIVE', 'APPROVED'].includes(String(snapshot.data().status || '').toUpperCase())) { setFailed(true); setNgo(null); }
       else {
         setFailed(false);
-        const record = { id: snapshot.id, ...snapshot.data() };
+        const record: Record<string, any> = { id: snapshot.id, ...snapshot.data() };
         setNgo(record);
         // Set the public profile's metadata only after an active NGO record is confirmed.
         const profileName = String(record.name || record.ngoName || 'NGO').trim();
