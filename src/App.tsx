@@ -625,6 +625,53 @@ export default function App() {
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [authError, setAuthError] = useState('');
 
+  useEffect(() => {
+    const path = window.location.pathname.replace(/\\/+$/, '') || '/';
+    const privatePath = ['/ngo-admin', '/ngo-workspace', '/members', '/member-verify'].some(prefix => path === prefix || path.startsWith(prefix + '/'));
+    const routeMeta: Record<string, { title: string; description: string }> = {
+      '/': { title: 'All NGO Connect | NGO Directory & Community Platform', description: 'Discover community organizations and learn how All NGO Connect helps NGOs organize their work, members, programs and reports.' },
+      '/ngo-list': { title: 'NGO Directory | All NGO Connect', description: 'Explore NGOs listed on All NGO Connect and learn about their missions and community work.' },
+      '/official-ngo-list': { title: 'Public NGO Resources | All NGO Connect', description: 'Browse public NGO resources. Listings do not by themselves confirm government recognition or endorsement.' },
+      '/about': { title: 'About Us | All NGO Connect', description: 'Learn about All NGO Connect, a platform designed to help community organizations share information and organize their work.' },
+      '/services': { title: 'Our Services | All NGO Connect', description: 'Explore All NGO Connect features for NGO profiles, member management, donations, programs and reports.' },
+      '/features': { title: 'Platform Features | All NGO Connect', description: 'Learn how All NGO Connect supports NGO directories, membership workflows, program records and reporting.' },
+      '/contact': { title: 'Contact Us | All NGO Connect', description: 'Contact All NGO Connect at ngogrant454@gmail.com for questions about the platform.' },
+      '/privacy-policy': { title: 'Privacy Policy | All NGO Connect', description: 'Read how All NGO Connect handles account information, website data and advertising cookies.' },
+      '/terms-of-use': { title: 'Terms & Conditions | All NGO Connect', description: 'Read the terms that apply to using the All NGO Connect platform.' },
+      '/terms': { title: 'Terms & Conditions | All NGO Connect', description: 'Read the terms that apply to using the All NGO Connect platform.' },
+      '/disclaimer': { title: 'Disclaimer | All NGO Connect', description: 'Understand the limits of NGO listings, user-provided information and payment references on All NGO Connect.' }
+    };
+    const meta = routeMeta[path] || (path.startsWith('/ngo/') ? { title: 'NGO Profile | All NGO Connect', description: 'View NGO profile information shared on All NGO Connect. Contact the organization to verify details before making decisions.' } : { title: 'All NGO Connect', description: 'All NGO Connect helps community organizations share information and organize their work.' });
+    document.title = meta.title;
+    document.documentElement.lang = 'hi';
+    const setMeta = (selector: string, attribute: string, value: string) => {
+      let element = document.head.querySelector(selector) as HTMLMetaElement | null;
+      if (!element) {
+        element = document.createElement('meta');
+        const parts = selector.match(/\\[(name|property)="([^"]+)"\\]/);
+        if (parts) element.setAttribute(parts[1], parts[2]);
+        document.head.appendChild(element);
+      }
+      element.setAttribute(attribute, value);
+    };
+    setMeta('meta[name="description"]', 'content', meta.description);
+    setMeta('meta[name="robots"]', 'content', privatePath ? 'noindex, nofollow' : 'index, follow, max-image-preview:large');
+    setMeta('meta[property="og:title"]', 'content', meta.title);
+    setMeta('meta[property="og:description"]', 'content', meta.description);
+    setMeta('meta[property="og:url"]', 'content', window.location.origin + path);
+    let canonical = document.head.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+    if (!privatePath) {
+      if (!canonical) {
+        canonical = document.createElement('link');
+        canonical.rel = 'canonical';
+        document.head.appendChild(canonical);
+      }
+      canonical.href = window.location.origin + path;
+    } else if (canonical) {
+      canonical.remove();
+    }
+  }, []);
+
   // One-time, admin-only privacy cleanup for legacy public NGO documents.
   // Preserve/restore ownerUid before removing old public contact and payment-form fields.
   useEffect(() => {
